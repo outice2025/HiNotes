@@ -4,7 +4,7 @@
 # APK matches what is tested. These rules are here so enabling it later stays a one-line change.
 
 # Keep the ViewModel factory's reflective constructor path usable.
--keepclassmembers class com.hinotes.app.ui.AppViewModel {
+-keepclassmembers class com.hiapps.hinotes.ui.AppViewModel {
     <init>(android.content.Context);
 }
 

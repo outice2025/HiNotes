@@ -16,16 +16,16 @@ val keystoreProps = Properties().apply {
     }
 }
 
-val appVersionName = "0.0.6"
-val appVersionCode = 6
+val appVersionName = "0.0.7"
+val appVersionCode = 7
 
 android {
-    namespace = "com.hinotes.app"
+    namespace = "com.hiapps.hinotes"
     // Compose 1.12 / AndroidX require compiling against API 37.
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.hinotes.app"
+        applicationId = "com.hiapps.hinotes"
         minSdk = 24
         targetSdk = 37
         versionCode = appVersionCode

@@ -5,6 +5,15 @@
     <!-- 首页 -->
     <string name="home_search_placeholder">搜索</string>
     <string name="home_open_settings">打开设置</string>
+    <string name="home_selected_count">已选择 %1$d 项</string>
+    <string name="home_select_all">全选</string>
+    <string name="home_exit_selection">退出多选</string>
+    <string name="home_layout_grid">网格排版</string>
+    <string name="home_layout_list">列表排版</string>
+    <string name="home_delete_selected">删除（%1$d）</string>
+    <string name="home_delete_selected_message">将永久删除 %1$d 条笔记，此操作无法撤销。</string>
+    <string name="editor_delete">删除笔记</string>
+    <string name="editor_unsaved">有未保存的修改</string>
     <string name="home_empty">无笔记</string>
     <string name="home_empty_search">没有匹配的笔记</string>
     <string name="home_empty_hint">点击「创建笔记」写下第一条笔记。</string>

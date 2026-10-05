@@ -5,6 +5,15 @@
     <!-- Home -->
     <string name="home_search_placeholder">Search</string>
     <string name="home_open_settings">Open settings</string>
+    <string name="home_selected_count">%1$d selected</string>
+    <string name="home_select_all">Select all</string>
+    <string name="home_exit_selection">Exit selection</string>
+    <string name="home_layout_grid">Grid layout</string>
+    <string name="home_layout_list">List layout</string>
+    <string name="home_delete_selected">Delete (%1$d)</string>
+    <string name="home_delete_selected_message">%1$d notes will be permanently deleted. This cannot be undone.</string>
+    <string name="editor_delete">Delete note</string>
+    <string name="editor_unsaved">Unsaved changes</string>
     <string name="home_empty">No notes</string>
     <string name="home_empty_search">No matching notes</string>
     <string name="home_empty_hint">Tap “Create note” to write your first note.</string>
