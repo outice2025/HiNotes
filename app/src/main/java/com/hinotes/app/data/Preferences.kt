@@ -19,10 +19,9 @@ import java.io.IOException
 /**
  * Dark-theme preference.
  *
- * Out of the box this is [System], so a fresh install follows the device's system setting and
- * keeps following it when the device flips. Once the user touches the "Dark mode" switch they
- * have stated a preference and the app honours it; the Appearance screen offers a way back to
- * [System].
+ * Out of the box this is [Off]: the app opens in light mode regardless of what the device is
+ * set to, so a fresh install looks the same everywhere. [System] is available on the Appearance
+ * screen for users who want the app to track the device, and [On] pins dark mode.
  */
 enum class DarkModePreference(val key: String) {
     System("system"),
@@ -38,8 +37,11 @@ enum class DarkModePreference(val key: String) {
     }
 
     companion object {
+        /** The out-of-the-box value: light mode. */
+        val Default = Off
+
         fun fromKey(key: String?): DarkModePreference =
-            entries.firstOrNull { it.key == key } ?: System
+            entries.firstOrNull { it.key == key } ?: Default
     }
 }
 
@@ -52,7 +54,7 @@ enum class DarkModePreference(val key: String) {
  */
 data class HiNotesSettings(
     val dynamicColor: Boolean = false,
-    val darkMode: DarkModePreference = DarkModePreference.System,
+    val darkMode: DarkModePreference = DarkModePreference.Default,
     val oledDark: Boolean = false,
     val appFontScale: AppFontScale = AppFontScale.Default,
     val appFontWeight: AppFontWeight = AppFontWeight.Regular,

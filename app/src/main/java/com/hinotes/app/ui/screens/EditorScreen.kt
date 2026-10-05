@@ -1,8 +1,6 @@
 package com.hinotes.app.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hinotes.app.R
-import com.hinotes.app.data.ImageStore
 import com.hinotes.app.data.Note
 import com.hinotes.app.ui.AppViewModel
 import com.hinotes.app.ui.NEW_NOTE_ID
@@ -63,7 +60,6 @@ import com.hinotes.app.ui.components.ConfirmDialog
 import com.hinotes.app.ui.components.ConnectedIconButton
 import com.hinotes.app.ui.components.ConnectedIconButtonGroup
 import com.hinotes.app.ui.components.ExpressiveButtonSize
-import com.hinotes.app.ui.components.NoteImage
 import com.hinotes.app.ui.components.SplitButton
 import com.hinotes.app.ui.components.SplitButtonMenuItem
 import com.hinotes.app.ui.editor.EditorState
@@ -195,26 +191,6 @@ fun EditorScreen(
         }
     }
 
-    val imagePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            // Copy the bytes into app storage so the note keeps working after the picker's
-            // temporary read grant expires, then embed a stable reference.
-            val reference = ImageStore.import(context, uri)
-            if (reference == null) {
-                snackbarHostState.showSnackbar(
-                    context.getString(R.string.editor_pick_image_failed),
-                )
-                return@launch
-            }
-            editorState.applyEdit(
-                Markdown.insertAtCursor(editorState.value, "![]($reference)"),
-            )
-        }
-    }
-
     // ------------------------------------------------------------------- rendering
 
     Scaffold(
@@ -334,39 +310,20 @@ fun EditorScreen(
                 )
 
                 if (previewMode) {
-                    val blocks = remember(editorState.value.text, settings.markdownEnabled) {
+                    val rendered = remember(editorState.value.text, settings.markdownEnabled) {
                         if (settings.markdownEnabled) {
-                            Markdown.blocks(editorState.value.text)
+                            Markdown.render(editorState.value.text)
                         } else {
-                            listOf(
-                                Markdown.PreviewBlock.Text(
-                                    androidx.compose.ui.text.AnnotatedString(
-                                        editorState.value.text,
-                                    ),
-                                ),
-                            )
+                            androidx.compose.ui.text.AnnotatedString(editorState.value.text)
                         }
                     }
-                    Column(
+                    androidx.compose.foundation.text.selection.SelectionContainer(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp)
                             .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        blocks.forEach { block ->
-                            when (block) {
-                                is Markdown.PreviewBlock.Text ->
-                                    androidx.compose.foundation.text.selection.SelectionContainer {
-                                        Text(text = block.text, style = bodyStyle)
-                                    }
-
-                                is Markdown.PreviewBlock.Image -> NoteImage(
-                                    reference = block.reference,
-                                    alt = block.alt,
-                                )
-                            }
-                        }
+                        Text(text = rendered, style = bodyStyle)
                     }
                 } else {
                     BasicTextField(
@@ -482,10 +439,6 @@ fun EditorScreen(
                                 Markdown.toggleLinePrefix(editorState.value, "- [ ] "),
                             )
                         },
-                        ConnectedIconButton(
-                            icon = Symbols.AddPhotoAlternate,
-                            contentDescription = stringResource(R.string.editor_insert_image),
-                        ) { imagePicker.launch(arrayOf("image/*")) },
                         ConnectedIconButton(
                             icon = Symbols.List,
                             contentDescription = stringResource(R.string.editor_bullet_list),

@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -32,25 +31,13 @@ val MaterialSymbolsRounded: FontFamily = FontFamily(
     Font(R.font.material_symbols_rounded, FontWeight.Normal),
 )
 
-// Material Symbols ships text-style vertical metrics: its ascent is 1.1em while its descent is
-// only 0.1em. A glyph drawn on that baseline therefore sits 0.06em above the centre of a square
-// frame, which is what makes icons look off-centre inside their circular container. These are
-// the font's own `hhea`/`OS/2` values.
-private const val GLYPH_ASCENT = 1056f
-private const val GLYPH_DESCENT = 96f
-private const val GLYPH_UNITS_PER_EM = 960f
-
-/** Baseline skew as a fraction of the em, used to re-centre the glyph on its em box. */
-private const val GLYPH_VERTICAL_SKEW =
-    (GLYPH_ASCENT / (GLYPH_ASCENT + GLYPH_DESCENT)) - (GLYPH_UNITS_PER_EM / 2f) / GLYPH_UNITS_PER_EM
-
 /**
- * Draws a Material Symbols glyph, centred on its em box.
+ * Draws a Material Symbols glyph.
  *
  * The glyph is rendered from the symbol font by codepoint (see [Symbols]) rather than from a
- * vector drawable. A single [Text] inside a square frame would honour the font's asymmetric
- * ascent, pushing the ink above the frame's centre; translating by [GLYPH_VERTICAL_SKEW] puts it
- * back on the true centre, so an icon sits dead centre of whatever container draws behind it.
+ * vector drawable, inside a square [size] frame that centres it. The frame and the glyph are
+ * both square and the glyph fills its em box, so plain centring lands the ink on the frame's
+ * centre - no baseline compensation is applied or wanted.
  */
 @Composable
 fun SymbolIcon(
@@ -78,9 +65,6 @@ fun SymbolIcon(
                     trim = LineHeightStyle.Trim.Both,
                 ),
             ),
-            modifier = Modifier.graphicsLayer {
-                translationY = GLYPH_VERTICAL_SKEW * size.toPx()
-            },
         )
     }
 }

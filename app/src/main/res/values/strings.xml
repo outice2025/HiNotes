@@ -40,7 +40,6 @@
     <string name="editor_bold">Bold</string>
     <string name="editor_italic">Italic</string>
     <string name="editor_checkbox">Checkbox</string>
-    <string name="editor_insert_image">Insert image</string>
     <string name="editor_bullet_list">Bullet list</string>
     <string name="editor_find">Find in note</string>
     <string name="editor_find_placeholder">Find in note</string>
@@ -56,8 +55,6 @@
     <string name="editor_props_lines">Lines</string>
     <string name="editor_props_id">Identifier</string>
     <string name="editor_share_chooser">Share note</string>
-    <string name="editor_pick_image_failed">Could not add that image</string>
-    <string name="editor_image_unavailable">Image unavailable</string>
     <string name="editor_markdown_hint">Markdown is on · the toolbar inserts Markdown syntax</string>
 
     <!-- Settings root -->

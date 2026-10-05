@@ -47,17 +47,12 @@ object Routes {
 }
 
 /**
- * Transition timings.
+ * Transition timings and easing.
  *
- * Forward and back use one shared spec, so pushing a screen and popping it take exactly the
- * same time and ease - a user cannot tell whether a pop came from the toolbar's back button,
- * the system back button, or the predictive back gesture, because all three run through the
- * same `NavHostController.popBackStack()` and therefore the same transition.
- *
- * The design asks for motion that does not bounce, so these are plain tweens on Material 3's
- * standard easing rather than the spatial springs used inside components. In-app state changes
- * still use the standard motion scheme through
- * [com.hinotes.app.ui.theme.LocalMotionScheme].
+ * These reproduce Android's standard activity/screen transition: the incoming screen slides in
+ * over the outgoing one, which stays put rather than being pushed aside. Material 3's shared
+ * axis motion for a forward/back pair is a horizontal slide of the full width at 300 ms on the
+ * standard easing curve, which is what the platform's own forward navigation does.
  */
 private const val TRANSITION_MS = 300
 
@@ -70,34 +65,31 @@ private fun slide(durationMs: Int = TRANSITION_MS) =
 private fun fade(durationMs: Int = TRANSITION_MS) =
     tween<Float>(durationMs, easing = StandardEasing)
 
-/** Pushes the new screen in from the right edge. */
+/** A pushed screen slides in from the right edge. */
 private fun AnimatedContentTransitionScope<*>.enterFromRight(): EnterTransition =
-    slideInHorizontally(animationSpec = slide(), initialOffsetX = { it }) + fadeIn(fade())
+    slideInHorizontally(animationSpec = slide(), initialOffsetX = { it })
 
-/** Slides the covered screen slightly left while a new screen covers it. */
-private fun AnimatedContentTransitionScope<*>.exitToLeft(): ExitTransition =
-    slideOutHorizontally(animationSpec = slide(), targetOffsetX = { -it / 4 }) + fadeOut(fade())
+/** The screen being covered stays where it is, exactly as the platform does it. */
+private fun AnimatedContentTransitionScope<*>.stayPut(): ExitTransition = ExitTransition.None
 
 /**
- * Brings a covered screen back from the left while the top screen leaves to the right.
- *
- * This is exactly [enterFromRight]'s mirror image, and [popExit] is exactly [exitToLeft]'s, so a
- * pop is a faithful reverse of the push that preceded it.
+ * A popped screen slides back out to the right edge - the exact reverse of [enterFromRight], so
+ * pushing and popping are symmetric and take the same time.
  */
-private fun AnimatedContentTransitionScope<*>.popEnterFromLeft(): EnterTransition =
-    slideInHorizontally(animationSpec = slide(), initialOffsetX = { -it / 4 }) + fadeIn(fade())
+private fun AnimatedContentTransitionScope<*>.exitToRight(): ExitTransition =
+    slideOutHorizontally(animationSpec = slide(), targetOffsetX = { it })
 
-/** Slides the leaving screen out to the right, matching the push's enter. */
-private fun AnimatedContentTransitionScope<*>.popExitToRight(): ExitTransition =
-    slideOutHorizontally(animationSpec = slide(), targetOffsetX = { it }) + fadeOut(fade())
+/** The screen being uncovered is already in place, so it does not animate back in. */
+private fun AnimatedContentTransitionScope<*>.alreadyInPlace(): EnterTransition = EnterTransition.None
 
 /**
  * The app's navigation host.
  *
- * Every forward navigation slides in from the right; every pop plays the exact reverse. Because
- * the predictive back gesture, the system back button and the in-app back buttons all call
- * [NavHostController.popBackStack], they all inherit the identical `popEnter`/`popExit`
- * transition - there is no second animation path to drift out of sync.
+ * Forward navigation and back use the platform's standard screen transition: the incoming screen
+ * slides full-width over the outgoing one on Material 3's standard easing, and the outgoing
+ * screen does not move. Because the predictive back gesture, the system back button and the
+ * in-app back buttons all call [NavHostController.popBackStack], all three run this same pair -
+ * there is no second animation path that could drift out of sync.
  *
  * `android:enableOnBackInvokedCallback` is set in the manifest so Android 13+ hands the back
  * gesture to the app instead of playing its own exit animation.
@@ -112,16 +104,16 @@ fun HiNotesApp(
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,
-        // Both screens slide during a transition, so whatever sits behind them is briefly
-        // visible at the edges. Painting the nav host with the theme's surface colour means
-        // that gap shows the app background instead of the window's black.
+        // While a screen slides, the area it has not covered yet is briefly visible. Painting
+        // the nav host with the theme's surface colour means that shows the app background
+        // rather than the window's black.
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface),
         enterTransition = { enterFromRight() },
-        exitTransition = { exitToLeft() },
-        popEnterTransition = { popEnterFromLeft() },
-        popExitTransition = { popExitToRight() },
+        exitTransition = { stayPut() },
+        popEnterTransition = { alreadyInPlace() },
+        popExitTransition = { exitToRight() },
     ) {
         composable(Routes.HOME) {
             HomeScreen(

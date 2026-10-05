@@ -40,7 +40,6 @@
     <string name="editor_bold">粗体</string>
     <string name="editor_italic">斜体</string>
     <string name="editor_checkbox">复选框</string>
-    <string name="editor_insert_image">插入图片</string>
     <string name="editor_bullet_list">项目符号列表</string>
     <string name="editor_find">在笔记中查找</string>
     <string name="editor_find_placeholder">在笔记中查找</string>
@@ -56,8 +55,6 @@
     <string name="editor_props_lines">行数</string>
     <string name="editor_props_id">标识符</string>
     <string name="editor_share_chooser">分享笔记</string>
-    <string name="editor_pick_image_failed">无法添加该图片</string>
-    <string name="editor_image_unavailable">图片不可用</string>
     <string name="editor_markdown_hint">Markdown 已开启 · 工具栏插入 Markdown 语法</string>
 
     <!-- 设置页 -->

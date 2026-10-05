@@ -16,8 +16,8 @@ val keystoreProps = Properties().apply {
     }
 }
 
-val appVersionName = "0.0.3"
-val appVersionCode = 3
+val appVersionName = "0.0.4"
+val appVersionCode = 4
 
 android {
     namespace = "com.hinotes.app"
@@ -148,35 +148,23 @@ dependencies {
  * deliverable, and rebuilding the same version overwrites that version's folder rather than
  * piling up duplicates.
  */
-val archiveReleaseArtifacts by tasks.registering(Copy::class) {
+val archiveReleaseArtifacts = tasks.register<Copy>("archiveReleaseArtifacts") {
     group = "build"
     description = "Copies the release APK into releases/v<version>/ so earlier builds survive."
 
-    val archivesRoot = rootProject.layout.projectDirectory.dir("releases")
-
     dependsOn("packageRelease")
 
-    val outputDir = layout.buildDirectory.dir("outputs/apk/release")
+    // The output file name is fixed by the variant configuration above, so it can be named
+    // directly rather than discovered by listing the output directory.
+    val apkName = "hinotes-$appVersionName-release.apk"
+    val apkDir = layout.buildDirectory.dir("outputs/apk/release")
 
-    // Resolve the single release APK at execution time; the file name carries the version.
-    val apk = outputDir.map { dir ->
-        dir.asFile.listFiles()
-            ?.firstOrNull { it.isFile && it.name.endsWith(".apk") }
-    }
-
-    doFirst {
-        val file = apk.get()
-        require(file != null) {
-            "No release APK found in ${outputDir.get().asFile}. " +
-                "Run :app:assembleRelease first."
-        }
-    }
-
-    from(provider { apk.get()?.let { listOf(it) } ?: emptyList() })
-    into(archivesRoot.dir("v$appVersionName"))
+    from(apkDir.map { it.file(apkName) })
+    into(rootProject.layout.projectDirectory.dir("releases/v$appVersionName"))
 
     doLast {
-        val target = archivesRoot.dir("v$appVersionName").asFile
-        logger.lifecycle("Archived release build in ${target.relativeTo(rootProject.projectDir)}")
+        val target = rootProject.file("releases/v$appVersionName/$apkName")
+        require(target.isFile) { "Release APK was not found at $target" }
+        logger.lifecycle("Archived release build: releases/v$appVersionName/$apkName")
     }
 }

@@ -62,21 +62,28 @@ fun BackupScreen(
     /**
      * Runs a backup operation and reports its outcome.
      *
-     * Wraps the whole body so that an unexpected failure surfaces as a snackbar rather than an
-     * uncaught exception on the main thread - the user's data is never left in an unknown state
-     * with no explanation.
+     * The file work and the message are deliberately decoupled: the work runs in its own
+     * try/catch so an expected failure (no permission, provider refused, disk full) becomes a
+     * message rather than a crash, and showing that message has its own guard so a UI failure
+     * can never reach the crash handler either.
      */
-    fun runBackup(block: suspend () -> String?) {
+    fun runBackup(block: suspend () -> String) {
         scope.launch {
-            val message = try {
-                block() ?: return@launch
+            val text = try {
+                block()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (t: Throwable) {
                 Log.e(TAG, "backup operation failed", t)
                 context.getString(R.string.backup_failed, t.javaClass.simpleName)
             }
-            snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
+            try {
+                snackbarHostState.showSnackbar(text, duration = SnackbarDuration.Short)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                Log.e(TAG, "could not show snackbar", t)
+            }
         }
     }
 
