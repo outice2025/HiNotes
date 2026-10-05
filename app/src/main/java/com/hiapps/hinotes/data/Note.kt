@@ -21,18 +21,17 @@ data class Note(
     fun displayTitle(fallback: String): String =
         title.ifBlank { content.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty() }
             .ifBlank { fallback }
-
-    /** Single-line snippet of the body for list rows. */
-    fun snippet(): String =
-        content.replace('\n', ' ').replace(Regex("\\s+"), " ").trim()
-
-    val wordCount: Int
-        get() = content.split(Regex("\\s+")).count { it.isNotBlank() }
-
-    val charCount: Int get() = content.length
-
-    val lineCount: Int get() = if (content.isEmpty()) 0 else content.count { it == '\n' } + 1
 }
+
+/**
+ * How much text a note body holds, for the properties sheet.
+ *
+ * Letters and digits only. Whitespace is not text, punctuation is not text, Markdown syntax is
+ * punctuation, and an emoji is a symbol rather than a word - so a Chinese note counts its
+ * characters and an English one counts its letters, which is what "字数" means for either. The
+ * note's title is not part of the body and is therefore never counted.
+ */
+fun countNoteCharacters(content: String): Int = content.count { it.isLetterOrDigit() }
 
 /** Sort orders offered on the home screen. */
 enum class NoteSort(val key: String) {

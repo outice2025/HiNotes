@@ -4,43 +4,46 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import com.hiapps.hinotes.R
-import com.hiapps.hinotes.data.Note
 import java.io.File
 
 /**
- * Shares a note as text.
+ * Shares a note through the system share sheet.
  *
  * The note is sent as `text/plain` rather than as a file, because a note is prose the user
  * usually wants in a message body; when the note is long, a Markdown attachment is offered
  * instead so nothing is truncated.
+ *
+ * Nothing here depends on the note having been saved. The caller hands over what is on screen,
+ * so a note that is still being written can be shared, and a blank one is shareable too - it
+ * goes out as its title. Tapping "Share" must always produce the share sheet: swallowing the
+ * failure (or skipping the call) is what makes a button look broken.
+ *
+ * @return true when the share sheet could be opened, false when no app can handle it.
  */
-internal fun shareNote(context: Context, note: Note?, title: String, untitled: String) {
-    val current = note ?: return
-    val heading = title.ifBlank { current.displayTitle(untitled) }
-
-    val intent = if (current.content.length > MAX_INLINE_CHARS) {
-        val uri = writeShareFile(context, heading, current.content)
+internal fun shareNote(context: Context, title: String, content: String): Boolean {
+    val intent = if (content.length > MAX_INLINE_CHARS) {
+        val uri = writeShareFile(context, title, content)
         if (uri == null) {
-            textShareIntent(heading, current.content)
+            textShareIntent(title, content)
         } else {
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/markdown"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, heading)
-                putExtra(Intent.EXTRA_TEXT, heading)
+                putExtra(Intent.EXTRA_SUBJECT, title)
+                putExtra(Intent.EXTRA_TEXT, title)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         }
     } else {
-        textShareIntent(heading, current.content)
+        textShareIntent(title, content)
     }
 
-    runCatching {
+    return runCatching {
         context.startActivity(
             Intent.createChooser(intent, context.getString(R.string.editor_share_chooser))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
-    }
+    }.isSuccess
 }
 
 private fun textShareIntent(title: String, content: String): Intent =

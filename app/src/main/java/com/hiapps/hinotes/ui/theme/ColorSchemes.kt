@@ -4,13 +4,14 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 
-// The Mono fallback scheme, used on devices without wallpaper-based dynamic color
-// (Android 11 and below) or when the user turns dynamic color off.
+// The "Light purple" accent: the design specification's own palette, and the one the app ships
+// with. Every other accent in the picker is generated from a seed colour (see AccentPalettes.kt);
+// this one is hand-specified, so it is kept exactly as the design gives it.
 //
 // Every value is taken verbatim from the design specification; the UI only ever reads
 // these through Material 3 color roles, never as literal colors.
 
-internal val MonoLightColorScheme: ColorScheme = lightColorScheme(
+internal val LightPurpleLightColorScheme: ColorScheme = lightColorScheme(
     primary = ColorTokens.Light.Primary,
     onPrimary = ColorTokens.Light.OnPrimary,
     primaryContainer = ColorTokens.Light.PrimaryContainer,
@@ -54,7 +55,7 @@ internal val MonoLightColorScheme: ColorScheme = lightColorScheme(
     onErrorContainer = ColorTokens.Light.OnErrorContainer,
 )
 
-internal val MonoDarkColorScheme: ColorScheme = darkColorScheme(
+internal val LightPurpleDarkColorScheme: ColorScheme = darkColorScheme(
     primary = ColorTokens.Dark.Primary,
     onPrimary = ColorTokens.Dark.OnPrimary,
     primaryContainer = ColorTokens.Dark.PrimaryContainer,
@@ -98,17 +99,8 @@ internal val MonoDarkColorScheme: ColorScheme = darkColorScheme(
     onErrorContainer = ColorTokens.Dark.OnErrorContainer,
 )
 
-/**
- * OLED dark: the same dark scheme with every surface role flattened to true black so an
- * OLED panel draws nothing. Content colors are untouched, which keeps contrast against black.
+/*
+ * OLED dark needs no palette of its own: every scheme is flattened to black surfaces by
+ * `ColorScheme.toOled()` in Theme.kt, so the treatment is identical for a generated accent and
+ * for a wallpaper-derived one.
  */
-internal val MonoOledDarkColorScheme: ColorScheme = MonoDarkColorScheme.copy(
-    surface = ColorTokens.Black,
-    background = ColorTokens.Black,
-    surfaceContainerLowest = ColorTokens.Black,
-    surfaceContainerLow = ColorTokens.Oled.SurfaceContainerLow,
-    surfaceContainer = ColorTokens.Oled.SurfaceContainer,
-    surfaceContainerHigh = ColorTokens.Oled.SurfaceContainerHigh,
-    surfaceContainerHighest = ColorTokens.Oled.SurfaceContainerHighest,
-    surfaceVariant = ColorTokens.Oled.SurfaceContainerHighest,
-)

@@ -13,7 +13,6 @@
     <string name="home_delete_selected">Delete (%1$d)</string>
     <string name="home_delete_selected_message">%1$d notes will be permanently deleted. This cannot be undone.</string>
     <string name="editor_delete">Delete note</string>
-    <string name="editor_unsaved">Unsaved changes</string>
     <string name="home_empty">No notes</string>
     <string name="home_empty_search">No matching notes</string>
     <string name="home_empty_hint">Tap “Create note” to write your first note.</string>
@@ -52,18 +51,16 @@
     <string name="editor_bullet_list">Bullet list</string>
     <string name="editor_find">Find in note</string>
     <string name="editor_find_placeholder">Find in note</string>
-    <string name="editor_find_next">Next match</string>
-    <string name="editor_find_previous">Previous match</string>
     <string name="editor_find_no_match">No matches</string>
     <string name="editor_find_matches">%1$d of %2$d</string>
     <string name="editor_props_title">Properties</string>
     <string name="editor_props_created">Created</string>
     <string name="editor_props_updated">Last updated</string>
     <string name="editor_props_words">Words</string>
-    <string name="editor_props_chars">Characters</string>
-    <string name="editor_props_lines">Lines</string>
-    <string name="editor_props_id">Identifier</string>
+    <string name="editor_props_words_hint">Title and punctuation excluded</string>
     <string name="editor_share_chooser">Share note</string>
+    <string name="editor_share_failed">No app can share this note</string>
+    <string name="editor_preview_badge">Preview · editing is off</string>
     <string name="editor_markdown_hint">Markdown is on · the toolbar inserts Markdown syntax</string>
 
     <!-- Settings root -->
@@ -71,7 +68,7 @@
     <string name="settings_appearance">Appearance</string>
     <string name="settings_appearance_support">App look &amp; theme</string>
     <string name="settings_editor">Editor</string>
-    <string name="settings_editor_support">Editor style, fonts, images</string>
+    <string name="settings_editor_support">Editor style, fonts, autosave</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_support">In-app language</string>
     <string name="settings_backup">Backup</string>
@@ -90,11 +87,8 @@
     <string name="appearance_oled">OLED dark</string>
     <string name="appearance_oled_support">Use a true black background</string>
     <string name="appearance_color">Color</string>
-    <string name="appearance_color_support">Set the app accent color</string>
     <string name="appearance_font_size">App font size</string>
     <string name="appearance_font_size_support">Set the app font size</string>
-    <string name="appearance_font_weight">App font weight</string>
-    <string name="appearance_font_weight_support">Set the app font weight</string>
     <string name="appearance_dynamic_unavailable">Dynamic color needs Android 12 or newer</string>
     <string name="appearance_follow_system">Follow system</string>
     <string name="appearance_follow_system_support">Match the device light and dark setting</string>
@@ -107,8 +101,6 @@
     <string name="editor_settings_autosave_support">Notes are saved every %1$d s</string>
     <string name="editor_settings_font_size">Note font size</string>
     <string name="editor_settings_font_size_support">Set the note font size</string>
-    <string name="editor_settings_weight">Font weight</string>
-    <string name="editor_settings_weight_support">Set the note font weight</string>
 
     <!-- Backup -->
     <string name="backup_title">Backup</string>
@@ -152,18 +144,13 @@
     <string name="unlock_password_error_wrong">Wrong password</string>
     <string name="unlock_password_set">Password set</string>
     <string name="unlock_password_removed">Password removed</string>
-    <string name="unlock_biometric_unavailable">No biometric sensor available on this device</string>
     <string name="unlock_no_password_warning">Set a password first — biometric unlock needs one</string>
     <string name="unlock_enter_title">Enter password</string>
     <string name="unlock_enter_support">Unlock HiNotes to continue</string>
     <string name="unlock_action">Unlock</string>
     <string name="unlock_use_biometric">Use biometrics</string>
-    <string name="unlock_locked_note_title">Note locked</string>
-    <string name="unlock_locked_note_message">Enter your password to open this note.</string>
     <string name="unlock_make_private">Lock this note</string>
     <string name="unlock_make_public">Remove note lock</string>
-    <string name="unlock_locked">Note locked</string>
-    <string name="unlock_unlocked">Note lock removed</string>
 
     <!-- About -->
     <string name="about_title">About</string>
@@ -188,12 +175,6 @@
     <string name="common_save">Save</string>
     <string name="common_delete">Delete</string>
     <string name="common_ok">OK</string>
-    <string name="common_close">Close</string>
-    <string name="common_apply">Apply</string>
-    <string name="common_search">Search</string>
-    <string name="common_yes">Yes</string>
-    <string name="common_no">No</string>
-    <string name="common_off">Off</string>
 
     <!-- Font size / weight level sliders -->
     <string name="picker_font_size_title">App font size</string>
@@ -207,8 +188,13 @@
     <string name="level_regular">Regular</string>
     <string name="level_medium_weight">Medium</string>
     <string name="level_semibold">Semibold</string>
-    <string name="picker_preview">The quick brown fox jumps over the lazy dog</string>
     <string name="picker_accent_title">Accent color</string>
-    <string name="picker_accent_mono">Mono</string>
+    <string name="accent_light_purple">Light purple</string>
+    <string name="accent_tea_green">Tea green</string>
+    <string name="accent_light_gray">Light gray</string>
+    <string name="accent_red">Red</string>
+    <string name="accent_blue">Blue</string>
+    <string name="accent_orange">Orange</string>
+    <string name="accent_yellow">Yellow</string>
     <string name="appearance_typography">Typography</string>
 </resources>

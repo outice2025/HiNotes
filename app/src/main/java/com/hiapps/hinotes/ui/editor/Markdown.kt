@@ -58,8 +58,14 @@ object Markdown {
     }
 
     /**
-     * Toggles a line prefix such as `- `, `> ` or `# ` across every line the selection touches.
-     * Removes the prefix when all lines already carry it, so the buttons behave as toggles.
+     * Toggles a line prefix such as `- `, `- [ ] ` or `> ` across every line the selection
+     * touches. Removes the prefix when the block already carries it, so the buttons behave as
+     * toggles.
+     *
+     * Only lines that actually hold text decide which way the toggle goes. Treating a blank line
+     * as "already prefixed" made an empty note - and any selection ending on a trailing newline -
+     * look prefixed, so the first press removed a prefix that was never there and the button
+     * appeared dead. A block with no text at all always gains the prefix.
      */
     fun toggleLinePrefix(value: TextFieldValue, prefix: String): TextFieldValue {
         val text = value.text
@@ -72,7 +78,8 @@ object Markdown {
 
         val block = text.substring(lineStart, lineEnd)
         val lines = block.split('\n')
-        val allPrefixed = lines.all { it.startsWith(prefix) || it.isBlank() }
+        val written = lines.filter { it.isNotBlank() }
+        val allPrefixed = written.isNotEmpty() && written.all { it.startsWith(prefix) }
 
         val rebuilt = lines.joinToString("\n") { line ->
             when {

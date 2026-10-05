@@ -1,10 +1,9 @@
-package com.hiapps.hinotes.ui.screens
+﻿package com.hiapps.hinotes.ui.screens
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -21,6 +20,7 @@ import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.Backup
 import com.hiapps.hinotes.data.ImportResult
 import com.hiapps.hinotes.data.Note
+import com.hiapps.hinotes.data.NotesArchive
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.components.ConfirmDialog
 import com.hiapps.hinotes.ui.components.SettingsRow
@@ -117,13 +117,13 @@ fun BackupScreen(
     // ---------------------------------------------------------------- exporters
 
     val exportSettingsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
+        CreateDocumentContract("application/json"),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runBackup {
             val snapshot = viewModel.settings.value
             val payload = Backup.encodeSettings(snapshot)
-            if (writeText(context, uri, payload)) {
+            if (writeDocument(context, uri, payload.toByteArray(Charsets.UTF_8))) {
                 context.getString(
                     R.string.backup_export_settings_done,
                     snapshot.nonDefaultCount(),
@@ -134,8 +134,13 @@ fun BackupScreen(
         }
     }
 
+    /**
+     * Notes leave as a zip of Markdown files rather than as one JSON blob: the result is a
+     * folder of readable documents that any editor can open, and nothing about the app has to
+     * be installed to use them.
+     */
     val exportNotesLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
+        CreateDocumentContract("application/zip"),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runBackup {
@@ -143,8 +148,8 @@ fun BackupScreen(
             if (notes.isEmpty()) {
                 context.getString(R.string.backup_empty)
             } else {
-                val payload = Backup.encodeNotes(notes)
-                if (writeText(context, uri, payload)) {
+                val archive = NotesArchive.encode(notes)
+                if (writeDocument(context, uri, archive)) {
                     context.getString(R.string.backup_export_notes_done, notes.size)
                 } else {
                     context.getString(R.string.backup_failed, "write error")
@@ -156,7 +161,7 @@ fun BackupScreen(
     // ------------------------------------------------------------------ importers
 
     val importSettingsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
+        OpenDocumentContract(SETTINGS_MIME_TYPES),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runBackup {
@@ -170,7 +175,7 @@ fun BackupScreen(
     }
 
     val importNotesLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
+        OpenDocumentContract(NOTES_MIME_TYPES),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runBackup {
@@ -217,7 +222,7 @@ fun BackupScreen(
                 headline = stringResource(R.string.backup_export_notes),
                 supporting = stringResource(R.string.backup_export_notes_support),
                 onClick = {
-                    launchPicker { exportNotesLauncher.launch(Backup.fileName("notes")) }
+                    launchPicker { exportNotesLauncher.launch(Backup.fileName("notes", "zip")) }
                 },
                 isFirst = true,
                 isLast = false,
@@ -254,12 +259,9 @@ fun BackupScreen(
             dismissLabel = stringResource(R.string.common_cancel),
             onConfirm = {
                 pendingImport = null
-                val mimeTypes = arrayOf("application/json", "text/plain", "application/octet-stream")
                 when (importing) {
-                    ImportKind.Settings ->
-                        launchPicker { importSettingsLauncher.launch(mimeTypes) }
-                    ImportKind.Notes ->
-                        launchPicker { importNotesLauncher.launch(mimeTypes) }
+                    ImportKind.Settings -> launchPicker { importSettingsLauncher.launch(Unit) }
+                    ImportKind.Notes -> launchPicker { importNotesLauncher.launch(Unit) }
                 }
             },
             onDismiss = { pendingImport = null },
@@ -286,39 +288,71 @@ fun BackupScreen(
 
 // ------------------------------------------------------------------------ helpers
 
+/** MIME types offered when importing a settings file. */
+private val SETTINGS_MIME_TYPES = arrayOf("application/json", "text/plain")
+
+/** MIME types offered when importing notes: a JSON backup, or a zip of Markdown files. */
+private val NOTES_MIME_TYPES = arrayOf(
+    "application/zip",
+    "application/json",
+    "text/plain",
+    "application/octet-stream",
+)
+
 /**
- * Writes [text] to the document the user chose.
+ * Writes [bytes] to the document the user chose, then reads the document back to prove the
+ * bytes landed.
  *
- * Returns false rather than throwing for the expected failure modes (no permission, a provider
- * that refuses the request, a full disk) so the caller can report them; only a genuinely
- * unexpected error propagates.
+ * The read-back matters: a provider can accept a stream, report no error and still keep nothing
+ * (the wrong mode, a document that was never committed), and a report of "exported" over a file
+ * that is not there is worse than an error. The verification is a length comparison, so it costs
+ * one read of a file the app just produced.
+ *
+ * Returns false - rather than throwing - for the expected failure modes, so the caller can report
+ * them; only a genuinely unexpected error reaches the crash handler.
  */
-private suspend fun writeText(context: Context, uri: Uri, text: String): Boolean =
+private suspend fun writeDocument(context: Context, uri: Uri, bytes: ByteArray): Boolean =
     withContext(Dispatchers.IO) {
         try {
             val stream = context.contentResolver.openOutputStream(uri, "wt")
                 ?: context.contentResolver.openOutputStream(uri)
                 ?: return@withContext false
             stream.use { out ->
-                out.write(text.toByteArray(Charsets.UTF_8))
+                out.write(bytes)
                 out.flush()
             }
-            true
         } catch (e: IOException) {
             Log.e(TAG, "could not write export", e)
-            false
+            return@withContext false
         } catch (e: SecurityException) {
             Log.e(TAG, "no permission to write export", e)
-            false
+            return@withContext false
         }
+
+        // Read the document back and compare lengths. A provider that reports no error yet keeps
+        // nothing is a real failure mode, and reporting "exported" over an empty file is worse
+        // than reporting an error. A provider that simply cannot be read back (some cloud
+        // documents) is not treated as a failure: the write itself already succeeded.
+        val written = try {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes().size }
+        } catch (e: IOException) {
+            Log.w(TAG, "could not verify export", e)
+            null
+        } catch (e: SecurityException) {
+            Log.w(TAG, "no permission to verify export", e)
+            null
+        }
+        if (written != null && written != bytes.size) {
+            Log.e(TAG, "export verification failed: wrote ${bytes.size}, read back $written")
+            return@withContext false
+        }
+        true
     }
 
-private suspend fun readText(context: Context, uri: Uri): String? =
+private suspend fun readDocument(context: Context, uri: Uri): ByteArray? =
     withContext(Dispatchers.IO) {
         try {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                stream.readBytes().toString(Charsets.UTF_8)
-            }
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
         } catch (e: IOException) {
             Log.e(TAG, "could not read import", e)
             null
@@ -333,10 +367,10 @@ private suspend fun importSettings(
     uri: Uri,
     viewModel: AppViewModel,
 ): ImportResult {
-    val raw = readText(context, uri)
+    val bytes = readDocument(context, uri)
         ?: return ImportResult.Failure(context.getString(R.string.backup_empty))
     val decoded = Backup.decodeSettings(
-        raw = raw,
+        raw = bytes.toString(Charsets.UTF_8),
         fallback = viewModel.settings.value,
         reader = viewModel.settingsRepository,
     ) ?: return ImportResult.Failure("not a settings backup")
@@ -344,15 +378,26 @@ private suspend fun importSettings(
     return ImportResult.Success(decoded.nonDefaultCount())
 }
 
+/**
+ * Reads notes from either shape the app can produce: the older JSON backup, or the zip of
+ * Markdown files the export writes now. The zip is recognised by its signature rather than by
+ * the file name, so a renamed or re-extensioned file still imports.
+ */
 private suspend fun importNotes(
     context: Context,
     uri: Uri,
     viewModel: AppViewModel,
 ): ImportResult {
-    val raw = readText(context, uri)
+    val bytes = readDocument(context, uri)
         ?: return ImportResult.Failure(context.getString(R.string.backup_empty))
-    val notes: List<Note> = Backup.decodeNotes(raw)
-        ?: return ImportResult.Failure("not a notes backup")
+    val notes: List<Note> = if (NotesArchive.looksLikeArchive(bytes)) {
+        NotesArchive.decode(bytes)
+            ?: return ImportResult.Failure("not a readable notes archive")
+    } else {
+        Backup.decodeNotes(bytes.toString(Charsets.UTF_8))
+            ?: return ImportResult.Failure("not a notes backup")
+    }
+    if (notes.isEmpty()) return ImportResult.Failure(context.getString(R.string.backup_empty))
     val written = viewModel.replaceAllNotes(notes)
     return ImportResult.Success(written)
 }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,9 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -73,6 +69,10 @@ fun ConfirmDialog(
  *
  * Circular, and drawn from the very same `ic_logo_note` vector the launcher icon is generated
  * from, so the in-app identity and the home-screen icon are the same shape.
+ *
+ * The glyph occupies 45% of the badge's diameter. That is deliberately inside the 45-50% band
+ * the mark was drawn to sit in: at 52% the pencil crowded the circle and read as if it had been
+ * scaled up by mistake. The badge itself - its size, its colour and its shape - is untouched.
  */
 @Composable
 fun AppLogoPlaceholder(
@@ -94,47 +94,10 @@ fun AppLogoPlaceholder(
                     id = com.hiapps.hinotes.R.drawable.ic_logo_note,
                 ),
                 contentDescription = null,
-                modifier = Modifier.size(size * 0.52f),
+                modifier = Modifier.size(size * 0.45f),
             )
         }
     }
-}
-
-/** A compact row used inside the About screen and settings dialog lists. */
-@Composable
-fun PlainRow(
-    icon: Int,
-    headline: String,
-    supporting: String?,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    trailingIcon: Int? = null,
-) {
-    ListItem(
-        modifier = modifier.fillMaxWidth(),
-        headlineContent = {
-            Text(headline, style = MaterialTheme.typography.bodyLarge)
-        },
-        supportingContent = supporting?.let {
-            { Text(it, style = MaterialTheme.typography.bodyMedium) }
-        },
-        leadingContent = {
-            LeadingIcon(icon = icon, inContainer = true)
-        },
-        trailingContent = trailingIcon?.let {
-            {
-                SymbolIcon(
-                    codepoint = it,
-                    contentDescription = null,
-                    size = 24.dp,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-    )
 }
 
 /**
@@ -142,6 +105,9 @@ fun PlainRow(
  *
  * Long-press enters multi-select; when a selection is active the card shows a tick and its
  * selected state, and a tap toggles selection instead of opening the note.
+ *
+ * The card carries no timestamp: a note is recognised by what it says, and the date belongs in
+ * the editor's properties sheet, where there is room to show it exactly.
  *
  * @param content the note body, rendered as Markdown when [markdownEnabled].
  * @param compact a denser layout for the grid arrangement, where cards are half as wide.
@@ -151,7 +117,6 @@ fun NoteCard(
     title: String,
     content: String,
     markdownEnabled: Boolean,
-    meta: String,
     locked: Boolean,
     lockedLabel: String,
     onClick: () -> Unit,
@@ -160,7 +125,7 @@ fun NoteCard(
     selecting: Boolean = false,
     selected: Boolean = false,
     compact: Boolean = false,
-    bodyMaxLines: Int = if (compact) 3 else 2,
+    bodyMaxLines: Int = if (compact) 6 else 3,
 ) {
     Card(
         modifier = modifier
@@ -224,16 +189,6 @@ fun NoteCard(
                     maxLines = bodyMaxLines,
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = meta,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }

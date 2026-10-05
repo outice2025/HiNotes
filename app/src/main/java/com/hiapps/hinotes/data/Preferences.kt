@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.hiapps.hinotes.ui.theme.AccentPalette
 import com.hiapps.hinotes.ui.theme.AppFontScale
 import com.hiapps.hinotes.ui.theme.AppFontWeight
 import kotlinx.coroutines.flow.Flow
@@ -48,12 +49,13 @@ enum class DarkModePreference(val key: String) {
 /**
  * Everything the user can configure, in one immutable snapshot.
  *
- * Defaults here are the app's out-of-the-box behaviour: the Mono fallback palette is used
- * (dynamic color off), the theme follows the system, Markdown and autosave are off, and the
- * editor opens in edit mode.
+ * Defaults here are the app's out-of-the-box behaviour: the Light purple accent is used (dynamic
+ * color off), the theme opens in light mode, Markdown and autosave are off, and the editor opens
+ * in edit mode.
  */
 data class HiNotesSettings(
     val dynamicColor: Boolean = false,
+    val accentPalette: AccentPalette = AccentPalette.Default,
     val darkMode: DarkModePreference = DarkModePreference.Default,
     val oledDark: Boolean = false,
     val appFontScale: AppFontScale = AppFontScale.Default,
@@ -81,6 +83,7 @@ data class HiNotesSettings(
 /** Keys used by the settings export file, so backups stay readable across versions. */
 enum class SettingKey(val storageKey: String) {
     DynamicColor("dynamic_color"),
+    AccentPalette("accent_palette"),
     DarkMode("dark_mode"),
     OledDark("oled_dark"),
     AppFontScale("app_font_scale"),
@@ -98,6 +101,7 @@ enum class SettingKey(val storageKey: String) {
 
     fun read(settings: HiNotesSettings): String = when (this) {
         DynamicColor -> settings.dynamicColor.toString()
+        AccentPalette -> settings.accentPalette.key
         DarkMode -> settings.darkMode.key
         OledDark -> settings.oledDark.toString()
         AppFontScale -> settings.appFontScale.name
@@ -121,6 +125,7 @@ class SettingsRepository(private val context: Context) {
 
     private object Keys {
         val dynamicColor = booleanPreferencesKey("dynamic_color")
+        val accentPalette = stringPreferencesKey("accent_palette")
         val darkMode = stringPreferencesKey("dark_mode")
         val oledDark = booleanPreferencesKey("oled_dark")
         val appFontScale = stringPreferencesKey("app_font_scale")
@@ -145,6 +150,8 @@ class SettingsRepository(private val context: Context) {
             val defaults = HiNotesSettings()
             HiNotesSettings(
                 dynamicColor = prefs[Keys.dynamicColor] ?: defaults.dynamicColor,
+                accentPalette = prefs[Keys.accentPalette]?.let(AccentPalette::fromKey)
+                    ?: defaults.accentPalette,
                 darkMode = DarkModePreference.fromKey(prefs[Keys.darkMode]),
                 oledDark = prefs[Keys.oledDark] ?: defaults.oledDark,
                 appFontScale = prefs[Keys.appFontScale]?.let(AppFontScale::fromKey)
@@ -170,6 +177,9 @@ class SettingsRepository(private val context: Context) {
     suspend fun current(): HiNotesSettings = settings.first()
 
     suspend fun setDynamicColor(value: Boolean) = edit { it[Keys.dynamicColor] = value }
+
+    suspend fun setAccentPalette(value: AccentPalette) =
+        edit { it[Keys.accentPalette] = value.key }
 
     suspend fun setDarkMode(value: DarkModePreference) = edit { it[Keys.darkMode] = value.key }
 
@@ -211,6 +221,7 @@ class SettingsRepository(private val context: Context) {
         context.settingsStore.edit { prefs ->
             prefs.clear()
             prefs[Keys.dynamicColor] = settings.dynamicColor
+            prefs[Keys.accentPalette] = settings.accentPalette.key
             prefs[Keys.darkMode] = settings.darkMode.key
             prefs[Keys.oledDark] = settings.oledDark
             prefs[Keys.appFontScale] = settings.appFontScale.name
@@ -234,6 +245,8 @@ class SettingsRepository(private val context: Context) {
 
         return HiNotesSettings(
             dynamicColor = bool(SettingKey.DynamicColor, fallback.dynamicColor),
+            accentPalette = pairs[SettingKey.AccentPalette.storageKey]
+                ?.let(AccentPalette::fromKey) ?: fallback.accentPalette,
             darkMode = pairs[SettingKey.DarkMode.storageKey]
                 ?.let(DarkModePreference::fromKey) ?: fallback.darkMode,
             oledDark = bool(SettingKey.OledDark, fallback.oledDark),

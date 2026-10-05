@@ -244,8 +244,8 @@ fun SwitchRow(
 /**
  * M3 Expressive button sizes.
  *
- * The Compose Material 3 artifact on this build line does not yet ship the `SplitButton` and
- * `ButtonGroup` composables (only their design tokens), so they are assembled here from
+ * The Compose Material 3 artifact on this build line does not yet ship every Expressive
+ * composable (some exist only as design tokens), so the ones the app needs are assembled from
  * standard M3 building blocks - [Surface], [IconButton] and M3 motion - rather than being
  * redrawn from scratch. Every colour comes from a Material 3 role.
  */
@@ -260,13 +260,6 @@ enum class ExpressiveButtonSize(
     Large(96.dp, 32.dp, 12.dp),
     XLarge(136.dp, 40.dp, 16.dp),
 }
-
-/** One entry in a [SplitButton]'s dropdown. */
-data class SplitButtonMenuItem(
-    val icon: Int,
-    val label: String,
-    val onClick: () -> Unit,
-)
 
 /**
  * One button inside a [ConnectedIconButtonGroup].

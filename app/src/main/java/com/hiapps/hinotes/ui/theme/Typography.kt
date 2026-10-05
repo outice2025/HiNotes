@@ -53,8 +53,8 @@ enum class AppFontWeight(val weight: FontWeight, val labelRes: Int) {
  *
  * The font family is deliberately left at the platform default: HiNotes uses the system font
  * (Roboto on AOSP, the vendor's font elsewhere) for both the app and the editor, which is what
- * the design calls for and keeps the APK free of a bundled text face. Only the icon font is
- * bundled, because Material Symbols has no system equivalent.
+ * the design calls for and keeps the APK free of any bundled typeface. Icons are vector drawables
+ * rather than a font, so nothing about the app's appearance depends on a shipped font file.
  *
  * Line height is kept at the M3 ratio (~1.5x for body styles), satisfying the 1.3-1.5x the
  * design asks for.

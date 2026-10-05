@@ -214,8 +214,8 @@ private fun OpenInNewBadge() {
 
 private const val LICENSE_NOTICE =
     "HiNotes is free software under the Apache License 2.0.\n\n" +
-        "It bundles Roboto and Material Symbols Rounded, both licensed under the " +
-        "Apache License 2.0, and builds on Jetpack Compose, AndroidX and Kotlin " +
-        "(Apache License 2.0).\n\n" +
+        "Its icons are vector artwork derived from Material Symbols Rounded (Apache License " +
+        "2.0), and it builds on Jetpack Compose, AndroidX and Kotlin (Apache License 2.0). " +
+        "Text is drawn with the device's own font, so no typeface is redistributed.\n\n" +
         "No analytics. The only network request the app makes on its own is the optional " +
         "update check; everything else you open yourself."

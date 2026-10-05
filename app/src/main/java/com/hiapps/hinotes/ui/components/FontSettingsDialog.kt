@@ -3,21 +3,18 @@ package com.hiapps.hinotes.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.ui.theme.AppFontScale
 import com.hiapps.hinotes.ui.theme.AppFontWeight
@@ -30,6 +27,9 @@ import com.hiapps.hinotes.ui.theme.HiNotesCorners
  * colour uses: the row stays a plain list item, and its value is edited in a floating panel
  * rather than inline. That keeps the settings page itself compact while still giving the sliders
  * room to breathe.
+ *
+ * There is no sample line under the sliders: the sliders are labelled with the steps they select,
+ * and a specimen sentence at one arbitrary size told the user nothing the labels did not.
  *
  * @param sizeTitle/weightTitle separate labels so the same dialog can drive either the app's
  *   typography or the note content's.
@@ -72,22 +72,6 @@ fun FontSettingsDialog(
                     onSelect = { onWeightChange(AppFontWeight.entries[it]) },
                     title = weightTitle,
                 )
-
-                // Live preview at the chosen size and weight.
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                ) {
-                    Text(
-                        text = stringResource(R.string.picker_preview),
-                        fontWeight = weight.weight,
-                        fontSize = (16f * scale.multiplier).sp,
-                        lineHeight = (24f * scale.multiplier).sp,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
             }
         },
         confirmButton = {

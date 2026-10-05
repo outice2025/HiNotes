@@ -43,6 +43,7 @@ class MainActivity : FragmentActivity() {
             HiNotesTheme(
                 darkTheme = darkTheme,
                 dynamicColor = settings.dynamicColor,
+                accent = settings.accentPalette,
                 oledDark = settings.oledDark,
                 fontScale = settings.appFontScale,
                 fontVariationWeight = settings.appFontWeight,

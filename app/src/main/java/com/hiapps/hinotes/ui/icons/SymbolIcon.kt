@@ -14,17 +14,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Draws a Material Symbols Rounded glyph.
+ * Draws a Material Symbols Rounded glyph at the size of the box it is given.
  *
- * The glyphs ship as vector drawables rather than as a font, which is a deliberate choice. An
- * icon font is subject to the platform's text layout, and this one made that visible: its
- * artwork fills only the middle 720 of a 960-unit em box, and its `hhea` metrics are asymmetric
- * (1056 ascent against a 96 descent), so glyphs rendered both undersized and low, and the exact
- * baseline placement could not be reproduced from the font tables. As vectors the artwork sits
- * exactly where the generator put it, identically on every API level.
- *
- * @param codepoint a `sym_*` drawable from [Symbols]. The parameter keeps its original name so
- *   call sites did not have to change when the font was replaced by vectors.
+ * Glyphs are always placed by their own square box, never by a surrounding row's baseline, so a
+ * glyph and a label beside it share one centre line.
  */
 @Composable
 fun SymbolIcon(
@@ -45,17 +38,4 @@ fun SymbolIcon(
             modifier = Modifier.size(size),
         )
     }
-}
-
-/**
- * Glyph sizes for the Material 3 icon-button sizes, used so an icon scales with its button.
- *
- * XS 32dp / S 40dp / M 56dp / L 96dp / XL 136dp buttons carry 20/24/24/32/40dp glyphs.
- */
-object SymbolSizes {
-    val XSmall: Dp = 20.dp
-    val Small: Dp = 24.dp
-    val Medium: Dp = 24.dp
-    val Large: Dp = 32.dp
-    val XLarge: Dp = 40.dp
 }

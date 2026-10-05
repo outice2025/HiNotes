@@ -12,9 +12,9 @@ import java.util.Locale
 /**
  * Backup payloads.
  *
- * Files are plain UTF-8 JSON with a `kind` discriminator, so an exported file can be
- * inspected, diffed or hand-edited, and an import can reject a file that is not ours
- * instead of clobbering data.
+ * Settings and the JSON notes backup are plain UTF-8 JSON with a `kind` discriminator, so an
+ * exported file can be inspected, diffed or hand-edited, and an import can reject a file that is
+ * not ours instead of clobbering data. The Markdown notes archive lives in [NotesArchive].
  */
 object Backup {
 

@@ -13,15 +13,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.DarkModePreference
 import com.hiapps.hinotes.ui.AppViewModel
+import com.hiapps.hinotes.ui.components.AccentColorDialog
 import com.hiapps.hinotes.ui.components.AlertMessage
 import com.hiapps.hinotes.ui.components.FontSettingsDialog
 import com.hiapps.hinotes.ui.components.SettingsRow
 import com.hiapps.hinotes.ui.components.SettingsScaffold
 import com.hiapps.hinotes.ui.components.SettingsSection
 import com.hiapps.hinotes.ui.components.SettingsSectionGap
-import com.hiapps.hinotes.ui.components.SingleChoiceDialog
 import com.hiapps.hinotes.ui.components.SwitchRow
 import com.hiapps.hinotes.ui.icons.Symbols
+import com.hiapps.hinotes.ui.theme.AccentPalette
 
 /**
  * Appearance settings: dynamic colour, dark mode, OLED dark, accent colour, and typography.
@@ -97,7 +98,13 @@ fun AppearanceSettingsScreen(
             SettingsRow(
                 icon = Symbols.Palette,
                 headline = stringResource(R.string.appearance_color),
-                supporting = stringResource(R.string.appearance_color_support),
+                // Reports which palette is actually painting the app: the wallpaper's while
+                // dynamic colour is on, otherwise the chosen accent.
+                supporting = if (settings.dynamicColor && supportsDynamic) {
+                    stringResource(R.string.appearance_dynamic)
+                } else {
+                    stringResource(settings.accentPalette.labelRes)
+                },
                 onClick = { showAccent = true },
                 trailing = { Chevron() },
                 isFirst = false,
@@ -171,22 +178,16 @@ fun AppearanceSettingsScreen(
     }
 
     if (showAccent) {
-        SingleChoiceDialog(
-            title = stringResource(R.string.picker_accent_title),
-            options = listOf(false, true),
-            selected = settings.dynamicColor,
-            label = { dynamic ->
-                if (dynamic) {
-                    stringResource(R.string.appearance_dynamic)
-                } else {
-                    stringResource(R.string.picker_accent_mono)
-                }
-            },
-            onSelect = { dynamic ->
-                if (dynamic && !supportsDynamic) {
-                    showDynamicUnavailable = true
-                } else {
-                    viewModel.updateSettings { setDynamicColor(dynamic) }
+        AccentColorDialog(
+            options = AccentPalette.entries,
+            selected = settings.accentPalette,
+            onSelect = { palette ->
+                // Choosing a fixed palette is a decision to stop taking colours from the
+                // wallpaper, so dynamic colour is switched off in the same edit - otherwise the
+                // pick would appear to do nothing.
+                viewModel.updateSettings {
+                    setAccentPalette(palette)
+                    setDynamicColor(false)
                 }
             },
             onDismiss = { showAccent = false },

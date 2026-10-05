@@ -11,10 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -46,8 +45,22 @@ import com.hiapps.hinotes.ui.components.NoteCard
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
 import kotlinx.coroutines.launch
-import java.text.DateFormat
-import java.util.Date
+
+/** The screen's outer gutter, shared by the search field and the note list. */
+private val HomeGutter = 16.dp
+
+/**
+ * Left inset of the note-count line.
+ *
+ * The count sits on the same row as the two icon buttons, so its left margin is set to match the
+ * *visual* right margin of the rightmost button - the one the eye actually measures. That margin
+ * is the gutter, plus the 12dp an `IconButton` keeps between its 48dp touch target and the 24dp
+ * glyph, plus the 3.818dp the `sort` glyph's ink leaves inside its own 24dp box (its path runs to
+ * x = 20.182). Both sides therefore come to 31.8dp and the row reads as balanced.
+ *
+ * Only this inset moves; the buttons and their margins are untouched.
+ */
+private val HeaderInset = HomeGutter + 12.dp + 3.82.dp
 
 /**
  * The home screen: search, the note list or grid, and the create-note action.
@@ -55,6 +68,11 @@ import java.util.Date
  * Long-pressing a note enters multi-select. While a selection is active the create button is
  * joined by a delete action on its left, and the count line reports the selection rather than
  * the total.
+ *
+ * The grid is a staggered one: each card is exactly as tall as its own content and the columns
+ * pack tight underneath, so a one-line note no longer leaves a hole beside a long one. The count
+ * line is pinned above the list rather than scrolling with it, which keeps the layout toggle and
+ * the sort menu reachable however far down the list the user is.
  *
  * @param onCreateNote opens the editor for a brand-new note.
  * @param onOpenNote opens the editor for an existing note.
@@ -94,13 +112,16 @@ fun HomeScreen(
                 if (selecting) {
                     // Delete sits to the LEFT of "Create note". The Scaffold's FAB slot is at
                     // the end of the screen, so this order places delete first.
+                    //
+                    // Same 16dp corner as "Create note" - only the colour differs, and it is the
+                    // same pair of error roles with the container and the content swapped, so the
+                    // destructive action reads as the loud one of the two.
                     ExtendedFab(
                         icon = Symbols.Delete,
                         label = stringResource(R.string.home_delete_selected, selectedIds.size),
                         onClick = { confirmDelete = true },
-                        pill = true,
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        containerColor = MaterialTheme.colorScheme.onErrorContainer,
+                        contentColor = MaterialTheme.colorScheme.errorContainer,
                     )
                     Spacer(Modifier.width(12.dp))
                 }
@@ -119,7 +140,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Box(Modifier.padding(horizontal = HomeGutter, vertical = 12.dp)) {
                 HomeSearchBar(
                     query = query,
                     onQueryChange = viewModel::setQuery,
@@ -162,135 +183,133 @@ fun HomeScreen(
                     }
                 }
             } else {
-                LazyVerticalGrid(
-                    columns = if (gridLayout) GridCells.Fixed(2) else GridCells.Fixed(1),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
+                        .padding(start = HeaderInset, end = HomeGutter),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(40.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                    Text(
+                        text = if (selecting) {
+                            stringResource(R.string.home_selected_count, selectedIds.size)
+                        } else {
+                            stringResource(R.string.home_note_count, notes.size)
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (selecting) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    if (selecting) {
+                        IconButton(
+                            onClick = { viewModel.selectAllNotes(notes.map { it.id }) },
                         ) {
-                            Text(
-                                text = if (selecting) {
-                                    stringResource(R.string.home_selected_count, selectedIds.size)
-                                } else {
-                                    stringResource(R.string.home_note_count, notes.size)
-                                },
-                                style = MaterialTheme.typography.labelLarge,
-                                color = if (selecting) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.weight(1f),
+                            SymbolIcon(
+                                codepoint = Symbols.SelectAll,
+                                contentDescription = stringResource(R.string.home_select_all),
+                                size = 24.dp,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-
-                            if (selecting) {
-                                IconButton(
-                                    onClick = { viewModel.selectAllNotes(notes.map { it.id }) },
-                                ) {
-                                    SymbolIcon(
-                                        codepoint = Symbols.SelectAll,
-                                        contentDescription = stringResource(R.string.home_select_all),
-                                        size = 24.dp,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        }
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            SymbolIcon(
+                                codepoint = Symbols.Close,
+                                contentDescription = stringResource(
+                                    R.string.home_exit_selection,
+                                ),
+                                size = 24.dp,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        // Layout toggle sits immediately LEFT of the sort button.
+                        IconButton(
+                            onClick = {
+                                viewModel.updateSettings {
+                                    setHomeLayout(
+                                        if (gridLayout) HomeLayout.List else HomeLayout.Grid,
                                     )
                                 }
-                                IconButton(onClick = { viewModel.clearSelection() }) {
-                                    SymbolIcon(
-                                        codepoint = Symbols.Close,
-                                        contentDescription = stringResource(
-                                            R.string.home_exit_selection,
-                                        ),
-                                        size = 24.dp,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            } else {
-                                // Layout toggle sits immediately LEFT of the sort button.
-                                IconButton(
-                                    onClick = {
-                                        viewModel.updateSettings {
-                                            setHomeLayout(
-                                                if (gridLayout) {
-                                                    HomeLayout.List
-                                                } else {
-                                                    HomeLayout.Grid
-                                                },
-                                            )
-                                        }
+                            },
+                        ) {
+                            SymbolIcon(
+                                codepoint = if (gridLayout) {
+                                    Symbols.ViewList
+                                } else {
+                                    Symbols.GridView
+                                },
+                                contentDescription = stringResource(
+                                    if (gridLayout) {
+                                        R.string.home_layout_list
+                                    } else {
+                                        R.string.home_layout_grid
                                     },
-                                ) {
-                                    SymbolIcon(
-                                        codepoint = if (gridLayout) {
-                                            Symbols.ViewList
-                                        } else {
-                                            Symbols.GridView
-                                        },
-                                        contentDescription = stringResource(
-                                            if (gridLayout) {
-                                                R.string.home_layout_list
-                                            } else {
-                                                R.string.home_layout_grid
-                                            },
-                                        ),
-                                        size = 24.dp,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                                ),
+                                size = 24.dp,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
 
-                                Box {
-                                    IconButton(onClick = { sortMenuOpen = true }) {
-                                        SymbolIcon(
-                                            codepoint = Symbols.Sort,
-                                            contentDescription = stringResource(R.string.home_sort),
-                                            size = 24.dp,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    DropdownMenu(
-                                        expanded = sortMenuOpen,
-                                        onDismissRequest = { sortMenuOpen = false },
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    ) {
-                                        SortMenuItem(
-                                            R.string.home_sort_updated,
-                                            sort == NoteSort.UpdatedDesc,
-                                            onClick = { viewModel.setSort(NoteSort.UpdatedDesc) },
-                                            onDismiss = { sortMenuOpen = false },
-                                        )
-                                        SortMenuItem(
-                                            R.string.home_sort_created,
-                                            sort == NoteSort.CreatedDesc,
-                                            onClick = { viewModel.setSort(NoteSort.CreatedDesc) },
-                                            onDismiss = { sortMenuOpen = false },
-                                        )
-                                        SortMenuItem(
-                                            R.string.home_sort_title,
-                                            sort == NoteSort.TitleAsc,
-                                            onClick = { viewModel.setSort(NoteSort.TitleAsc) },
-                                            onDismiss = { sortMenuOpen = false },
-                                        )
-                                    }
-                                }
+                        Box {
+                            IconButton(onClick = { sortMenuOpen = true }) {
+                                SymbolIcon(
+                                    codepoint = Symbols.Sort,
+                                    contentDescription = stringResource(R.string.home_sort),
+                                    size = 24.dp,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = sortMenuOpen,
+                                onDismissRequest = { sortMenuOpen = false },
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            ) {
+                                SortMenuItem(
+                                    R.string.home_sort_updated,
+                                    sort == NoteSort.UpdatedDesc,
+                                    onClick = { viewModel.setSort(NoteSort.UpdatedDesc) },
+                                    onDismiss = { sortMenuOpen = false },
+                                )
+                                SortMenuItem(
+                                    R.string.home_sort_created,
+                                    sort == NoteSort.CreatedDesc,
+                                    onClick = { viewModel.setSort(NoteSort.CreatedDesc) },
+                                    onDismiss = { sortMenuOpen = false },
+                                )
+                                SortMenuItem(
+                                    R.string.home_sort_title,
+                                    sort == NoteSort.TitleAsc,
+                                    onClick = { viewModel.setSort(NoteSort.TitleAsc) },
+                                    onDismiss = { sortMenuOpen = false },
+                                )
                             }
                         }
                     }
+                }
 
+                Spacer(Modifier.height(8.dp))
+
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(if (gridLayout) 2 else 1),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = HomeGutter,
+                        end = HomeGutter,
+                        bottom = 96.dp,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalItemSpacing = 8.dp,
+                ) {
                     items(notes, key = { it.id }) { note ->
                         NoteCard(
                             title = note.displayTitle(untitled),
                             content = note.content,
                             markdownEnabled = settings.markdownEnabled,
-                            meta = DateFormat
-                                .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-                                .format(Date(note.updatedAt)),
                             locked = note.isLocked,
                             lockedLabel = lockedLabel,
                             selecting = selecting,

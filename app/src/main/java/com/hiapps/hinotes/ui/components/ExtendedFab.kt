@@ -29,9 +29,6 @@ private val FabHorizontalPadding = 20.dp
 private val FabIconSize = 24.dp
 private val FabIconLabelGap = 12.dp
 
-/** Tighter horizontal padding, for a narrow pill such as the delete action. */
-private val FabPillHorizontalPadding = 16.dp
-
 /**
  * Label size for the extended FAB.
  *
@@ -46,9 +43,6 @@ private val FabLabelSize = 14.sp
  * Built directly on [Surface] rather than Material 3's `ExtendedFloatingActionButton` so the
  * icon and label share one explicit [Row]: both are centred on the same vertical axis by
  * construction, instead of depending on the container's internal layout.
- *
- * @param pill round the corners fully; used by the delete action so it reads as a different
- *   kind of button from "Create note".
  */
 @Composable
 fun ExtendedFab(
@@ -58,16 +52,11 @@ fun ExtendedFab(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
-    pill: Boolean = false,
 ) {
     Surface(
         onClick = onClick,
         modifier = modifier.height(FabHeight),
-        shape = if (pill) {
-            androidx.compose.foundation.shape.CircleShape
-        } else {
-            RoundedCornerShape(HiNotesCorners.ExtendedFab)
-        },
+        shape = RoundedCornerShape(HiNotesCorners.ExtendedFab),
         color = containerColor,
         contentColor = contentColor,
     ) {
@@ -76,9 +65,7 @@ fun ExtendedFab(
         Row(
             modifier = Modifier
                 .wrapContentSize()
-                .padding(
-                    horizontal = if (pill) FabPillHorizontalPadding else FabHorizontalPadding,
-                ),
+                .padding(horizontal = FabHorizontalPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The glyph is centred inside its own square, so it shares the Row's centre line.

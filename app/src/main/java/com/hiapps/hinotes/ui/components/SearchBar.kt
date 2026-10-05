@@ -2,7 +2,6 @@ package com.hiapps.hinotes.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -149,23 +148,3 @@ fun HomeSearchBar(
 
 /** Height shared by the search field and the settings button, per the design. */
 private val SearchFieldHeight = 56.dp
-
-/**
- * A full-width search overlay shown above the note list while the user is typing.
- *
- * Kept separate from the field so the resting layout stays a clean 56dp row.
- */
-@Composable
-fun SearchResultsOverlay(
-    visible: Boolean,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    if (!visible) return
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        content = { androidx.compose.foundation.layout.Column(content = content) },
-    )
-}

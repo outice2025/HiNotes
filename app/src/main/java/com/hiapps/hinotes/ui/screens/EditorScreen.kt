@@ -1,12 +1,9 @@
 package com.hiapps.hinotes.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,8 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -34,7 +31,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,22 +44,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.Note
+import com.hiapps.hinotes.data.countNoteCharacters
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.NEW_NOTE_ID
 import com.hiapps.hinotes.ui.components.ConfirmDialog
 import com.hiapps.hinotes.ui.components.ConnectedIconButton
 import com.hiapps.hinotes.ui.components.ConnectedIconButtonGroup
 import com.hiapps.hinotes.ui.components.ExpressiveButtonSize
-import com.hiapps.hinotes.ui.components.SplitButton
-import com.hiapps.hinotes.ui.components.SplitButtonMenuItem
+import com.hiapps.hinotes.ui.components.PropertiesSheet
 import com.hiapps.hinotes.ui.editor.EditorState
 import com.hiapps.hinotes.ui.editor.Markdown
 import com.hiapps.hinotes.ui.icons.SymbolIcon
@@ -99,6 +96,7 @@ fun EditorScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -192,6 +190,15 @@ fun EditorScreen(
             findOpen -> findOpen = false
             dirty -> confirmDiscard = true
             else -> onBack()
+        }
+    }
+
+    // Entering preview withdraws every editing affordance, so the keyboard goes with them: a
+    // text field that is merely read-only would still hold focus and keep the IME up.
+    LaunchedEffect(previewMode) {
+        if (previewMode) {
+            findOpen = false
+            focusManager.clearFocus()
         }
     }
 
@@ -304,18 +311,40 @@ fun EditorScreen(
                         }
                         EditorMenuItem(Symbols.Share, R.string.editor_share) {
                             sortMenuOpen = false
+                            // Shares what is on screen, saved or not: a note the user is still
+                            // writing is exactly the one they may want to send. Nothing is
+                            // persisted by this action, and a blank note is still shareable
+                            // (it goes out as its title), so the share sheet always appears -
+                            // a silent no-op here is what made this button look broken.
+                            val body = editorState.value.text
+                            val heading = title.ifBlank {
+                                body.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+                            }.ifBlank { untitled }
                             scope.launch {
-                                if (persist()) shareNote(context, loadedNote, title, untitled)
+                                if (!shareNote(context, heading, body)) {
+                                    snackbarHostState.showSnackbar(
+                                        context.getString(R.string.editor_share_failed),
+                                    )
+                                }
                             }
                         }
-                        EditorMenuItem(Symbols.Lock, R.string.unlock_make_private) {
+                        // The label follows the note's state, so the row never offers to lock
+                        // a note that is already locked.
+                        EditorMenuItem(
+                            icon = Symbols.Lock,
+                            labelRes = if (loadedNote?.isLocked == true) {
+                                R.string.unlock_make_public
+                            } else {
+                                R.string.unlock_make_private
+                            },
+                        ) {
                             sortMenuOpen = false
                             scope.launch {
                                 // Persist first: locking a note must not discard what the user
                                 // has typed since the last save.
                                 val note = loadedNote
                                 if (note != null && persist()) {
-                                    viewModel.setNoteLocked(note.id, true)
+                                    viewModel.setNoteLocked(note.id, !note.isLocked)
                                 }
                             }
                         }
@@ -329,7 +358,8 @@ fun EditorScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // Title field.
+            // Title field. Read-only in preview mode: the preview promises that the note cannot
+            // be changed, so the title has to be locked down with the body.
             OutlinedTextField(
                 value = title,
                 onValueChange = {
@@ -338,6 +368,7 @@ fun EditorScreen(
                 },
                 label = { Text(stringResource(R.string.editor_title_label)) },
                 singleLine = true,
+                readOnly = previewMode,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -357,8 +388,8 @@ fun EditorScreen(
                     ),
             ) {
                 val bodyStyle = LocalTextStyle.current.copy(
-                    // System font family, matching the rest of the app; only the icon font is
-                    // bundled. Size and weight come from the note typography sliders.
+                    // The device's own font family, matching the rest of the app. Size and
+                    // weight come from the note typography sliders.
                     fontSize = (16f * settings.noteFontScale.multiplier).sp,
                     lineHeight = (24f * settings.noteFontScale.multiplier).sp,
                     fontWeight = settings.noteFontWeight.weight,
@@ -370,13 +401,13 @@ fun EditorScreen(
                         if (settings.markdownEnabled) {
                             Markdown.render(editorState.value.text)
                         } else {
-                            androidx.compose.ui.text.AnnotatedString(editorState.value.text)
+                            AnnotatedString(editorState.value.text)
                         }
                     }
-                    androidx.compose.foundation.text.selection.SelectionContainer(
+                    SelectionContainer(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp)
+                            .padding(16.dp)
                             .verticalScroll(rememberScrollState()),
                     ) {
                         Text(text = rendered, style = bodyStyle)
@@ -455,59 +486,75 @@ fun EditorScreen(
                 }
 
                 // Connected formatting toolbar, drawn over the lower edge of the canvas.
-                ConnectedIconButtonGroup(
-                    buttons = listOf(
-                        ConnectedIconButton(
-                            icon = Symbols.Search,
-                            contentDescription = stringResource(R.string.editor_find),
-                        ) { findOpen = !findOpen },
-                        ConnectedIconButton(
-                            icon = Symbols.Undo,
-                            contentDescription = stringResource(R.string.editor_undo),
-                            enabled = editorState.canUndo,
-                        ) { editorState.undo() },
-                        ConnectedIconButton(
-                            icon = Symbols.Redo,
-                            contentDescription = stringResource(R.string.editor_redo),
-                            enabled = editorState.canRedo,
-                        ) { editorState.redo() },
-                        ConnectedIconButton(
-                            icon = Symbols.FormatBold,
-                            contentDescription = stringResource(R.string.editor_bold),
-                        ) {
-                            editorState.applyEdit(
-                                Markdown.toggleInline(editorState.value, "**"),
-                            )
-                        },
-                        ConnectedIconButton(
-                            icon = Symbols.FormatItalic,
-                            contentDescription = stringResource(R.string.editor_italic),
-                        ) {
-                            editorState.applyEdit(
-                                Markdown.toggleInline(editorState.value, "*"),
-                            )
-                        },
-                        ConnectedIconButton(
-                            icon = Symbols.CheckBoxOutlineBlank,
-                            contentDescription = stringResource(R.string.editor_checkbox),
-                        ) {
-                            editorState.applyEdit(
-                                Markdown.toggleLinePrefix(editorState.value, "- [ ] "),
-                            )
-                        },
-                        ConnectedIconButton(
-                            icon = Symbols.List,
-                            contentDescription = stringResource(R.string.editor_bullet_list),
-                        ) {
-                            editorState.applyEdit(
-                                Markdown.toggleLinePrefix(editorState.value, "- "),
-                            )
-                        },
-                    ),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(12.dp),
-                    size = ExpressiveButtonSize.Medium,
+                // It is an editing control, so preview mode takes it away entirely: there is
+                // nothing in a preview for it to act on, and leaving it up would suggest the
+                // note can still be changed.
+                if (!previewMode) {
+                    ConnectedIconButtonGroup(
+                        buttons = listOf(
+                            ConnectedIconButton(
+                                icon = Symbols.Search,
+                                contentDescription = stringResource(R.string.editor_find),
+                            ) { findOpen = !findOpen },
+                            ConnectedIconButton(
+                                icon = Symbols.Undo,
+                                contentDescription = stringResource(R.string.editor_undo),
+                                enabled = editorState.canUndo,
+                            ) { editorState.undo() },
+                            ConnectedIconButton(
+                                icon = Symbols.Redo,
+                                contentDescription = stringResource(R.string.editor_redo),
+                                enabled = editorState.canRedo,
+                            ) { editorState.redo() },
+                            ConnectedIconButton(
+                                icon = Symbols.FormatBold,
+                                contentDescription = stringResource(R.string.editor_bold),
+                            ) {
+                                editorState.applyEdit(
+                                    Markdown.toggleInline(editorState.value, "**"),
+                                )
+                            },
+                            ConnectedIconButton(
+                                icon = Symbols.FormatItalic,
+                                contentDescription = stringResource(R.string.editor_italic),
+                            ) {
+                                editorState.applyEdit(
+                                    Markdown.toggleInline(editorState.value, "*"),
+                                )
+                            },
+                            ConnectedIconButton(
+                                icon = Symbols.CheckBoxOutlineBlank,
+                                contentDescription = stringResource(R.string.editor_checkbox),
+                            ) {
+                                editorState.applyEdit(
+                                    Markdown.toggleLinePrefix(editorState.value, "- [ ] "),
+                                )
+                            },
+                            ConnectedIconButton(
+                                icon = Symbols.List,
+                                contentDescription = stringResource(R.string.editor_bullet_list),
+                            ) {
+                                editorState.applyEdit(
+                                    Markdown.toggleLinePrefix(editorState.value, "- "),
+                                )
+                            },
+                        ),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(12.dp),
+                        size = ExpressiveButtonSize.Medium,
+                    )
+                }
+            }
+
+            // The mode is stated under the canvas as well as by the toolbar's absence, so
+            // "preview" can never be mistaken for "the editor stopped responding".
+            if (previewMode) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.editor_preview_badge),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
 
@@ -543,18 +590,10 @@ fun EditorScreen(
     }
 
     if (showProperties) {
-        PropertiesDialog(
-            note = loadedNote,
-            title = title.ifBlank { untitled },
-            content = editorState.value.text,
-            lockedLabel = stringResource(R.string.home_locked_badge),
-            onToggleLock = {
-                scope.launch {
-                    loadedNote?.let { note ->
-                        viewModel.setNoteLocked(note.id, !note.isLocked)
-                    }
-                }
-            },
+        PropertiesSheet(
+            wordCount = countNoteCharacters(editorState.value.text),
+            createdAt = loadedNote?.createdAt,
+            updatedAt = loadedNote?.updatedAt,
             onDismiss = { showProperties = false },
         )
     }
@@ -604,99 +643,4 @@ private fun EditorMenuItem(icon: Int, labelRes: Int, onClick: () -> Unit) {
             SymbolIcon(codepoint = icon, contentDescription = null, size = 24.dp)
         },
     )
-}
-
-/** Note metadata, shown from the split button's "Properties" action. */
-@Composable
-private fun PropertiesDialog(
-    note: Note?,
-    title: String,
-    content: String,
-    lockedLabel: String,
-    onToggleLock: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val dateFormat = remember {
-        android.text.format.DateFormat.getDateFormat(null)
-    }
-    val timeFormat = remember {
-        android.text.format.DateFormat.getTimeFormat(null)
-    }
-    fun stamp(millis: Long): String {
-        val date = java.util.Date(millis)
-        return "${dateFormat.format(date)} ${timeFormat.format(date)}"
-    }
-
-    val words = content.split(Regex("\\s+")).count { it.isNotBlank() }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(R.string.editor_props_title),
-                style = MaterialTheme.typography.headlineSmall,
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                PropertyLine(stringResource(R.string.editor_title_label), title)
-                PropertyLine(
-                    stringResource(R.string.editor_props_created),
-                    note?.createdAt?.let(::stamp).orEmpty(),
-                )
-                PropertyLine(
-                    stringResource(R.string.editor_props_updated),
-                    note?.updatedAt?.let(::stamp).orEmpty(),
-                )
-                PropertyLine(stringResource(R.string.editor_props_words), words.toString())
-                PropertyLine(stringResource(R.string.editor_props_chars), content.length.toString())
-                PropertyLine(
-                    stringResource(R.string.editor_props_lines),
-                    if (content.isEmpty()) "0" else (content.count { it == '\n' } + 1).toString(),
-                )
-                PropertyLine(stringResource(R.string.editor_props_id), note?.id.orEmpty())
-                if (note?.isLocked == true) {
-                    PropertyLine(lockedLabel, stringResource(R.string.common_yes))
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onToggleLock) {
-                Text(
-                    text = stringResource(
-                        if (note?.isLocked == true) {
-                            R.string.unlock_make_public
-                        } else {
-                            R.string.unlock_make_private
-                        },
-                    ),
-                )
-            }
-        },
-        shape = RoundedCornerShape(28.dp),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-    )
-}
-
-@Composable
-private fun PropertyLine(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(104.dp),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-    }
 }

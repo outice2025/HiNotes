@@ -3,11 +3,12 @@ package com.hiapps.hinotes.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * The Mono fallback palette, straight from the design specification.
+ * The "Light purple" accent palette, straight from the design specification.
  *
- * This is the single place in the app where literal color values are allowed to exist.
- * Everything else reads colors through Material 3 [androidx.compose.material3.ColorScheme]
- * roles, so a wallpaper-derived scheme can replace these wholesale.
+ * This and `AccentPalettes.kt` are the only places in the app where literal colour values are
+ * allowed to exist. Everything else reads colours through Material 3
+ * [androidx.compose.material3.ColorScheme] roles, so any palette - generated, design-specified
+ * or wallpaper-derived - can be swapped in wholesale.
  */
 internal object ColorTokens {
 
