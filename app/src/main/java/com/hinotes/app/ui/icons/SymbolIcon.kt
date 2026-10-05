@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -31,13 +32,39 @@ val MaterialSymbolsRounded: FontFamily = FontFamily(
     Font(R.font.material_symbols_rounded, FontWeight.Normal),
 )
 
+// Two facts about this font drive the geometry below, and both are measurable.
+
 /**
- * Draws a Material Symbols glyph.
+ * Material Symbols draws its artwork inside the middle 720 of a 960-unit em box, so the visible
+ * glyph is 75% of the requested font size. Asking for a 24dp glyph therefore needs a 32dp font
+ * size; without this the icon renders a quarter smaller than everything around it.
  *
- * The glyph is rendered from the symbol font by codepoint (see [Symbols]) rather than from a
- * vector drawable, inside a square [size] frame that centres it. The frame and the glyph are
- * both square and the glyph fills its em box, so plain centring lands the ink on the frame's
- * centre - no baseline compensation is applied or wanted.
+ * Confirmed against a device screenshot: an uncompensated 24dp icon measured 47px of ink on a
+ * 40dp badge (45%), where this model predicts 47.2px.
+ */
+private const val GLYPH_TO_EM = 720f / 960f
+
+/**
+ * How far below its frame the ink sits, as a fraction of the font size, when the text is centred
+ * by line box.
+ *
+ * This font's `hhea` metrics are asymmetric - 1056 ascent against a 96 descent - and Android
+ * lays the baseline out against those rather than against the em box, so a glyph centred by line
+ * box lands low. The value is calibrated from a device screenshot (6.5px at a 24dp font size on
+ * a 2.625 density screen) rather than derived, because the exact baseline placement could not be
+ * reproduced from the font tables alone.
+ */
+private const val BASELINE_DROP = 0.1033f
+
+/**
+ * Draws a Material Symbols glyph, sized to [size] and centred in a [size] square.
+ *
+ * Two compensations keep the glyph on the frame's centre:
+ *
+ *  * the font size is scaled up by [GLYPH_TO_EM] so the *ink* measures [size], not the em box;
+ *  * the text is lifted by [BASELINE_DROP] of the font size, undoing the low baseline.
+ *
+ * Both were confirmed against a device screenshot; see the constants above.
  */
 @Composable
 fun SymbolIcon(
@@ -47,6 +74,7 @@ fun SymbolIcon(
     tint: Color = LocalContentColor.current,
     size: Dp = 24.dp,
 ) {
+    val fontSize = size.value / GLYPH_TO_EM
     Box(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center,
@@ -55,16 +83,20 @@ fun SymbolIcon(
             text = String(Character.toChars(codepoint)),
             color = tint,
             fontFamily = MaterialSymbolsRounded,
-            fontSize = size.value.sp,
-            lineHeight = size.value.sp,
+            fontSize = fontSize.sp,
+            lineHeight = fontSize.sp,
             textAlign = TextAlign.Center,
             style = TextStyle(
                 platformStyle = PlatformTextStyle(includeFontPadding = false),
                 lineHeightStyle = LineHeightStyle(
                     alignment = LineHeightStyle.Alignment.Center,
-                    trim = LineHeightStyle.Trim.Both,
+                    trim = LineHeightStyle.Trim.None,
                 ),
             ),
+            modifier = Modifier.graphicsLayer {
+                // Negative lifts the ink back onto the centre line.
+                translationY = -BASELINE_DROP * fontSize * density
+            },
         )
     }
 }

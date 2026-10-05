@@ -192,7 +192,6 @@
     <string name="picker_font_size_note_title">笔记字体大小</string>
     <string name="picker_weight_title">应用字重</string>
     <string name="picker_weight_note_title">笔记字重</string>
-    <string name="level_very_small">极小</string>
     <string name="level_small">小</string>
     <string name="level_medium">中</string>
     <string name="level_large">大</string>

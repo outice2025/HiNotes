@@ -8,16 +8,15 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import com.hinotes.app.R
 
 /**
- * User-selectable type scale, in four steps.
+ * User-selectable type scale, in three steps.
  *
- * Levels are named by ordinal (very small → large) rather than by device defaults, so the slider
- * reads the same on every phone. The multiplier applies on top of the Material 3 scale.
+ * Levels are named by ordinal (small → large) rather than against a device default, so the
+ * slider reads the same on every phone. The multiplier applies on top of the Material 3 scale.
  */
 enum class AppFontScale(val multiplier: Float, val labelRes: Int) {
-    VerySmall(0.85f, R.string.level_very_small),
-    Small(1.0f, R.string.level_small),
-    Medium(1.15f, R.string.level_medium),
-    Large(1.3f, R.string.level_large),
+    Small(0.9f, R.string.level_small),
+    Medium(1.0f, R.string.level_medium),
+    Large(1.15f, R.string.level_large),
     ;
 
     companion object {

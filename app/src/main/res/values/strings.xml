@@ -191,7 +191,6 @@
     <string name="picker_font_size_note_title">Note font size</string>
     <string name="picker_weight_title">App font weight</string>
     <string name="picker_weight_note_title">Note font weight</string>
-    <string name="level_very_small">Smallest</string>
     <string name="level_small">Small</string>
     <string name="level_medium">Medium</string>
     <string name="level_large">Large</string>

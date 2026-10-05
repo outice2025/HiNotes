@@ -27,7 +27,7 @@
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.HiNotes"
-        android:enableOnBackInvokedCallback="true"
+        android:enableOnBackInvokedCallback="false"
         tools:targetApi="36">
 
         <activity

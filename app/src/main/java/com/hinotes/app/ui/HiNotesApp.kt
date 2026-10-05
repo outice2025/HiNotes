@@ -85,14 +85,16 @@ private fun AnimatedContentTransitionScope<*>.alreadyInPlace(): EnterTransition 
 /**
  * The app's navigation host.
  *
- * Forward navigation and back use the platform's standard screen transition: the incoming screen
- * slides full-width over the outgoing one on Material 3's standard easing, and the outgoing
- * screen does not move. Because the predictive back gesture, the system back button and the
- * in-app back buttons all call [NavHostController.popBackStack], all three run this same pair -
- * there is no second animation path that could drift out of sync.
+ * Forward navigation and back use one transition pair: the incoming screen slides full-width
+ * over the outgoing one on Material 3's standard easing, and the outgoing screen stays put. The
+ * in-app back button, the system back button, the back gesture and the predictive back gesture
+ * all call [NavHostController.popBackStack] and therefore run this same [popEnter]/[popExit]
+ * pair - there is no second animation path that could look different.
  *
- * `android:enableOnBackInvokedCallback` is set in the manifest so Android 13+ hands the back
- * gesture to the app instead of playing its own exit animation.
+ * `android:enableOnBackInvokedCallback` is set to `false` in the manifest so the system does not
+ * take the back gesture over and play its own window-close animation on top of this one. That
+ * system animation is not customisable, so letting it run is exactly what made the gesture feel
+ * different from the back button.
  */
 @Composable
 fun HiNotesApp(

@@ -87,6 +87,33 @@ fun BackupScreen(
         }
     }
 
+    /**
+     * Launches a system file picker, reporting rather than crashing if none can handle it.
+     *
+     * `launch()` runs synchronously on the click, outside any coroutine, so an
+     * `ActivityNotFoundException` (or a provider that rejects the request) would otherwise take
+     * the process down before the operation's own error handling ever runs.
+     */
+    fun launchPicker(action: () -> Unit) {
+        try {
+            action()
+        } catch (t: Throwable) {
+            Log.e(TAG, "could not open the system file picker", t)
+            scope.launch {
+                try {
+                    snackbarHostState.showSnackbar(
+                        context.getString(R.string.backup_failed, t.javaClass.simpleName),
+                        duration = SnackbarDuration.Short,
+                    )
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (inner: Throwable) {
+                    Log.e(TAG, "could not show snackbar", inner)
+                }
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- exporters
 
     val exportSettingsLauncher = rememberLauncherForActivityResult(
@@ -166,7 +193,9 @@ fun BackupScreen(
                 icon = Symbols.Download,
                 headline = stringResource(R.string.backup_export_settings),
                 supporting = stringResource(R.string.backup_export_settings_support),
-                onClick = { exportSettingsLauncher.launch(Backup.fileName("settings")) },
+                onClick = {
+                    launchPicker { exportSettingsLauncher.launch(Backup.fileName("settings")) }
+                },
                 isFirst = true,
                 isLast = false,
             )
@@ -187,7 +216,9 @@ fun BackupScreen(
                 icon = Symbols.Download,
                 headline = stringResource(R.string.backup_export_notes),
                 supporting = stringResource(R.string.backup_export_notes_support),
-                onClick = { exportNotesLauncher.launch(Backup.fileName("notes")) },
+                onClick = {
+                    launchPicker { exportNotesLauncher.launch(Backup.fileName("notes")) }
+                },
                 isFirst = true,
                 isLast = false,
             )
@@ -225,8 +256,10 @@ fun BackupScreen(
                 pendingImport = null
                 val mimeTypes = arrayOf("application/json", "text/plain", "application/octet-stream")
                 when (importing) {
-                    ImportKind.Settings -> importSettingsLauncher.launch(mimeTypes)
-                    ImportKind.Notes -> importNotesLauncher.launch(mimeTypes)
+                    ImportKind.Settings ->
+                        launchPicker { importSettingsLauncher.launch(mimeTypes) }
+                    ImportKind.Notes ->
+                        launchPicker { importNotesLauncher.launch(mimeTypes) }
                 }
             },
             onDismiss = { pendingImport = null },
