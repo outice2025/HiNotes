@@ -9,9 +9,16 @@
 An open source, 100% FOSS note-taking app for Android, built with Jetpack Compose and
 Material 3 Expressive.
 
+**Version 0.0.5** — opens in light mode by default, regardless of the device setting; "Follow
+system" remains available on the Appearance screen.
+
+**Version 0.0.4** — icon and button alignment corrected (the 0.0.3 baseline compensation was
+itself the bug); screen transitions now match the platform's standard push/pop; backup export no
+longer crashes; the insert-image feature was removed.
+
 **Version 0.0.3** — type size and weight are now four-stop sliders (smallest / small / medium /
 large) for both the app and note content; the app and editor use the system font, so the bundled
-Roboto face is gone; launcher icon orientation fixed; icon glyphs re-centred on their em box.
+Roboto face is gone; launcher icon orientation fixed.
 
 **Version 0.0.2** — bug-fix release: list-icon centring and group corner continuity, home search
 field alignment, backup export crash, unified back animations, editor split-button placement,
@@ -47,7 +54,8 @@ nothing is sent anywhere. The only network request the app makes on its own is t
 **Appearance**
 - Dynamic colour from the wallpaper on Android 12+, with a Mono fallback palette below that.
   OLED dark composes with it rather than replacing it.
-- Light and dark schemes that follow the system setting by default.
+- Light and dark schemes; the app opens in light mode, and "Follow system" on the Appearance
+  screen hands the choice back to the device.
 - OLED dark mode (true black surfaces).
 - App-wide font size and weight, and separate size/weight for note content.
 - Bundles Roboto and a subset of Material Symbols Rounded so rendering is identical everywhere.
@@ -186,8 +194,13 @@ Apache License 2.0. Bundles Roboto and Material Symbols Rounded (both Apache-2.0
 
 一个开源且 100% FOSS 的 Android 笔记应用，使用 Jetpack Compose 与 Material 3 Expressive 构建。
 
+**版本 0.0.5** —— 默认以浅色模式打开，不再跟随设备设置；「跟随系统」仍保留在外观页。
+
+**版本 0.0.4** —— 修正图标与按钮错位（0.0.3 里那次"基线补偿"本身就是问题根源）；页面切换改用
+平台标准的前进/返回动画；备份导出不再崩溃；移除插入图片功能。
+
 **版本 0.0.3** —— 字号与字重改为四档滑块（极小 / 小 / 中 / 大），应用与笔记内容各一套；
-应用与编辑器改用系统字体，因此不再内置 Roboto；修复桌面图标方向；图标字形重新按 em 框居中。
+应用与编辑器改用系统字体，因此不再内置 Roboto；修复桌面图标方向。
 
 **版本 0.0.2** —— 修复版本：列表图标居中与分组圆角连贯性、首页搜索框对齐、备份导出崩溃、
 统一返回动画、编辑器拆分按钮位置、OLED 深色可与动态取色同时生效、插入图片、全新的主题图标。
@@ -220,7 +233,7 @@ Apache License 2.0. Bundles Roboto and Material Symbols Rounded (both Apache-2.0
 **外观**
 - Android 12 及以上从壁纸动态取色，更低版本使用 Mono 备用配色。OLED 深色与动态取色是叠加
   关系，而不是互相取代。
-- 浅色与深色方案，默认跟随系统设置。
+- 浅色与深色方案；应用默认以浅色打开，外观页的「跟随系统」可把选择权交还给设备。
 - OLED 深色模式（纯黑表面）。
 - 应用级字体大小与字重，笔记内容另有独立的大小与字重。
 - 内置 Roboto 与裁剪版 Material Symbols Rounded，保证各设备渲染一致。
