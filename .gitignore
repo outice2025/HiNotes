@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+*.log
+
+# Archived release APKs (build output kept outside build/)
+releases/
+
+# Android SDK location (machine-specific)
+local.properties
+
+# Release signing material - never commit these
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/

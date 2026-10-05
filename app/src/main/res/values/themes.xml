@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Base application theme.
+
+      Colours come from Compose (Material 3 dynamic colour, or the Mono fallback scheme); this
+      only configures the window chrome and the frame drawn before the first Compose pass, so
+      there is no white flash when the device is in dark mode.
+
+      It deliberately declares no parent: every attribute used here exists since API 21, so the
+      theme is valid from minSdk up, and the values that need a newer API live in the
+      values-v27 / values-v29 variants.
+    -->
+    <style name="Theme.HiNotes" parent="">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

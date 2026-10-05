@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HiNotes</string>
+
+    <!-- Home -->
+    <string name="home_search_placeholder">Search</string>
+    <string name="home_open_settings">Open settings</string>
+    <string name="home_empty">No notes</string>
+    <string name="home_empty_search">No matching notes</string>
+    <string name="home_empty_hint">Tap “Create note” to write your first note.</string>
+    <string name="home_create_note">Create note</string>
+    <string name="home_note_count">%1$d notes</string>
+    <string name="home_clear_search">Clear search</string>
+    <string name="home_sort">Sort</string>
+    <string name="home_sort_updated">Last updated</string>
+    <string name="home_sort_created">Date created</string>
+    <string name="home_sort_title">Title</string>
+    <string name="home_delete_title">Delete note?</string>
+    <string name="home_delete_message">“%1$s” will be permanently deleted. This cannot be undone.</string>
+    <string name="home_delete_confirm">Delete</string>
+    <string name="home_untitled">Untitled</string>
+    <string name="home_locked_badge">Locked</string>
+
+    <!-- Editor -->
+    <string name="editor_title_label">Title</string>
+    <string name="editor_body_placeholder">Write your note…</string>
+    <string name="editor_save">Save</string>
+    <string name="editor_mode_edit">Edit</string>
+    <string name="editor_mode_preview">Preview</string>
+    <string name="editor_properties">Properties</string>
+    <string name="editor_share">Share</string>
+    <string name="editor_saved">Note saved</string>
+    <string name="editor_autosaved">Autosaved</string>
+    <string name="editor_discard_title">Discard changes?</string>
+    <string name="editor_discard_message">Your unsaved changes to this note will be lost.</string>
+    <string name="editor_discard_confirm">Discard</string>
+    <string name="editor_keep_editing">Keep editing</string>
+    <string name="editor_undo">Undo</string>
+    <string name="editor_redo">Redo</string>
+    <string name="editor_bold">Bold</string>
+    <string name="editor_italic">Italic</string>
+    <string name="editor_checkbox">Checkbox</string>
+    <string name="editor_insert_image">Insert image</string>
+    <string name="editor_bullet_list">Bullet list</string>
+    <string name="editor_find">Find in note</string>
+    <string name="editor_find_placeholder">Find in note</string>
+    <string name="editor_find_next">Next match</string>
+    <string name="editor_find_previous">Previous match</string>
+    <string name="editor_find_no_match">No matches</string>
+    <string name="editor_find_matches">%1$d of %2$d</string>
+    <string name="editor_props_title">Properties</string>
+    <string name="editor_props_created">Created</string>
+    <string name="editor_props_updated">Last updated</string>
+    <string name="editor_props_words">Words</string>
+    <string name="editor_props_chars">Characters</string>
+    <string name="editor_props_lines">Lines</string>
+    <string name="editor_props_id">Identifier</string>
+    <string name="editor_share_chooser">Share note</string>
+    <string name="editor_pick_image_failed">Could not add that image</string>
+    <string name="editor_image_unavailable">Image unavailable</string>
+    <string name="editor_markdown_hint">Markdown is on · the toolbar inserts Markdown syntax</string>
+
+    <!-- Settings root -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_support">App look &amp; theme</string>
+    <string name="settings_editor">Editor</string>
+    <string name="settings_editor_support">Editor style, fonts, images</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_support">In-app language</string>
+    <string name="settings_backup">Backup</string>
+    <string name="settings_backup_support">Export settings &amp; notes</string>
+    <string name="settings_unlock">Unlock</string>
+    <string name="settings_unlock_support">Unlock password, biometrics</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_support">Version, developer, licenses</string>
+
+    <!-- Appearance -->
+    <string name="appearance_title">Appearance</string>
+    <string name="appearance_dynamic">Dynamic color</string>
+    <string name="appearance_dynamic_support">Take colors from your wallpaper</string>
+    <string name="appearance_dark">Dark mode</string>
+    <string name="appearance_dark_support">Switch between light and dark</string>
+    <string name="appearance_oled">OLED dark</string>
+    <string name="appearance_oled_support">Use a true black background</string>
+    <string name="appearance_color">Color</string>
+    <string name="appearance_color_support">Set the app accent color</string>
+    <string name="appearance_font_size">App font size</string>
+    <string name="appearance_font_size_support">Set the app font size</string>
+    <string name="appearance_font_weight">App font weight</string>
+    <string name="appearance_font_weight_support">Set the app font weight</string>
+    <string name="appearance_dynamic_unavailable">Dynamic color needs Android 12 or newer</string>
+    <string name="appearance_follow_system">Follow system</string>
+    <string name="appearance_follow_system_support">Match the device light and dark setting</string>
+
+    <!-- Editor settings -->
+    <string name="editor_settings_title">Editor</string>
+    <string name="editor_settings_markdown">Enable Markdown</string>
+    <string name="editor_settings_markdown_support">Write notes in Markdown</string>
+    <string name="editor_settings_autosave">Autosave</string>
+    <string name="editor_settings_autosave_support">Notes are saved every %1$d s</string>
+    <string name="editor_settings_font_size">Note font size</string>
+    <string name="editor_settings_font_size_support">Set the note font size</string>
+    <string name="editor_settings_weight">Font weight</string>
+    <string name="editor_settings_weight_support">Set the note font weight</string>
+
+    <!-- Backup -->
+    <string name="backup_title">Backup</string>
+    <string name="backup_export_settings">Export settings</string>
+    <string name="backup_export_settings_support">Export all settings</string>
+    <string name="backup_import_settings">Import settings</string>
+    <string name="backup_import_settings_support">Import and overwrite settings</string>
+    <string name="backup_export_notes">Export notes</string>
+    <string name="backup_export_notes_support">Export all notes</string>
+    <string name="backup_import_notes">Import notes</string>
+    <string name="backup_import_notes_support">Import and overwrite notes</string>
+    <string name="backup_export_settings_done">Exported %1$d settings</string>
+    <string name="backup_import_settings_done">Imported %1$d settings</string>
+    <string name="backup_export_notes_done">Exported %1$d notes</string>
+    <string name="backup_import_notes_done">Imported %1$d notes</string>
+    <string name="backup_import_confirm_title">Overwrite everything?</string>
+    <string name="backup_import_confirm_message">Your current data will be replaced by the contents of the selected file. This cannot be undone.</string>
+    <string name="backup_import_confirm">Overwrite</string>
+    <string name="backup_failed">Backup failed: %1$s</string>
+    <string name="backup_restore_defaults">Restore defaults</string>
+    <string name="backup_restore_defaults_support">Reset every setting</string>
+    <string name="backup_restore_done">Settings restored to defaults</string>
+    <string name="backup_empty">Nothing to export yet</string>
+
+    <!-- Unlock -->
+    <string name="unlock_title">Unlock</string>
+    <string name="unlock_password">Password</string>
+    <string name="unlock_password_support">Set an unlock password</string>
+    <string name="unlock_fingerprint">Fingerprint</string>
+    <string name="unlock_fingerprint_support">Unlock with your fingerprint</string>
+    <string name="unlock_face">Face unlock</string>
+    <string name="unlock_face_support">Unlock with face recognition</string>
+    <string name="unlock_set_password_title">Set password</string>
+    <string name="unlock_change_password_title">Change password</string>
+    <string name="unlock_remove_password_title">Remove password</string>
+    <string name="unlock_current_password">Current password</string>
+    <string name="unlock_new_password">New password</string>
+    <string name="unlock_confirm_password">Repeat password</string>
+    <string name="unlock_password_error_short">Use at least 4 characters</string>
+    <string name="unlock_password_error_mismatch">Passwords do not match</string>
+    <string name="unlock_password_error_wrong">Wrong password</string>
+    <string name="unlock_password_set">Password set</string>
+    <string name="unlock_password_removed">Password removed</string>
+    <string name="unlock_biometric_unavailable">No biometric sensor available on this device</string>
+    <string name="unlock_no_password_warning">Set a password first — biometric unlock needs one</string>
+    <string name="unlock_enter_title">Enter password</string>
+    <string name="unlock_enter_support">Unlock HiNotes to continue</string>
+    <string name="unlock_action">Unlock</string>
+    <string name="unlock_use_biometric">Use biometrics</string>
+    <string name="unlock_locked_note_title">Note locked</string>
+    <string name="unlock_locked_note_message">Enter your password to open this note.</string>
+    <string name="unlock_make_private">Lock this note</string>
+    <string name="unlock_make_public">Remove note lock</string>
+    <string name="unlock_locked">Note locked</string>
+    <string name="unlock_unlocked">Note lock removed</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_tagline">An open source, 100%% FOSS note-taking app</string>
+    <string name="about_version">Version</string>
+    <string name="about_version_support">%1$s released</string>    <string name="about_check_updates">Check for updates</string>
+    <string name="about_checking">Checking for updates…</string>
+    <string name="about_up_to_date">You are on the latest version</string>
+    <string name="about_update_available">Version %1$s is available</string>
+    <string name="about_update_failed">Could not reach the release feed</string>
+    <string name="about_repository">Repository</string>
+    <string name="about_repository_support">github.com/hinotes/hinotes</string>
+    <string name="about_export_logs">Export logs</string>
+    <string name="about_export_logs_support">Share a diagnostics file</string>
+    <string name="about_logs_exported">Logs exported</string>
+    <string name="about_no_browser">No app can open links</string>
+    <string name="about_licenses">Open source licenses</string>
+
+    <!-- Common -->
+    <string name="common_back">Back</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_save">Save</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_ok">OK</string>
+    <string name="common_close">Close</string>
+    <string name="common_apply">Apply</string>
+    <string name="common_search">Search</string>
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+    <string name="common_off">Off</string>
+
+    <!-- Font size / weight level sliders -->
+    <string name="picker_font_size_title">App font size</string>
+    <string name="picker_font_size_note_title">Note font size</string>
+    <string name="picker_weight_title">App font weight</string>
+    <string name="picker_weight_note_title">Note font weight</string>
+    <string name="level_very_small">Smallest</string>
+    <string name="level_small">Small</string>
+    <string name="level_medium">Medium</string>
+    <string name="level_large">Large</string>
+    <string name="level_light">Light</string>
+    <string name="level_regular">Regular</string>
+    <string name="level_medium_weight">Medium</string>
+    <string name="level_semibold">Semibold</string>
+    <string name="picker_preview">The quick brown fox jumps over the lazy dog</string>
+    <string name="picker_accent_title">Accent color</string>
+    <string name="picker_accent_mono">Mono</string>
+    <string name="appearance_typography">Typography</string>
+</resources>

@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HiNotes</string>
+
+    <!-- 首页 -->
+    <string name="home_search_placeholder">搜索</string>
+    <string name="home_open_settings">打开设置</string>
+    <string name="home_empty">无笔记</string>
+    <string name="home_empty_search">没有匹配的笔记</string>
+    <string name="home_empty_hint">点击「创建笔记」写下第一条笔记。</string>
+    <string name="home_create_note">创建笔记</string>
+    <string name="home_note_count">%1$d 条笔记</string>
+    <string name="home_clear_search">清除搜索</string>
+    <string name="home_sort">排序</string>
+    <string name="home_sort_updated">最近修改</string>
+    <string name="home_sort_created">创建时间</string>
+    <string name="home_sort_title">标题</string>
+    <string name="home_delete_title">删除笔记？</string>
+    <string name="home_delete_message">「%1$s」将被永久删除，此操作无法撤销。</string>
+    <string name="home_delete_confirm">删除</string>
+    <string name="home_untitled">无标题</string>
+    <string name="home_locked_badge">已锁定</string>
+
+    <!-- 编辑器 -->
+    <string name="editor_title_label">标题</string>
+    <string name="editor_body_placeholder">开始写笔记…</string>
+    <string name="editor_save">保存</string>
+    <string name="editor_mode_edit">编辑</string>
+    <string name="editor_mode_preview">浏览</string>
+    <string name="editor_properties">属性</string>
+    <string name="editor_share">分享</string>
+    <string name="editor_saved">笔记已保存</string>
+    <string name="editor_autosaved">已自动保存</string>
+    <string name="editor_discard_title">放弃修改？</string>
+    <string name="editor_discard_message">这条笔记尚未保存的修改将会丢失。</string>
+    <string name="editor_discard_confirm">放弃</string>
+    <string name="editor_keep_editing">继续编辑</string>
+    <string name="editor_undo">撤销</string>
+    <string name="editor_redo">重做</string>
+    <string name="editor_bold">粗体</string>
+    <string name="editor_italic">斜体</string>
+    <string name="editor_checkbox">复选框</string>
+    <string name="editor_insert_image">插入图片</string>
+    <string name="editor_bullet_list">项目符号列表</string>
+    <string name="editor_find">在笔记中查找</string>
+    <string name="editor_find_placeholder">在笔记中查找</string>
+    <string name="editor_find_next">下一个匹配</string>
+    <string name="editor_find_previous">上一个匹配</string>
+    <string name="editor_find_no_match">没有匹配</string>
+    <string name="editor_find_matches">第 %1$d 个，共 %2$d 个</string>
+    <string name="editor_props_title">属性</string>
+    <string name="editor_props_created">创建时间</string>
+    <string name="editor_props_updated">最近修改</string>
+    <string name="editor_props_words">词数</string>
+    <string name="editor_props_chars">字符数</string>
+    <string name="editor_props_lines">行数</string>
+    <string name="editor_props_id">标识符</string>
+    <string name="editor_share_chooser">分享笔记</string>
+    <string name="editor_pick_image_failed">无法添加该图片</string>
+    <string name="editor_image_unavailable">图片不可用</string>
+    <string name="editor_markdown_hint">Markdown 已开启 · 工具栏插入 Markdown 语法</string>
+
+    <!-- 设置页 -->
+    <string name="settings_title">设置</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_appearance_support">应用外观、主题</string>
+    <string name="settings_editor">编辑器</string>
+    <string name="settings_editor_support">编辑器样式、字体、图片</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_support">应用内语言</string>
+    <string name="settings_backup">备份</string>
+    <string name="settings_backup_support">导出设置、笔记</string>
+    <string name="settings_unlock">解锁</string>
+    <string name="settings_unlock_support">解锁密码、生物识别</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_about_support">版本、开发者、许可证</string>
+
+    <!-- 外观 -->
+    <string name="appearance_title">外观</string>
+    <string name="appearance_dynamic">动态取色</string>
+    <string name="appearance_dynamic_support">从壁纸取色并应用</string>
+    <string name="appearance_dark">深色模式</string>
+    <string name="appearance_dark_support">切换浅色模式与深色模式</string>
+    <string name="appearance_oled">OLED 深色</string>
+    <string name="appearance_oled_support">设置为纯黑色背景</string>
+    <string name="appearance_color">颜色</string>
+    <string name="appearance_color_support">设置应用强调色</string>
+    <string name="appearance_font_size">应用字体大小</string>
+    <string name="appearance_font_size_support">设置应用字体大小</string>
+    <string name="appearance_font_weight">应用字重</string>
+    <string name="appearance_font_weight_support">设置应用字重</string>
+    <string name="appearance_dynamic_unavailable">动态取色需要 Android 12 或更高版本</string>
+    <string name="appearance_follow_system">跟随系统</string>
+    <string name="appearance_follow_system_support">跟随设备的浅色与深色设置</string>
+
+    <!-- 编辑器设置 -->
+    <string name="editor_settings_title">编辑器</string>
+    <string name="editor_settings_markdown">启用 Markdown</string>
+    <string name="editor_settings_markdown_support">笔记以 Markdown 格式书写</string>
+    <string name="editor_settings_autosave">自动保存</string>
+    <string name="editor_settings_autosave_support">笔记将每隔 %1$d s 自动保存</string>
+    <string name="editor_settings_font_size">笔记字体大小</string>
+    <string name="editor_settings_font_size_support">设置笔记字体大小</string>
+    <string name="editor_settings_weight">字重</string>
+    <string name="editor_settings_weight_support">设置笔记字重</string>
+
+    <!-- 备份 -->
+    <string name="backup_title">备份</string>
+    <string name="backup_export_settings">导出设置</string>
+    <string name="backup_export_settings_support">导出所有设置</string>
+    <string name="backup_import_settings">导入设置</string>
+    <string name="backup_import_settings_support">导入并覆盖设置</string>
+    <string name="backup_export_notes">导出笔记</string>
+    <string name="backup_export_notes_support">导出所有笔记</string>
+    <string name="backup_import_notes">导入笔记</string>
+    <string name="backup_import_notes_support">导入并覆盖笔记</string>
+    <string name="backup_export_settings_done">已导出 %1$d 项设置</string>
+    <string name="backup_import_settings_done">已导入 %1$d 项设置</string>
+    <string name="backup_export_notes_done">已导出 %1$d 条笔记</string>
+    <string name="backup_import_notes_done">已导入 %1$d 条笔记</string>
+    <string name="backup_import_confirm_title">覆盖全部数据？</string>
+    <string name="backup_import_confirm_message">当前数据将被所选文件的内容替换，此操作无法撤销。</string>
+    <string name="backup_import_confirm">覆盖</string>
+    <string name="backup_failed">备份失败：%1$s</string>
+    <string name="backup_restore_defaults">恢复默认设置</string>
+    <string name="backup_restore_defaults_support">重置所有设置</string>
+    <string name="backup_restore_done">设置已恢复默认</string>
+    <string name="backup_empty">暂无可导出的内容</string>
+
+    <!-- 解锁 -->
+    <string name="unlock_title">解锁</string>
+    <string name="unlock_password">密码</string>
+    <string name="unlock_password_support">设置解锁密码</string>
+    <string name="unlock_fingerprint">指纹</string>
+    <string name="unlock_fingerprint_support">使用指纹解锁</string>
+    <string name="unlock_face">人脸识别</string>
+    <string name="unlock_face_support">使用人脸识别解锁</string>
+    <string name="unlock_set_password_title">设置密码</string>
+    <string name="unlock_change_password_title">修改密码</string>
+    <string name="unlock_remove_password_title">移除密码</string>
+    <string name="unlock_current_password">当前密码</string>
+    <string name="unlock_new_password">新密码</string>
+    <string name="unlock_confirm_password">重复密码</string>
+    <string name="unlock_password_error_short">至少需要 4 个字符</string>
+    <string name="unlock_password_error_mismatch">两次输入的密码不一致</string>
+    <string name="unlock_password_error_wrong">密码错误</string>
+    <string name="unlock_password_set">密码已设置</string>
+    <string name="unlock_password_removed">密码已移除</string>
+    <string name="unlock_biometric_unavailable">此设备没有可用的生物识别传感器</string>
+    <string name="unlock_no_password_warning">请先设置密码 — 生物识别解锁需要密码</string>
+    <string name="unlock_enter_title">输入密码</string>
+    <string name="unlock_enter_support">解锁 HiNotes 以继续</string>
+    <string name="unlock_action">解锁</string>
+    <string name="unlock_use_biometric">使用生物识别</string>
+    <string name="unlock_locked_note_title">笔记已锁定</string>
+    <string name="unlock_locked_note_message">输入密码以打开这条笔记。</string>
+    <string name="unlock_make_private">锁定这条笔记</string>
+    <string name="unlock_make_public">取消笔记锁定</string>
+    <string name="unlock_locked">笔记已锁定</string>
+    <string name="unlock_unlocked">笔记锁定已取消</string>
+
+    <!-- 关于 -->
+    <string name="about_title">关于</string>
+    <string name="about_tagline">一个开源且 100%% FOSS 的笔记应用</string>
+    <string name="about_version">版本号</string>
+    <string name="about_version_support">%1$s released</string>
+    <string name="about_check_updates">检查更新</string>
+    <string name="about_checking">正在检查更新…</string>
+    <string name="about_up_to_date">已是最新版本</string>
+    <string name="about_update_available">发现新版本 %1$s</string>
+    <string name="about_update_failed">无法访问更新源</string>
+    <string name="about_repository">仓库地址</string>
+    <string name="about_repository_support">github.com/hinotes/hinotes</string>
+    <string name="about_export_logs">导出日志</string>
+    <string name="about_export_logs_support">导出诊断文件用于反馈</string>
+    <string name="about_logs_exported">日志已导出</string>
+    <string name="about_no_browser">没有可以打开链接的应用</string>
+    <string name="about_licenses">开源许可证</string>
+
+    <!-- 通用 -->
+    <string name="common_back">返回</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_save">保存</string>
+    <string name="common_delete">删除</string>
+    <string name="common_ok">确定</string>
+    <string name="common_close">关闭</string>
+    <string name="common_apply">应用</string>
+    <string name="common_search">搜索</string>
+    <string name="common_yes">是</string>
+    <string name="common_no">否</string>
+    <string name="common_off">关闭</string>
+
+    <!-- 字号 / 字重 滑块档位 -->
+    <string name="picker_font_size_title">应用字体大小</string>
+    <string name="picker_font_size_note_title">笔记字体大小</string>
+    <string name="picker_weight_title">应用字重</string>
+    <string name="picker_weight_note_title">笔记字重</string>
+    <string name="level_very_small">极小</string>
+    <string name="level_small">小</string>
+    <string name="level_medium">中</string>
+    <string name="level_large">大</string>
+    <string name="level_light">细</string>
+    <string name="level_regular">常规</string>
+    <string name="level_medium_weight">中粗</string>
+    <string name="level_semibold">半粗</string>
+    <string name="picker_preview">永和九年，岁在癸丑，暮春之初</string>
+    <string name="picker_accent_title">强调色</string>
+    <string name="picker_accent_mono">Mono</string>
+    <string name="appearance_typography">字体排版</string>
+</resources>
