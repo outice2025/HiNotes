@@ -6,7 +6,7 @@
     <h1>HiNotes</h1>
     <p>简单易用的 100% FOSS 笔记应用</p>
     <p>A simple, easy-to-use 100% FOSS note-taking app</p>
-    <p>English · 简体中文</p>
+    <p><a href="#english">English</a> · <a href="#简体中文">简体中文</a></p>
 </div>
 
 ---
@@ -16,7 +16,7 @@
 
 | Home | Notes | Settings | About |
 | :---: | :---: | :---: | :---: |
-| <img src="screenshots/home-empty.jpg" width="190"> | <img src="screenshots/home-notes.jpg" width="190"> | <img src="screenshots/settings.jpg" width="190"> | <img src="screenshots/about.jpg" width="190"> |
+| <img src="screenshots/home-empty.jpg" width="190"> | <img src="screenshots/home-notes.jpg" width="190"> | <img src="screenshots/settings.png" width="190"> | <img src="screenshots/about.png" width="190"> |
 | Empty state · 空状态 | List and grid · 列表与网格 | Settings · 设置 | About · 关于 |
 
 </details>
