@@ -6,7 +6,7 @@
     <h1>HiNotes</h1>
     <p>简单易用的 100% FOSS 笔记应用</p>
     <p>A simple, easy-to-use 100% FOSS note-taking app</p>
-    <p><a href="#english">English</a> · <a href="#简体中文">简体中文</a></p>
+    <p><a href="#english">English</a> · <a href="#%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87">简体中文</a></p>
 </div>
 
 ---
