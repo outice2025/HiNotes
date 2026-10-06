@@ -3,16 +3,22 @@
 #
 #   pwsh -File tools/verify/sweep.ps1
 #
-# The image checks need a Python 3 with numpy, Pillow and fontTools. Point HINOTES_PYTHON at one,
-# or have `python` on PATH. JAVA_HOME and ANDROID_HOME are set below because this machine keeps
-# both outside their default locations.
+# The image checks need a Python 3 with numpy, Pillow and fontTools; point HINOTES_PYTHON at one,
+# or have `python` on PATH. JAVA_HOME must name a JDK 17+, and ANDROID_HOME an SDK whose
+# build-tools can inspect the APK.
 $ErrorActionPreference = 'Continue'
-$env:JAVA_HOME = 'D:\tools\jdk'
-$env:ANDROID_HOME = 'D:\AndroidSDK'
 $repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $python = if ($env:HINOTES_PYTHON) { $env:HINOTES_PYTHON } else { 'python' }
 if (-not (Get-Command $python -ErrorAction SilentlyContinue)) {
     Write-Host "python not found - set HINOTES_PYTHON to run the image checks" -ForegroundColor Red
+    exit 1
+}
+if (-not $env:JAVA_HOME) {
+    Write-Host "JAVA_HOME is not set - point it at a JDK 17+" -ForegroundColor Red
+    exit 1
+}
+if (-not $env:ANDROID_HOME) {
+    Write-Host "ANDROID_HOME is not set - point it at an Android SDK" -ForegroundColor Red
     exit 1
 }
 

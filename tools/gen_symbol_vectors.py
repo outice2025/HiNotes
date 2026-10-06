@@ -27,12 +27,16 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 
 # This file lives in <repo>/tools, so the repository is one directory up. The Material Symbols
-# font is not redistributed with the app, so its paths come from the environment when set.
+# font is not redistributed with the app, so its two paths are read from the environment.
 REPO = Path(__file__).resolve().parents[1]
-FONT = os.environ.get("HINOTES_SYMBOLS_FONT", r"D:\tools\MaterialSymbolsRounded-var.ttf")
-CODEPOINTS = os.environ.get(
-    "HINOTES_SYMBOLS_CODEPOINTS", r"D:\tools\MaterialSymbolsRounded.codepoints"
-)
+FONT = os.environ.get("HINOTES_SYMBOLS_FONT", "")
+CODEPOINTS = os.environ.get("HINOTES_SYMBOLS_CODEPOINTS", "")
+if not FONT or not CODEPOINTS:
+    raise SystemExit(
+        "Set HINOTES_SYMBOLS_FONT to the Material Symbols Rounded variable font and "
+        "HINOTES_SYMBOLS_CODEPOINTS to its codepoints table (both are downloads from "
+        "Google Fonts)."
+    )
 RES = str(REPO / "app" / "src" / "main" / "res")
 KT = str(REPO / "app/src/main/java/com/hiapps/hinotes/ui/icons/Symbols.kt")
 
