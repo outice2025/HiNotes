@@ -152,7 +152,7 @@
 
     <!-- About -->
     <string name="about_title">About</string>
-    <string name="about_tagline">An open source, 100%% FOSS note-taking app</string>
+    <string name="about_tagline">An open source, 100% FOSS note-taking app</string>
     <string name="about_version">Version</string>
     <string name="about_version_support">%1$s released</string>
     <string name="about_check_updates">Check for updates</string>
