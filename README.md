@@ -6,9 +6,9 @@
     <h1>HiNotes</h1>
     <p>一个开源且 100% FOSS 的笔记应用</p>
     <p>An open source, 100% FOSS note-taking app</p>
+    <p>English · 简体中文</p>
 </div>
 
-[English](#english) · [简体中文](#简体中文)
 
 ---
 
