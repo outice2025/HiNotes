@@ -49,7 +49,7 @@ enum class DarkModePreference(val key: String) {
 /**
  * Everything the user can configure, in one immutable snapshot.
  *
- * Defaults here are the app's out-of-the-box behaviour: the Light purple accent is used (dynamic
+ * Defaults here are the app's out-of-the-box behaviour: the Blue accent is used (dynamic
  * color off), the theme opens in light mode, Markdown and autosave are off, and the editor opens
  * in edit mode.
  */
@@ -64,15 +64,11 @@ data class HiNotesSettings(
     val autoSave: Boolean = false,
     val noteFontScale: AppFontScale = AppFontScale.Default,
     val noteFontWeight: AppFontWeight = AppFontWeight.Regular,
-    val biometricFingerprint: Boolean = false,
     val biometricFace: Boolean = false,
     val sortOrder: NoteSort = NoteSort.UpdatedDesc,
     val startInPreview: Boolean = false,
     val homeLayout: HomeLayout = HomeLayout.Default,
 ) {
-    /** True when any biometric unlock has been enabled. */
-    val biometricAny: Boolean get() = biometricFingerprint || biometricFace
-
     /** Number of settings that differ from their default, used to report import results. */
     fun nonDefaultCount(): Int {
         val defaults = DefaultSettings
@@ -92,7 +88,6 @@ enum class SettingKey(val storageKey: String) {
     AutoSave("auto_save"),
     NoteFontScale("note_font_scale"),
     NoteFontWeight("note_font_weight"),
-    BiometricFingerprint("biometric_fingerprint"),
     BiometricFace("biometric_face"),
     SortOrder("sort_order"),
     StartInPreview("start_in_preview"),
@@ -110,7 +105,6 @@ enum class SettingKey(val storageKey: String) {
         AutoSave -> settings.autoSave.toString()
         NoteFontScale -> settings.noteFontScale.name
         NoteFontWeight -> settings.noteFontWeight.name
-        BiometricFingerprint -> settings.biometricFingerprint.toString()
         BiometricFace -> settings.biometricFace.toString()
         SortOrder -> settings.sortOrder.key
         StartInPreview -> settings.startInPreview.toString()
@@ -134,7 +128,6 @@ class SettingsRepository(private val context: Context) {
         val autoSave = booleanPreferencesKey("auto_save")
         val noteFontScale = stringPreferencesKey("note_font_scale")
         val noteFontWeight = stringPreferencesKey("note_font_weight")
-        val biometricFingerprint = booleanPreferencesKey("biometric_fingerprint")
         val biometricFace = booleanPreferencesKey("biometric_face")
         val sortOrder = stringPreferencesKey("sort_order")
         val startInPreview = booleanPreferencesKey("start_in_preview")
@@ -164,8 +157,6 @@ class SettingsRepository(private val context: Context) {
                     ?: defaults.noteFontScale,
                 noteFontWeight = prefs[Keys.noteFontWeight]?.let(AppFontWeight::fromKey)
                     ?: defaults.noteFontWeight,
-                biometricFingerprint = prefs[Keys.biometricFingerprint]
-                    ?: defaults.biometricFingerprint,
                 biometricFace = prefs[Keys.biometricFace] ?: defaults.biometricFace,
                 sortOrder = prefs[Keys.sortOrder]?.let(NoteSort::fromKey) ?: defaults.sortOrder,
                 startInPreview = prefs[Keys.startInPreview] ?: defaults.startInPreview,
@@ -201,9 +192,6 @@ class SettingsRepository(private val context: Context) {
     suspend fun setNoteFontWeight(value: AppFontWeight) =
         edit { it[Keys.noteFontWeight] = value.name }
 
-    suspend fun setBiometricFingerprint(value: Boolean) =
-        edit { it[Keys.biometricFingerprint] = value }
-
     suspend fun setBiometricFace(value: Boolean) = edit { it[Keys.biometricFace] = value }
 
     suspend fun setSortOrder(value: NoteSort) = edit { it[Keys.sortOrder] = value.key }
@@ -230,7 +218,6 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.autoSave] = settings.autoSave
             prefs[Keys.noteFontScale] = settings.noteFontScale.name
             prefs[Keys.noteFontWeight] = settings.noteFontWeight.name
-            prefs[Keys.biometricFingerprint] = settings.biometricFingerprint
             prefs[Keys.biometricFace] = settings.biometricFace
             prefs[Keys.sortOrder] = settings.sortOrder.key
             prefs[Keys.startInPreview] = settings.startInPreview
@@ -260,10 +247,6 @@ class SettingsRepository(private val context: Context) {
                 ?.let(AppFontScale::fromKey) ?: fallback.noteFontScale,
             noteFontWeight = pairs[SettingKey.NoteFontWeight.storageKey]
                 ?.let(AppFontWeight::fromKey) ?: fallback.noteFontWeight,
-            biometricFingerprint = bool(
-                SettingKey.BiometricFingerprint,
-                fallback.biometricFingerprint,
-            ),
             biometricFace = bool(SettingKey.BiometricFace, fallback.biometricFace),
             sortOrder = pairs[SettingKey.SortOrder.storageKey]
                 ?.let(NoteSort::fromKey) ?: fallback.sortOrder,

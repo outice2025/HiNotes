@@ -1,10 +1,11 @@
 # Full verification sweep for a delivered build.
 $ErrorActionPreference = 'Continue'
 $env:JAVA_HOME = 'D:\tools\jdk'
+$env:ANDROID_HOME = 'D:\AndroidSDK'
 $repo = 'D:\HiNotes'
 $python = 'C:\Users\Administrator\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
 
-Write-Host '=== harnesses ==='
+Write-Host '=== checks ==='
 & "$repo\tools\verify\run.ps1" 2>&1 | Select-String -Pattern 'FAIL|passed|failed'
 
 Write-Host '=== resource audit ==='

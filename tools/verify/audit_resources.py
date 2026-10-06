@@ -92,6 +92,9 @@ stale_terms = [
     "ToolbarSplitButton", "SearchResultsOverlay", "picker_preview", "picker_accent_mono",
     "appearance_color_support", "editor_props_chars", "editor_props_lines", "editor_props_id",
     "material_symbols_rounded",
+    # Removed with the fingerprint switch and the update check.
+    "unlock_fingerprint", "biometric_fingerprint", "BiometricFingerprint", "UpdateChecker",
+    "about_update_", "ArchiveHarness", "MarkdownHarness",
 ]
 for term in stale_terms:
     hits = []

@@ -1,13 +1,13 @@
 package com.hiapps.hinotes.data
 
 /**
- * Standalone harness for [NotesArchive], run on a desktop JVM by tools/verify_archive.sh.
+ * Standalone checks for [NotesArchive], run on a desktop JVM by tools/verify/run.ps1.
  *
  * The archive codec is the one piece of export/import logic with no Android dependency, so it can
  * be executed rather than reasoned about: this checks that decode(encode(notes)) returns the same
  * notes, that file names stay unique and filesystem-safe, and that foreign bytes are rejected.
  */
-object ArchiveHarness {
+object ArchiveChecks {
 
     private var failures = 0
 
@@ -105,9 +105,9 @@ object ArchiveHarness {
 
     private fun report() {
         if (failures == 0) {
-            println("archive harness: all checks passed")
+            println("archive checks: all checks passed")
         } else {
-            println("archive harness: $failures check(s) FAILED")
+            println("archive checks: $failures check(s) FAILED")
             throw IllegalStateException("$failures archive check(s) failed")
         }
     }

@@ -28,7 +28,9 @@ browser, which is the browser's request rather than the app's.
 - Note bodies are rendered as Markdown in the list and in the editor's preview when Markdown is
   enabled.
 - Long-press a note to start a multi-select: select all, delete the selection, or leave the mode.
-- A note can be locked behind the app password.
+- A note can be marked as locked: it carries a lock badge and the mark is stored with the note.
+  Note-level locking is a label rather than a second password — the app-wide password on the
+  Unlock settings screen is what actually keeps other people out.
 - Share a note as text, or as a Markdown attachment when it is long.
 
 **Editor**
@@ -43,9 +45,9 @@ browser, which is the browser's request rather than the app's.
 - Unsaved changes are never lost silently: leaving prompts, and the choice to leave still saves.
 
 **Appearance**
-- Seven Material 3 accent palettes — Light purple, Tea green, Light gray, Red, Blue, Orange and
-  Yellow — each a full light and dark scheme built from a seed colour with the Material 3 HCT
-  algorithm, so every role carries the tone MD3 prescribes.
+- Seven Material 3 accent palettes — Blue (the default), Tea green, Light gray, Red,
+  Light purple, Orange and Yellow — each a full light and dark scheme built from a seed colour
+  with the Material 3 HCT algorithm, so every role carries the tone MD3 prescribes.
 - Dynamic colour from the wallpaper on Android 12+, taking precedence while it is switched on.
 - Light and dark schemes; the app opens in light mode, and "Follow system" on the Appearance
   screen hands the choice back to the device.
@@ -67,9 +69,9 @@ browser, which is the browser's request rather than the app's.
 
 **Unlock**
 - Password protection with PBKDF2-HMAC-SHA1 (120,000 iterations, per-password random salt).
-- Fingerprint and face unlock through `androidx.biometric`. The fingerprint row asks for a class-3
-  biometric and the face row for class 2, which is the closest Android comes to letting an app
-  name the sensor; a row is only offered when the device reports that class.
+- Face unlock through `androidx.biometric`, asking for a class-2 authenticator — the class face
+  implementations carry, and the closest Android comes to letting an app name the sensor. The
+  switch is only offered when the device reports that class.
 
 **Language**
 - Opens Android's own per-app language picker. English and Simplified Chinese are included.
@@ -94,7 +96,8 @@ back button, and the predictive back gesture — plays the exact reverse through
 
 - **Colour roles only.** The UI never uses a literal colour. Accent palettes live in
   `ui/theme/ColorTokens.kt` (the design's own Light purple) and `ui/theme/AccentPalettes.kt`
-  (generated with the official Material 3 HCT implementation); the third source is
+  (generated with the official Material 3 HCT implementation; Blue is the default, and the
+  launcher icon and window background are painted from it); the third source is
   `dynamicLightColorScheme` / `dynamicDarkColorScheme`. Nothing else names a colour.
 - **Motion.** `ui/theme/Motion.kt` reproduces Material 3's *standard* motion scheme from its
   published tokens (damped springs, `dampingRatio` 0.9 spatial / 1.0 effects). Material 3 1.4.0
@@ -117,9 +120,9 @@ back button, and the predictive back gesture — plays the exact reverse through
 
 ### Verifying
 
-Two JVM harnesses execute the app's real sources — the notes archive round trip, and the Markdown
-verbs behind the editor's toolbar buttons — plus an audit of the string, icon and drawable
-references, and the icon geometry check above:
+Two JVM check programs execute the app's real sources — the notes archive round trip, and the
+Markdown verbs behind the editor's toolbar buttons — plus an audit of the string, icon and
+drawable references, and the icon geometry check above:
 
 ```bash
 pwsh -File tools/verify/run.ps1
@@ -171,8 +174,7 @@ archive keeps every version side by side:
 
 ```
 releases/
-├── v0.0.3/hinotes-0.0.3-release.apk
-└── v0.0.4/hinotes-0.0.4-release.apk
+└── v1.0.0/hinotes-1.0.0-release.apk
 ```
 
 Rebuilding the same version overwrites that version's copy rather than piling up duplicates.
@@ -233,7 +235,8 @@ releases 页面，那是浏览器的请求，不是应用的。
 - 首页两种排版：单列列表，或两列瀑布流网格 —— 每张卡片的高度恰好等于自身内容。
 - 开启 Markdown 后，列表与编辑器预览中的笔记正文都会按 Markdown 渲染。
 - 长按笔记进入多选：可全选、删除所选，或退出多选。
-- 单条笔记可用应用密码锁定。
+- 单条笔记可以标记为「锁定」：卡片上会显示锁形标记，标记随笔记一起保存。这是**标记**而不是第二道
+  密码 —— 真正防止他人查看的是「解锁」设置页中的应用密码。
 - 分享笔记为文本，内容较长时改为 Markdown 附件。
 
 **编辑器**
@@ -247,7 +250,7 @@ releases 页面，那是浏览器的请求，不是应用的。
 - 未保存的修改不会被静默丢弃：返回时会提示，即使选择离开也会先保存。
 
 **外观**
-- 七种 Material 3 强调色 —— 淡紫色、茶绿色、浅灰色、红色、蓝色、橙色、黄色。每种配色都由一个
+- 七种 Material 3 强调色 —— 蓝色（默认）、茶绿色、浅灰色、红色、淡紫色、橙色、黄色。每种配色都由一个
   种子颜色经 Material 3 的 HCT 算法生成完整的浅色与深色方案，各颜色角色都落在 MD3 规定的色调上。
 - Android 12 及以上支持从壁纸动态取色；开启时优先生效。
 - 浅色与深色方案；应用默认以浅色打开，外观页的「跟随系统」可把选择权交还给设备。
@@ -268,8 +271,8 @@ releases 页面，那是浏览器的请求，不是应用的。
 
 **解锁**
 - 密码保护使用 PBKDF2-HMAC-SHA1（120,000 次迭代，每个密码独立随机盐）。
-- 通过 `androidx.biometric` 实现指纹与人脸解锁。指纹一项要求 class 3 生物识别、人脸一项要求 class 2 ——
-  这是 Android 允许应用指定传感器类型的极限做法；只有设备确实报告该等级时才提供对应开关。
+- 通过 `androidx.biometric` 实现人脸解锁，请求 class 2 生物识别 —— 这是人脸识别通常所属的等级，
+  也是 Android 允许应用指定传感器类型的极限做法；只有设备确实报告该等级时才提供该开关。
 
 **语言**
 - 打开 Android 原生的应用语言选择器，内置英文与简体中文。
@@ -293,8 +296,9 @@ releases 页面，那是浏览器的请求，不是应用的。
 ### 设计说明
 
 - **只使用颜色角色。** UI 中不出现字面颜色值。强调色配色集中在 `ui/theme/ColorTokens.kt`
-  （设计稿自带的淡紫色）与 `ui/theme/AccentPalettes.kt`（用官方 Material 3 HCT 实现生成）；
-  第三条路径是 `dynamicLightColorScheme` / `dynamicDarkColorScheme`。除此之外没有任何地方写死颜色。
+  （设计稿自带的淡紫色）与 `ui/theme/AccentPalettes.kt`（用官方 Material 3 HCT 实现生成；蓝色为默认色，
+  桌面图标与窗口背景都取自它）；第三条路径是 `dynamicLightColorScheme` / `dynamicDarkColorScheme`。
+  除此之外没有任何地方写死颜色。
 - **动效。** `ui/theme/Motion.kt` 按 Material 3 公布的设计令牌复刻了*标准*动效方案
   （阻尼弹簧，空间 0.9 / 效果 1.0）。Material 3 1.4.0 把 `MotionScheme.standard()` 标为
   `internal`，因此这里是重新声明令牌而不是调用它。屏幕过渡同样出于这个原因使用普通 tween：
@@ -311,7 +315,7 @@ releases 页面，那是浏览器的请求，不是应用的。
 
 ### 验证
 
-有两个 JVM 测试程序直接运行应用的真实源码 —— 笔记归档的往返、编辑器工具栏按钮背后的 Markdown 动词 ——
+有两个 JVM 检查程序直接运行应用的真实源码 —— 笔记归档的往返、编辑器工具栏按钮背后的 Markdown 动词 ——
 外加字符串 / 图标 / 矢量图引用的审计，以及上面的图标几何检查：
 
 ```bash
@@ -363,8 +367,7 @@ keyPassword=…
 
 ```
 releases/
-├── v0.0.3/hinotes-0.0.3-release.apk
-└── v0.0.4/hinotes-0.0.4-release.apk
+└── v1.0.0/hinotes-1.0.0-release.apk
 ```
 
 重复构建同一版本会覆盖该版本目录，而不会堆积重复文件。这个任务名为
@@ -389,21 +392,7 @@ app/src/main/java/com/hiapps/hinotes/
 ```
 
 生成派生素材的脚本放在仓库根目录的 `tools/` 下（`gen_symbol_vectors.py`、`gen_icons.py`、
-`gen_accents.py`）；它们写出的文件都会在头部注明，请勿手改。`tools/verify/` 存放下面这些检查。
-
-### 验证
-
-有两个 JVM 测试程序直接运行应用的真实源码 —— 笔记归档的往返、编辑器工具栏按钮背后的 Markdown 动词 ——
-外加字符串 / 图标 / 矢量图引用的审计，以及上面的图标几何检查：
-
-```bash
-pwsh -File tools/verify/run.ps1
-python tools/verify/audit_resources.py
-python tools/verify/check_icon_geometry.py
-```
-
-它们存在的理由，正是这些部分无法靠「读代码」判断：一个删除了从未添加过的前缀的开关，看起来就是个坏按钮；
-一个偏了半 dp 的字形，不量就看不出来。
+`gen_accents.py`）；它们写出的文件都会在头部注明，请勿手改。`tools/verify/` 存放上面这些检查。
 
 ### 隐私
 

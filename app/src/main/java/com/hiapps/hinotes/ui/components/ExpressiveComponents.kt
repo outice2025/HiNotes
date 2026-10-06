@@ -36,10 +36,16 @@ import com.hiapps.hinotes.ui.icons.Symbols
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
 import com.hiapps.hinotes.ui.theme.LocalMotionScheme
 
-/** One entry in a [SplitButton]'s menu. */
+/**
+ * One entry in a [SplitButton]'s menu.
+ *
+ * @param destructive paints the entry in the error colour, the way Material 3 marks an action
+ *   that removes something.
+ */
 data class SplitButtonMenuItem(
     val icon: Int,
     val label: String,
+    val destructive: Boolean = false,
     val onClick: () -> Unit,
 )
 
@@ -64,7 +70,7 @@ fun SplitButton(
     menuContentDescription: String?,
     modifier: Modifier = Modifier,
     height: Dp = 44.dp,
-    corner: Dp = HiNotesCorners.ExtendedFab,
+    corner: Dp = HiNotesCorners.SplitControl,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     primaryContentColor: Color = MaterialTheme.colorScheme.primary,
     menuContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -126,8 +132,13 @@ fun SplitButton(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 menuItems.forEach { item ->
+                    val tint = if (item.destructive) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
                     DropdownMenuItem(
-                        text = { Text(item.label, style = MaterialTheme.typography.bodyLarge) },
+                        text = { Text(item.label, style = MaterialTheme.typography.bodyLarge, color = tint) },
                         onClick = {
                             expanded = false
                             item.onClick()
@@ -137,6 +148,7 @@ fun SplitButton(
                                 codepoint = item.icon,
                                 contentDescription = null,
                                 size = 24.dp,
+                                tint = tint,
                             )
                         },
                     )

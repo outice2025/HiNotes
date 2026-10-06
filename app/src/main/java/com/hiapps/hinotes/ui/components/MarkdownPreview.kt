@@ -2,7 +2,6 @@ package com.hiapps.hinotes.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +19,11 @@ import com.hiapps.hinotes.ui.editor.Markdown
  * Uses the same [Markdown.render] the editor's preview mode does, so a note looks the same in the
  * list as it does when opened. When Markdown is switched off in settings the body is shown
  * verbatim, which is what "the note is plain text" means.
+ *
+ * The text is deliberately *not* inside a `SelectionContainer`. It sits on a card whose gesture is
+ * a long press, and a selection container claims that same gesture: holding a card put the note
+ * under a text-selection handle instead of starting multi-select. Copying is served by the
+ * editor's preview and by sharing the note, both of which are explicit actions.
  *
  * @param maxLines how much of the body to show before ellipsising; pass [Int.MAX_VALUE] for all
  *   of it.
@@ -42,14 +46,12 @@ fun MarkdownPreview(
     }
 
     Box(modifier = modifier.fillMaxWidth()) {
-        SelectionContainer {
-            Text(
-                text = rendered,
-                style = style,
-                color = color,
-                maxLines = maxLines,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Text(
+            text = rendered,
+            style = style,
+            color = color,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

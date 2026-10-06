@@ -42,8 +42,8 @@ import com.hiapps.hinotes.ui.components.AppLogoPlaceholder
 /**
  * The app lock screen, shown instead of the app whenever a password is configured.
  *
- * Offers both the password field and, when the user has enabled one and the device supports it,
- * a biometric prompt that runs immediately on appearance.
+ * Offers the password field and, when the user has switched face unlock on and the device
+ * supports it, a biometric prompt that runs immediately on appearance.
  */
 @Composable
 fun LockGate(viewModel: AppViewModel) {
@@ -56,23 +56,14 @@ fun LockGate(viewModel: AppViewModel) {
     val wrongError = stringResource(R.string.unlock_password_error_wrong)
     val activity = context as? FragmentActivity
 
-    val biometricKind: Biometrics.Kind? = remember(settings.biometricFingerprint, settings.biometricFace) {
-        when {
-            settings.biometricFingerprint &&
-                Biometrics.isAvailable(context, Biometrics.Kind.Fingerprint) ->
-                Biometrics.Kind.Fingerprint
-            settings.biometricFace && Biometrics.isAvailable(context, Biometrics.Kind.Face) ->
-                Biometrics.Kind.Face
-            else -> null
-        }
+    val biometricOffered: Boolean = remember(settings.biometricFace) {
+        settings.biometricFace && Biometrics.isAvailable(context)
     }
 
     fun tryBiometric() {
-        val kind = biometricKind ?: return
         val host = activity ?: return
         Biometrics.authenticate(
             activity = host,
-            kind = kind,
             title = context.getString(R.string.unlock_enter_title),
             subtitle = context.getString(R.string.unlock_enter_support),
             negativeLabel = context.getString(R.string.common_cancel),
@@ -81,9 +72,9 @@ fun LockGate(viewModel: AppViewModel) {
         )
     }
 
-    // Offer biometrics as soon as the gate appears, when the user asked for it.
-    LaunchedEffect(biometricKind) {
-        if (biometricKind != null) tryBiometric()
+    // Offer the prompt as soon as the gate appears, when the user asked for it.
+    LaunchedEffect(biometricOffered) {
+        if (biometricOffered) tryBiometric()
     }
 
     Surface(
@@ -174,7 +165,7 @@ fun LockGate(viewModel: AppViewModel) {
                         Text(stringResource(R.string.unlock_action))
                     }
 
-                    if (biometricKind != null) {
+                    if (biometricOffered) {
                         Spacer(Modifier.height(8.dp))
                         TextButton(onClick = { tryBiometric() }) {
                             Text(

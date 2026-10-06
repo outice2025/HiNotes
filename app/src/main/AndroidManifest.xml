@@ -9,13 +9,11 @@
     -->
 
     <!--
-      Declared so the biometric prompt can run on devices whose sensor needs it; both are
-      normal permissions with no runtime prompt.
+      Declared so the biometric prompt can run; a normal permission with no runtime prompt.
+      androidx.biometric declares USE_FINGERPRINT (maxSdkVersion 27) for its API 23-27 fallback
+      path in its own manifest, so that one arrives through the merge rather than from here.
     -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-    <uses-permission
-        android:name="android.permission.USE_FINGERPRINT"
-        android:maxSdkVersion="27" />
 
     <application
         android:allowBackup="true"

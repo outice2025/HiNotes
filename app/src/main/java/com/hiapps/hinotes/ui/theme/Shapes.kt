@@ -24,11 +24,11 @@ object HiNotesCorners {
     /** Editor canvas container. */
     val Canvas = 28.dp
 
-    /** Extended FAB (M3 medium size: 56dp tall, 16dp radius). */
-    val ExtendedFab = 16.dp
+    /** Home action buttons (create note, delete): 56dp tall with a 20dp radius. */
+    val ExtendedFab = 20.dp
 
-    /** Text field corner, per the design brief. */
-    val TextField = 16.dp
+    /** Editor header controls: 44dp tall with a 16dp radius. */
+    val SplitControl = 16.dp
 
     /** Cards and image placeholders. */
     val Card = 20.dp
@@ -36,9 +36,6 @@ object HiNotesCorners {
     /** Dialogs. */
     val Dialog = 28.dp
 
-    /** Split button seam between the two segments. */
+    /** Seam between the two segments of a split button. */
     val SplitSeam = 2.dp
-
-    /** Inner corner on either side of the split seam. */
-    val SplitInner = 8.dp
 }

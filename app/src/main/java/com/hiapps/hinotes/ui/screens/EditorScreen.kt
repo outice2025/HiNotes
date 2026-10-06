@@ -80,16 +80,40 @@ private const val AUTOSAVE_INTERVAL_MS = 20_000L
 /** Height of the filled title box, from the design. */
 private val TITLE_HEIGHT = 68.dp
 
-/** Gap between the header row and the title box, and between the title and the canvas. */
+/** Gap between the header row and the title box. */
 private val HEADER_GAP = 24.dp
-private val TITLE_GAP = 12.dp
+
+/**
+ * The two shapes the title box and the canvas are drawn with.
+ *
+ * They are the grouped-list treatment the settings screens use: the two containers are separated
+ * by the same 3dp seam as two neighbouring settings rows, and the corners that meet across that
+ * seam are drawn at the small inner radius while the corners facing outwards keep the large one.
+ * That is what makes the title and the body read as one connected surface rather than as two
+ * separate boxes.
+ */
+private val TitleShape = RoundedCornerShape(
+    topStart = HiNotesCorners.Canvas,
+    topEnd = HiNotesCorners.Canvas,
+    bottomStart = HiNotesCorners.GroupInner,
+    bottomEnd = HiNotesCorners.GroupInner,
+)
+
+private val CanvasShape = RoundedCornerShape(
+    topStart = HiNotesCorners.GroupInner,
+    topEnd = HiNotesCorners.GroupInner,
+    bottomStart = HiNotesCorners.Canvas,
+    bottomEnd = HiNotesCorners.Canvas,
+)
 
 /**
  * The note editor.
  *
  * Layout follows the design: a top row with the back button and the split button (save plus its
- * menu), a filled 68dp title box, and the canvas (`surfaceContainerHigh`, 28dp radius) with the
- * connected formatting toolbar drawn over its lower edge.
+ * menu), a filled 68dp title box, and the canvas (`surfaceContainerHigh`) with the connected
+ * formatting toolbar drawn over its lower edge. The title box and the canvas share the grouped
+ * treatment - a 3dp seam, small corners facing each other, large corners facing outwards - so the
+ * note's title and its body read as one surface.
  *
  * The canvas takes the height that is left over instead of being pinned to the design's 712dp.
  * Those two are the same number on the design's own frame - 44 header + 24 + 68 title + 12 leaves
@@ -340,7 +364,9 @@ fun EditorScreen(
                             SplitButtonMenuItem(
                                 icon = Symbols.Delete,
                                 label = stringResource(R.string.editor_delete),
-                            ) { confirmDeleteNote = true },
+                                onClick = { confirmDeleteNote = true },
+                                destructive = true,
+                            ),
                         )
                     },
                     menuContentDescription = stringResource(R.string.editor_more_actions),
@@ -350,9 +376,10 @@ fun EditorScreen(
             Spacer(Modifier.height(HEADER_GAP))
 
             // Title. A filled box rather than an outlined field, per the design: the same
-            // container colour and 28dp radius as the canvas below it, with the label acting as
-            // its placeholder. Read-only in preview mode, because the preview promises that the
-            // note cannot be changed.
+            // container colour as the canvas below it, with the label acting as its placeholder
+            // and its lower corners pulled in so the two boxes read as one connected surface.
+            // Read-only in preview mode, because the preview promises that the note cannot be
+            // changed.
             TextField(
                 value = title,
                 onValueChange = {
@@ -362,7 +389,7 @@ fun EditorScreen(
                 label = { Text(stringResource(R.string.editor_title_label)) },
                 singleLine = true,
                 readOnly = previewMode,
-                shape = RoundedCornerShape(HiNotesCorners.Canvas),
+                shape = TitleShape,
                 textStyle = LocalTextStyle.current.copy(
                     fontSize = (17f * settings.noteFontScale.multiplier).sp,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -380,7 +407,8 @@ fun EditorScreen(
                     .height(TITLE_HEIGHT),
             )
 
-            Spacer(Modifier.height(TITLE_GAP))
+            // The 3dp seam between the two boxes, the same one that separates two settings rows.
+            Spacer(Modifier.height(HiNotesCorners.GroupGap))
 
             // Canvas: the editor body sits on this container and the toolbar is drawn over it.
             // It takes the height left over by everything above it, which is the design's 712dp
@@ -391,7 +419,7 @@ fun EditorScreen(
                     .weight(1f)
                     .background(
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = RoundedCornerShape(HiNotesCorners.Canvas),
+                        shape = CanvasShape,
                     ),
             ) {
                 val bodyStyle = LocalTextStyle.current.copy(

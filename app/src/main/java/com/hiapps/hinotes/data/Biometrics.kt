@@ -9,30 +9,22 @@ import androidx.fragment.app.FragmentActivity
 /**
  * Biometric unlock.
  *
- * Both "Fingerprint" and "Face unlock" are Android biometric classes, and the classes are what
- * decide which sensor the system prompt uses: a fingerprint sensor is class 3 (strong) and most
- * face implementations are class 2 (weak). The fingerprint row therefore asks for
- * [BiometricManager.Authenticators.BIOMETRIC_STRONG] *only* - allowing weak as well, as it
- * previously did, let the system answer the prompt with face recognition on a device that has
- * both, so turning on "Fingerprint" produced a face prompt.
- *
- * Face keeps asking for weak, since that is the class face unlock normally holds. Android offers
- * no way to name the modality outright, so these two classes are the closest thing to it.
- *
- * Whether a class is actually present is reported by [BiometricManager], so the settings switches
- * can be disabled honestly instead of pretending to work.
+ * One switch is offered - face unlock - and it asks for
+ * [BiometricManager.Authenticators.BIOMETRIC_WEAK], the class face implementations normally hold.
+ * Android gives an app no way to name a modality outright: the authenticator class is the only
+ * lever, and it is a lower bound rather than an exact match, so a device with a fingerprint (class
+ * 3) enrolled satisfies a weak request with the fingerprint instead. What the class does buy is
+ * honesty about availability: [isAvailable] is false where no such authenticator exists, so the
+ * switch can be disabled rather than opening a prompt that cannot succeed.
  */
 object Biometrics {
 
-    /** Which authenticator class a settings row is asking for. */
-    enum class Kind(val authenticators: Int) {
-        Fingerprint(BiometricManager.Authenticators.BIOMETRIC_STRONG),
-        Face(BiometricManager.Authenticators.BIOMETRIC_WEAK),
-    }
+    /** The authenticator class the face-unlock switch asks for. */
+    private const val AUTHENTICATORS = BiometricManager.Authenticators.BIOMETRIC_WEAK
 
-    /** True when the device can perform this kind of biometric authentication. */
-    fun isAvailable(context: Context, kind: Kind): Boolean =
-        BiometricManager.from(context).canAuthenticate(kind.authenticators) ==
+    /** True when the device can perform a biometric authentication. */
+    fun isAvailable(context: Context): Boolean =
+        BiometricManager.from(context).canAuthenticate(AUTHENTICATORS) ==
             BiometricManager.BIOMETRIC_SUCCESS
 
     /**
@@ -44,7 +36,6 @@ object Biometrics {
      */
     fun authenticate(
         activity: FragmentActivity,
-        kind: Kind,
         title: String,
         subtitle: String,
         negativeLabel: String,
@@ -77,7 +68,7 @@ object Biometrics {
             .setTitle(title)
             .setSubtitle(subtitle)
             .setNegativeButtonText(negativeLabel)
-            .setAllowedAuthenticators(kind.authenticators)
+            .setAllowedAuthenticators(AUTHENTICATORS)
             .setConfirmationRequired(false)
             .build()
 

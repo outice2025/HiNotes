@@ -25,7 +25,6 @@ object Symbols {
     @DrawableRes val Download: Int = R.drawable.sym_download
     @DrawableRes val Edit: Int = R.drawable.sym_edit
     @DrawableRes val Face: Int = R.drawable.sym_face
-    @DrawableRes val Fingerprint: Int = R.drawable.sym_fingerprint
     @DrawableRes val FormatBold: Int = R.drawable.sym_format_bold
     @DrawableRes val FormatItalic: Int = R.drawable.sym_format_italic
     @DrawableRes val FormatSize: Int = R.drawable.sym_format_size

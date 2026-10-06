@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
 
-/** Extended FAB geometry, per the design: 56dp tall, 16dp radius. */
+/** Extended FAB geometry, per the design: 56dp tall, 20dp corners. */
 private val FabHeight = 56.dp
 private val FabHorizontalPadding = 20.dp
 private val FabIconSize = 24.dp

@@ -1,16 +1,16 @@
-﻿package com.hiapps.hinotes.ui.editor
+package com.hiapps.hinotes.ui.editor
 
 import androidx.compose.ui.text.input.TextFieldValue
 
 /**
- * Standalone harness for the editor's Markdown verbs, run on a desktop JVM.
+ * Standalone checks for the editor's Markdown verbs, run on a desktop JVM.
  *
  * The toolbar's buttons are the app's most tactile controls and the easiest to get subtly wrong:
  * a toggle that removes a prefix which was never there looks like a dead button. These checks
  * drive the real [Markdown] code with the same inputs a phone produces - an empty note, a caret
  * on a blank line, a selection spanning several lines - and assert the resulting text and caret.
  */
-object MarkdownHarness {
+object MarkdownChecks {
 
     private var failures = 0
 
@@ -117,9 +117,9 @@ object MarkdownHarness {
 
     private fun report() {
         if (failures == 0) {
-            println("markdown harness: all checks passed")
+            println("markdown checks: all checks passed")
         } else {
-            println("markdown harness: $failures check(s) FAILED")
+            println("markdown checks: $failures check(s) FAILED")
             throw IllegalStateException("$failures markdown check(s) failed")
         }
     }

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HiNotes</string>
 
@@ -73,7 +73,7 @@
     <string name="settings_backup">备份</string>
     <string name="settings_backup_support">导出设置、笔记</string>
     <string name="settings_unlock">解锁</string>
-    <string name="settings_unlock_support">解锁密码、生物识别</string>
+    <string name="settings_unlock_support">解锁密码、人脸解锁</string>
     <string name="settings_about">关于</string>
     <string name="settings_about_support">版本、开发者、许可证</string>
 
@@ -129,8 +129,6 @@
     <string name="unlock_title">解锁</string>
     <string name="unlock_password">密码</string>
     <string name="unlock_password_support">设置解锁密码</string>
-    <string name="unlock_fingerprint">指纹</string>
-    <string name="unlock_fingerprint_support">使用指纹解锁</string>
     <string name="unlock_face">人脸识别</string>
     <string name="unlock_face_support">使用人脸识别解锁</string>
     <string name="unlock_set_password_title">设置密码</string>

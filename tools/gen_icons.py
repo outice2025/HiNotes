@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 """Generate HiNotes launcher icons and the in-app mark from the Material Symbols 'edit' glyph.
 
+The icon is painted in the app's default accent - the blue the app opens with - so the launcher
+and the first screen agree.
+
 Outputs:
   * res/drawable/ic_logo_note.xml            - in-app About/lock mark (24dp vector)
   * res/drawable/ic_launcher_foreground.xml  - adaptive-icon foreground (108dp vector)
@@ -35,8 +38,10 @@ LOGO_ARTWORK = 24.0              # the in-app mark fills its box
 
 DENSITIES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 
-BG = (74, 68, 89, 255)      # fallback mono primaryContainer
-FG = (230, 224, 240, 255)   # fallback mono onPrimaryContainer
+# The default accent's own colours, so the icon on the home screen and the app's first screen are
+# the same blue: primary behind, primaryContainer in front.
+BG = (73, 93, 146, 255)      # Blue light primary        #495D92
+FG = (218, 226, 255, 255)    # Blue light primaryContainer #DAE2FF
 
 PNG_ARTWORK = 0.56          # fraction of the legacy icon the glyph occupies
 

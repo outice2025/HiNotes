@@ -1,4 +1,4 @@
-# Runs the JVM harnesses in this folder against the app's real source files.
+# Runs the JVM checks in this folder against the app's real source files.
 #
 # These are not unit tests inside the Gradle build: they compile a couple of pure-logic sources
 # with the Kotlin compiler Gradle already has cached, plus the Compose text classes the editor
@@ -74,7 +74,7 @@ $libCp = (($libJars + $stdlib) -join ';')
 $src = Join-Path $repo 'app\src\main\java\com\hiapps\hinotes'
 $failures = 0
 
-function Invoke-Harness($name, $harnessFile, $sources) {
+function Invoke-Check($name, $checkFile, $sources) {
     Write-Host ""
     Write-Host "=== $name ==="
     $out = Join-Path $work $name
@@ -82,7 +82,7 @@ function Invoke-Harness($name, $harnessFile, $sources) {
     New-Item -ItemType Directory -Force -Path $out | Out-Null
 
     $args = @('-cp', $compilerCp, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler',
-        '-no-stdlib', '-jvm-target', '17', '-classpath', $libCp, '-d', $out, $harnessFile) + $sources
+        '-no-stdlib', '-jvm-target', '17', '-classpath', $libCp, '-d', $out, $checkFile) + $sources
     $p = Start-Process -FilePath $java -ArgumentList $args -Wait -NoNewWindow -PassThru `
         -RedirectStandardOutput "$out\compile.out" -RedirectStandardError "$out\compile.err"
     if ($p.ExitCode -ne 0) {
@@ -102,18 +102,18 @@ function Invoke-Harness($name, $harnessFile, $sources) {
     }
 }
 
-Invoke-Harness 'data.ArchiveHarness' (Join-Path $PSScriptRoot 'ArchiveHarness.kt') @(
+Invoke-Check 'data.ArchiveChecks' (Join-Path $PSScriptRoot 'ArchiveChecks.kt') @(
     "$src\data\NotesArchive.kt", "$src\data\Note.kt"
 )
 
-Invoke-Harness 'ui.editor.MarkdownHarness' (Join-Path $PSScriptRoot 'MarkdownHarness.kt') @(
+Invoke-Check 'ui.editor.MarkdownChecks' (Join-Path $PSScriptRoot 'MarkdownChecks.kt') @(
     "$src\ui\editor\Markdown.kt"
 )
 
 Write-Host ""
 if ($failures -eq 0) {
-    Write-Host "verify: all harnesses passed" -ForegroundColor Green
+    Write-Host "verify: all checks passed" -ForegroundColor Green
     exit 0
 }
-Write-Host "verify: $failures harness(es) failed" -ForegroundColor Red
+Write-Host "verify: $failures check group(s) failed" -ForegroundColor Red
 exit 1

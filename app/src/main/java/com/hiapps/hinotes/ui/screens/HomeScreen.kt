@@ -147,8 +147,11 @@ fun HomeScreen(
                     icon = Symbols.Edit,
                     label = stringResource(R.string.home_create_note),
                     onClick = onCreateNote,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    // The emphasis is inverted against the delete button beside it: this one is
+                    // the saturated action, carrying the primary colour as its background with
+                    // onPrimary as its content, in both themes.
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 )
             }
         },

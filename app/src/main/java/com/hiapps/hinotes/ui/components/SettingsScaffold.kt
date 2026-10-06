@@ -75,7 +75,7 @@ fun SettingsScaffold(
                 fontSize = 28.sp,
                 lineHeight = 36.sp,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp, end = 16.dp),
+                modifier = Modifier.padding(start = 16.dp, top = TitleTopGap, end = 16.dp),
             )
 
             // Generous gap between the page title and the first list, per the design revision.
@@ -90,5 +90,6 @@ fun SettingsScaffold(
     }
 }
 
-/** Vertical space between a settings screen's title and its first group of rows. */
-val SettingsTitleGap = 28.dp
+/** Space between the back button and the title, and between the title and the first group. */
+private val TitleTopGap = 12.dp
+private val SettingsTitleGap = 36.dp

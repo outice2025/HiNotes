@@ -41,11 +41,11 @@ import com.hiapps.hinotes.ui.theme.HiNotesCorners
 private const val MIN_PASSWORD_LENGTH = 4
 
 /**
- * Unlock settings: the app password plus the two biometric switches.
+ * Unlock settings: the app password and the face-unlock switch.
  *
  * A password is a prerequisite for biometrics - there has to be a fallback the user controls -
- * so turning a biometric switch on without a password first explains that instead of enabling a
- * lock the user could be shut out of.
+ * so turning the switch on without a password first explains that instead of enabling a lock the
+ * user could be shut out of.
  */
 @Composable
 fun UnlockScreen(
@@ -60,8 +60,7 @@ fun UnlockScreen(
     var notice by remember { mutableStateOf<String?>(null) }
     var hasPassword by remember { mutableStateOf(viewModel.lockStore.isConfigured) }
 
-    val fingerprintAvailable = remember { Biometrics.isAvailable(context, Biometrics.Kind.Fingerprint) }
-    val faceAvailable = remember { Biometrics.isAvailable(context, Biometrics.Kind.Face) }
+    val biometricAvailable = remember { Biometrics.isAvailable(context) }
 
     SettingsScaffold(
         title = stringResource(R.string.unlock_title),
@@ -78,44 +77,17 @@ fun UnlockScreen(
                 isLast = false,
             )
             SwitchRow(
-                icon = Symbols.Fingerprint,
-                headline = stringResource(R.string.unlock_fingerprint),
-                supporting = stringResource(R.string.unlock_fingerprint_support),
-                checked = settings.biometricFingerprint && fingerprintAvailable,
-                enabled = fingerprintAvailable,
-                onCheckedChange = { checked ->
-                    when {
-                        !hasPassword ->
-                            notice = context.getString(R.string.unlock_no_password_warning)
-                        checked -> requestBiometric(
-                            viewModel = viewModel,
-                            kind = Biometrics.Kind.Fingerprint,
-                            activity = context as? FragmentActivity,
-                            onResult = { ok ->
-                                if (ok) {
-                                    viewModel.updateSettings { setBiometricFingerprint(true) }
-                                }
-                            },
-                        )
-                        else -> viewModel.updateSettings { setBiometricFingerprint(false) }
-                    }
-                },
-                isFirst = false,
-                isLast = false,
-            )
-            SwitchRow(
                 icon = Symbols.Face,
                 headline = stringResource(R.string.unlock_face),
                 supporting = stringResource(R.string.unlock_face_support),
-                checked = settings.biometricFace && faceAvailable,
-                enabled = faceAvailable,
+                checked = settings.biometricFace && biometricAvailable,
+                enabled = biometricAvailable,
                 onCheckedChange = { checked ->
                     when {
                         !hasPassword ->
                             notice = context.getString(R.string.unlock_no_password_warning)
                         checked -> requestBiometric(
                             viewModel = viewModel,
-                            kind = Biometrics.Kind.Face,
                             activity = context as? FragmentActivity,
                             onResult = { ok ->
                                 if (ok) {
@@ -167,10 +139,7 @@ fun UnlockScreen(
             dismissLabel = stringResource(R.string.common_cancel),
             onConfirm = {
                 viewModel.lockStore.clear()
-                viewModel.updateSettings {
-                    setBiometricFingerprint(false)
-                    setBiometricFace(false)
-                }
+                viewModel.updateSettings { setBiometricFace(false) }
                 hasPassword = false
                 removeDialog = false
                 viewModel.refreshLockState()
@@ -190,25 +159,17 @@ fun UnlockScreen(
     }
 }
 
-/** Runs the system biometric prompt before a biometric switch is allowed to turn on. */
+/** Runs the system biometric prompt before the switch is allowed to turn on. */
 private fun requestBiometric(
     viewModel: AppViewModel,
-    kind: Biometrics.Kind,
     activity: FragmentActivity?,
     onResult: (Boolean) -> Unit,
 ) {
     if (activity == null) return
     Biometrics.authenticate(
         activity = activity,
-        kind = kind,
         title = activity.getString(R.string.unlock_title),
-        subtitle = activity.getString(
-            if (kind == Biometrics.Kind.Fingerprint) {
-                R.string.unlock_fingerprint_support
-            } else {
-                R.string.unlock_face_support
-            },
-        ),
+        subtitle = activity.getString(R.string.unlock_face_support),
         negativeLabel = activity.getString(R.string.common_cancel),
         onSuccess = { onResult(true) },
         onFailure = { onResult(false) },

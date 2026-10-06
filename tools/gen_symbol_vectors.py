@@ -45,7 +45,7 @@ ICONS = {
     "Colors": "colors", "DarkMode": "dark_mode", "Contrast": "contrast",
     "FormatSize": "format_size", "TextFields": "text_fields", "Sell": "sell",
     "Save": "save", "Download": "download", "Upload": "upload",
-    "Fingerprint": "fingerprint", "Face": "face", "Lock": "lock", "Update": "update",
+    "Face": "face", "Lock": "lock", "Update": "update",
     "Box": "box", "Bookmarks": "bookmarks", "OpenInNew": "open_in_new",
 }
 

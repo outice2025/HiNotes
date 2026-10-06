@@ -86,11 +86,13 @@ fun AboutScreen(
         onBack = onBack,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) {
-        // Mark, name and tagline, centred.
+        // Mark, name and tagline, centred, treated as one block: the vertical padding is the
+        // block's own margin, so the whole lock-up sits clear of the title above it and the
+        // first settings group below.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
+                .padding(top = 24.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -209,5 +211,5 @@ private const val LICENSE_NOTICE =
         "Its icons are vector artwork derived from Material Symbols Rounded (Apache License " +
         "2.0), and it builds on Jetpack Compose, AndroidX and Kotlin (Apache License 2.0). " +
         "Text is drawn with the device's own font, so no typeface is redistributed.\n\n" +
-        "No analytics. The only network request the app makes on its own is the optional " +
-        "update check; everything else you open yourself."
+        "No analytics, and no network access of its own: the app declares no INTERNET " +
+        "permission, and every link here is opened by another app."

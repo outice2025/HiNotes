@@ -1,6 +1,7 @@
 # Gradle
 .gradle/
 build/
+.kotlin/
 *.log
 
 # Archived release APKs (build output kept outside build/)
