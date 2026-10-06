@@ -10,6 +10,9 @@ releases/
 # Android SDK location (machine-specific)
 local.properties
 
+# Design sources kept on this machine only
+HiNotes.json
+
 # Release signing material - never commit these
 keystore.properties
 keystore/
