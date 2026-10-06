@@ -1,6 +1,26 @@
-# HiNotes
+<div align="center">
+    <img width="180" height="180" src="logo.png">
+</div>
+
+<div align="center">
+    <h1>HiNotes</h1>
+    <p>一个开源且 100% FOSS 的笔记应用</p>
+    <p>An open source, 100% FOSS note-taking app</p>
+</div>
 
 [English](#english) · [简体中文](#简体中文)
+
+---
+
+<details>
+<summary><b>Screenshots</b> · 截图</summary>
+
+| Home | Notes | Settings | About |
+| :---: | :---: | :---: | :---: |
+| <img src="screenshots/home-empty.jpg" width="190"> | <img src="screenshots/home-notes.jpg" width="190"> | <img src="screenshots/settings.jpg" width="190"> | <img src="screenshots/about.jpg" width="190"> |
+| Empty state · 空状态 | List and grid · 列表与网格 | Settings · 设置 | About · 关于 |
+
+</details>
 
 ---
 
