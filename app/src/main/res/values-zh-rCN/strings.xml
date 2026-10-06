@@ -158,7 +158,7 @@
     <string name="about_check_updates">检查更新</string>
     <string name="about_check_updates_support">打开 releases 页面</string>
     <string name="about_repository">仓库地址</string>
-    <string name="about_repository_support">github.com/outice2025/hinotes</string>
+    <string name="about_repository_support">github.com/outice2025/HiNotes</string>
     <string name="about_export_logs">导出日志</string>
     <string name="about_export_logs_support">导出诊断文件用于反馈</string>
     <string name="about_logs_exported">日志已导出</string>

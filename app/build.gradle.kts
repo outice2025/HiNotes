@@ -73,7 +73,7 @@ android {
         val suffix = if (signed) "release" else "unsigned"
         variant.outputs.forEach { output ->
             (output as? com.android.build.api.variant.impl.VariantOutputImpl)
-                ?.outputFileName?.set("hinotes-$appVersionName-$suffix.apk")
+                ?.outputFileName?.set("HiNotes-$appVersionName-$suffix.apk")
         }
         // Keep a copy of every release outside `build/`, so a later build (or a `clean`)
         // cannot destroy the previous deliverable. The lookup is deferred because AGP
@@ -156,7 +156,7 @@ val archiveReleaseArtifacts = tasks.register<Copy>("archiveReleaseArtifacts") {
 
     // The output file name is fixed by the variant configuration above, so it can be named
     // directly rather than discovered by listing the output directory.
-    val apkName = "hinotes-$appVersionName-release.apk"
+    val apkName = "HiNotes-$appVersionName-release.apk"
     val apkDir = layout.buildDirectory.dir("outputs/apk/release")
 
     from(apkDir.map { it.file(apkName) })

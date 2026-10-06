@@ -158,7 +158,7 @@
     <string name="about_check_updates">Check for updates</string>
     <string name="about_check_updates_support">Open the releases page</string>
     <string name="about_repository">Repository</string>
-    <string name="about_repository_support">github.com/outice2025/hinotes</string>
+    <string name="about_repository_support">github.com/outice2025/HiNotes</string>
     <string name="about_export_logs">Export logs</string>
     <string name="about_export_logs_support">Share a diagnostics file</string>
     <string name="about_logs_exported">Logs exported</string>

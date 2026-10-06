@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Project home page, used by the repository row. */
-private const val REPOSITORY_URL = "https://github.com/outice2025/hinotes"
+private const val REPOSITORY_URL = "https://github.com/outice2025/HiNotes"
 
 /** Releases page, opened by the "Check for updates" row. */
 private const val RELEASES_URL = "$REPOSITORY_URL/releases"
