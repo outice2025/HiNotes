@@ -9,20 +9,24 @@ import androidx.fragment.app.FragmentActivity
 /**
  * Biometric unlock.
  *
- * Both "Fingerprint" and "Face unlock" are Android biometric classes: the fingerprint row asks
- * for a strong biometric (class 3) falling back to weak, and the face row asks for a weak
- * biometric because most face implementations are class 2. Whether a class is actually present
- * is reported by [BiometricManager], so the settings switches can be disabled honestly instead
- * of pretending to work.
+ * Both "Fingerprint" and "Face unlock" are Android biometric classes, and the classes are what
+ * decide which sensor the system prompt uses: a fingerprint sensor is class 3 (strong) and most
+ * face implementations are class 2 (weak). The fingerprint row therefore asks for
+ * [BiometricManager.Authenticators.BIOMETRIC_STRONG] *only* - allowing weak as well, as it
+ * previously did, let the system answer the prompt with face recognition on a device that has
+ * both, so turning on "Fingerprint" produced a face prompt.
+ *
+ * Face keeps asking for weak, since that is the class face unlock normally holds. Android offers
+ * no way to name the modality outright, so these two classes are the closest thing to it.
+ *
+ * Whether a class is actually present is reported by [BiometricManager], so the settings switches
+ * can be disabled honestly instead of pretending to work.
  */
 object Biometrics {
 
     /** Which authenticator class a settings row is asking for. */
     enum class Kind(val authenticators: Int) {
-        Fingerprint(
-            BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                BiometricManager.Authenticators.BIOMETRIC_WEAK,
-        ),
+        Fingerprint(BiometricManager.Authenticators.BIOMETRIC_STRONG),
         Face(BiometricManager.Authenticators.BIOMETRIC_WEAK),
     }
 

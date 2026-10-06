@@ -7,33 +7,19 @@ import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContract
 
 /**
- * The two Storage Access Framework contracts the backup screen needs.
+ * The Storage Access Framework contract the backup screen needs for reading a file back.
  *
- * These are written out rather than taken from `ActivityResultContracts` so the intents carry
+ * Written out rather than taken from `ActivityResultContracts` so the intent carries
  * `CATEGORY_OPENABLE`, which is what the platform asks for and what guarantees the returned URI
- * can actually be opened through a `ContentResolver`. A picker that returns a URI nobody can
- * write to is indistinguishable from a broken export, so the extra category is not left out.
+ * can actually be opened through a `ContentResolver`. A picker that returns a URI nobody can read
+ * is indistinguishable from a broken import, so the extra category is not left out.
  *
- * Both are also explicit about failure: a cancelled picker returns null instead of throwing, and
- * the caller reports anything else instead of dropping it.
+ * A cancelled picker returns null instead of throwing; the caller reports anything else rather
+ * than dropping it.
+ *
+ * Exports deliberately do not come through here: see [DocumentExport] for why they are handed to
+ * the share sheet instead of to a create-document picker.
  */
-
-/** `ACTION_CREATE_DOCUMENT`: ask the user where to save a new file. */
-internal class CreateDocumentContract(private val mimeType: String) :
-    ActivityResultContract<String, Uri?>() {
-
-    override fun createIntent(context: Context, input: String): Intent =
-        Intent(Intent.ACTION_CREATE_DOCUMENT)
-            .addCategory(Intent.CATEGORY_OPENABLE)
-            .setType(mimeType)
-            .putExtra(Intent.EXTRA_TITLE, input)
-
-    override fun getSynchronousResult(context: Context, input: String): SynchronousResult<Uri?>? =
-        null
-
-    override fun parseResult(resultCode: Int, intent: Intent?): Uri? =
-        if (resultCode == Activity.RESULT_OK) intent?.data else null
-}
 
 /** `ACTION_OPEN_DOCUMENT`: ask the user for an existing file. */
 internal class OpenDocumentContract(private val mimeTypes: Array<String>) :

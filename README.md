@@ -12,8 +12,9 @@ Material 3 Expressive.
 ### What it is
 
 A local-first notes app. Notes live in SQLite on the device, settings live in DataStore, and
-nothing is sent anywhere. The only network request the app makes on its own is the optional
-"Check for updates" action on the About screen.
+nothing is sent anywhere. The app makes no network request of its own and asks for no INTERNET
+permission: "Check for updates" on the About screen opens the project's releases page in your
+browser, which is the browser's request rather than the app's.
 
 ### Features
 
@@ -53,10 +54,12 @@ nothing is sent anywhere. The only network request the app makes on its own is t
 - A themed (monochrome) launcher icon that follows the wallpaper's colour on Android 13+.
 
 **Backup**
-- Export settings as readable JSON, and import them back — through the system file picker, so no
-  storage permission is needed.
-- Export notes as a zip of Markdown files: unzip it and every note is a document any editor can
-  open. Import reads that zip back, and still reads the JSON notes backup older builds wrote.
+- Export settings as readable JSON, and export notes as a zip of Markdown files: unzip it and
+  every note is a document any editor can open. Both are written to app storage and handed to the
+  system share sheet — the same route the diagnostics export takes — so "Save to Files" (or any
+  other destination the device offers) is one tap away and nothing needs a storage permission.
+- Import settings or notes back through the system file picker. Notes import reads the zip the
+  export writes, and still reads the JSON notes backup older builds wrote.
 - Imports are confirmed first and reject files that are not HiNotes backups.
 - Restore all settings to defaults.
 - Export a diagnostics report (counts and environment only, never note text).
@@ -64,8 +67,9 @@ nothing is sent anywhere. The only network request the app makes on its own is t
 
 **Unlock**
 - Password protection with PBKDF2-HMAC-SHA1 (120,000 iterations, per-password random salt).
-- Fingerprint and face unlock through `androidx.biometric`, each enabled only when the device
-  actually reports that biometric class.
+- Fingerprint and face unlock through `androidx.biometric`. The fingerprint row asks for a class-3
+  biometric and the face row for class 2, which is the closest Android comes to letting an app
+  name the sensor; a row is only offered when the device reports that class.
 
 **Language**
 - Opens Android's own per-app language picker. English and Simplified Chinese are included.
@@ -102,11 +106,30 @@ back button, and the predictive back gesture — plays the exact reverse through
   from standard M3 building blocks (`Surface`, `IconButton`, M3 shape and motion) at the
   specified sizes, rather than redrawing anything the library already provides.
 - **Icons.** Each glyph is a vector drawable (`res/drawable/sym_*.xml`) generated from the
-  Material Symbols Rounded outline and centred on its ink box, so the app carries no icon font
-  and nothing depends on text layout to place an icon. Names live in `ui/icons/Symbols.kt`. The
-  launcher icon is generated from the same font's `edit` glyph, so the app icon and the in-app
-  mark are one shape.
+  Material Symbols Rounded outline. One scale is shared by the whole set, taken from the union of
+  their ink boxes, and each glyph is then centred on *its own* ink box — centring on the union
+  instead left most glyphs about 0.4dp low and a few up to 1.5dp off, which is visible as an icon
+  sitting off-centre in its button. `tools/verify/check_icon_geometry.py` rasterises every one of
+  them and fails if any glyph is off-centre or leaves its viewport. Names live in
+  `ui/icons/Symbols.kt`. The launcher icon is generated from the same font's `edit` glyph, so the
+  app icon and the in-app mark are one shape.
 - **Type.** Text uses the device's own font family. Only size and weight are configurable.
+
+### Verifying
+
+Two JVM harnesses execute the app's real sources — the notes archive round trip, and the Markdown
+verbs behind the editor's toolbar buttons — plus an audit of the string, icon and drawable
+references, and the icon geometry check above:
+
+```bash
+pwsh -File tools/verify/run.ps1
+python tools/verify/audit_resources.py
+python tools/verify/check_icon_geometry.py
+```
+
+They exist because these are the parts that cannot be judged by reading them: a toggle that
+removes a prefix it never added looks like a dead button, and a glyph that is half a dp off centre
+looks fine until it is measured.
 
 ### Building
 
@@ -161,9 +184,8 @@ git-ignored.
 ```
 app/src/main/java/com/hiapps/hinotes/
 ├── MainActivity.kt              single activity, edge-to-edge, theme wiring
-├── data/                        Note, SQLite store, DataStore settings, lock store,
-│                                backups, biometrics, crash logger
-├── update/                      release-feed check
+├── data/                        Note, SQLite store, the Markdown notes archive,
+│                                DataStore settings, lock store, biometrics, crash logger
 └── ui/
     ├── HiNotesApp.kt            routes and transitions
     ├── AppViewModel.kt          single source of truth for the running app
@@ -177,13 +199,13 @@ app/src/main/java/com/hiapps/hinotes/
 
 Generators for the derived artwork and palettes are kept in `tools/` at the repository root
 (`gen_symbol_vectors.py`, `gen_icons.py`, `gen_accents.py`); each writes a file that says so in
-its header and is not meant to be hand-edited.
+its header and is not meant to be hand-edited. `tools/verify/` holds the checks described below.
 
 ### Privacy
 
-No analytics, no tracking, no accounts. Notes and settings stay on the device. The update check
-sends a plain `GET` for the latest release tag and nothing else; no note content is ever
-transmitted.
+No analytics, no tracking, no accounts. Notes and settings stay on the device. The app makes no
+network request at all and does not ask for the INTERNET permission; no note content ever leaves
+the device unless you share or export it yourself.
 
 ### Licence
 
@@ -199,7 +221,8 @@ typeface is redistributed.
 ### 这是什么
 
 一个本地优先的笔记应用。笔记存在设备的 SQLite 中，设置存在 DataStore 中，不会发送到任何地方。
-应用唯一主动发起的网络请求，是「关于」页里可选的「检查更新」。
+应用不发起任何网络请求，也不申请 INTERNET 权限：「关于」页的「检查更新」是在浏览器中打开项目的
+releases 页面，那是浏览器的请求，不是应用的。
 
 ### 功能
 
@@ -233,9 +256,11 @@ typeface is redistributed.
 - Android 13 及以上支持主题图标（单色），跟随壁纸颜色。
 
 **备份**
-- 设置导出为易读的 JSON，也可再导入回来 —— 全程走系统文件选择器，无需存储权限。
-- 笔记导出为 Markdown 文件的 zip 包：解压后每条笔记都是任何编辑器都能打开的文档。导入可以读回
-  这个 zip，也仍然兼容旧版本写出的 JSON 笔记备份。
+- 设置导出为易读的 JSON，笔记导出为 Markdown 文件的 zip 包：解压后每条笔记都是任何编辑器都能打开的
+  文档。两者都先写入应用缓存再交给系统分享面板 —— 与「关于」页的日志导出同一条路径 —— 因此在面板里
+  一步就能「保存到文件」（或任何设备提供的目的地），全程不需要存储权限。
+- 设置与笔记都可以通过系统文件选择器导入回来。笔记导入可以读回导出的 zip，也仍然兼容旧版本写出的
+  JSON 笔记备份。
 - 导入前会确认，并拒绝非 HiNotes 的备份文件。
 - 恢复所有设置为默认值。
 - 导出诊断报告（只含计数与环境信息，绝不含笔记正文）。
@@ -243,7 +268,8 @@ typeface is redistributed.
 
 **解锁**
 - 密码保护使用 PBKDF2-HMAC-SHA1（120,000 次迭代，每个密码独立随机盐）。
-- 通过 `androidx.biometric` 实现指纹与人脸解锁；只有设备确实报告该生物识别等级时才可开启。
+- 通过 `androidx.biometric` 实现指纹与人脸解锁。指纹一项要求 class 3 生物识别、人脸一项要求 class 2 ——
+  这是 Android 允许应用指定传感器类型的极限做法；只有设备确实报告该等级时才提供对应开关。
 
 **语言**
 - 打开 Android 原生的应用语言选择器，内置英文与简体中文。
@@ -276,10 +302,26 @@ typeface is redistributed.
 - **Expressive 组件。** Material 3 1.4.0 提供了相连按钮组的设计令牌，但并非每个 composable 都有。
   `ui/components/ExpressiveComponents.kt` 用标准 M3 构件（`Surface`、`IconButton`、M3 形状与动效）
   按规格尺寸把应用需要的部分组装出来，而不是重画库里已有的东西。
-- **图标。** 每个字形都是一个矢量图（`res/drawable/sym_*.xml`），由 Material Symbols Rounded 的
-  轮廓生成，并按墨迹包围盒居中 —— 应用不再内置图标字体，图标位置也不依赖文字排版。名称定义在
+- **图标。** 每个字形都是一个矢量图（`res/drawable/sym_*.xml`），由 Material Symbols Rounded 的轮廓
+  生成。整套图标共用一个缩放比例（取自全部字形墨迹包围盒的并集），再让**每个字形按自身墨迹包围盒居中** ——
+  若按并集居中，多数字形会整体偏低约 0.4dp，个别偏差可达 1.5dp，看起来就是图标在按钮里没对齐。
+  `tools/verify/check_icon_geometry.py` 会逐个栅格化并测量，任何字形偏心或超出视口都会失败。名称定义在
   `ui/icons/Symbols.kt`。应用图标由同一字体的 `edit` 字形生成，因此桌面图标与应用内标识是同一个形状。
 - **字体。** 文字使用设备自带字体，仅字号与字重可调。
+
+### 验证
+
+有两个 JVM 测试程序直接运行应用的真实源码 —— 笔记归档的往返、编辑器工具栏按钮背后的 Markdown 动词 ——
+外加字符串 / 图标 / 矢量图引用的审计，以及上面的图标几何检查：
+
+```bash
+pwsh -File tools/verify/run.ps1
+python tools/verify/audit_resources.py
+python tools/verify/check_icon_geometry.py
+```
+
+它们存在的理由，正是这些部分无法靠"读代码"判断：一个删除了从未添加过的前缀的开关，看起来就是个坏按钮；
+一个偏了半 dp 的字形，不量就看不出来。
 
 ### 构建
 
@@ -333,9 +375,8 @@ releases/
 ```
 app/src/main/java/com/hiapps/hinotes/
 ├── MainActivity.kt              单 Activity，边到边，主题装配
-├── data/                        Note、SQLite 存储、DataStore 设置、密码存储、
-│                                备份、生物识别、崩溃记录
-├── update/                      发布源更新检查
+├── data/                        Note、SQLite 存储、Markdown 笔记归档、
+│                                DataStore 设置、密码存储、生物识别、崩溃记录
 └── ui/
     ├── HiNotesApp.kt            路由与过渡动画
     ├── AppViewModel.kt          运行期应用的唯一数据源
@@ -348,12 +389,26 @@ app/src/main/java/com/hiapps/hinotes/
 ```
 
 生成派生素材的脚本放在仓库根目录的 `tools/` 下（`gen_symbol_vectors.py`、`gen_icons.py`、
-`gen_accents.py`）；它们写出的文件都会在头部注明，请勿手改。
+`gen_accents.py`）；它们写出的文件都会在头部注明，请勿手改。`tools/verify/` 存放下面这些检查。
+
+### 验证
+
+有两个 JVM 测试程序直接运行应用的真实源码 —— 笔记归档的往返、编辑器工具栏按钮背后的 Markdown 动词 ——
+外加字符串 / 图标 / 矢量图引用的审计，以及上面的图标几何检查：
+
+```bash
+pwsh -File tools/verify/run.ps1
+python tools/verify/audit_resources.py
+python tools/verify/check_icon_geometry.py
+```
+
+它们存在的理由，正是这些部分无法靠「读代码」判断：一个删除了从未添加过的前缀的开关，看起来就是个坏按钮；
+一个偏了半 dp 的字形，不量就看不出来。
 
 ### 隐私
 
-无统计、无追踪、无账号。笔记与设置都留在设备上。更新检查只发送一个获取最新发布标签的普通
-`GET` 请求，除此之外没有别的；笔记内容永远不会被传输。
+无统计、无追踪、无账号。笔记与设置都留在设备上。应用不发起任何网络请求，也不申请 INTERNET 权限；
+除非你自己分享或导出，笔记内容永远不会离开设备。
 
 ### 许可证
 

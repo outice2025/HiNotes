@@ -229,6 +229,16 @@ object Markdown {
                 appendInlineMarkup(trimmed.substring(6))
             }
 
+            // The toolbar's checkbox button writes a bare "[ ] " at the start of a line, so the
+            // renderer understands that form as well as the task-list one above.
+            trimmed.startsWith("[ ] ") || trimmed.startsWith("[x] ") ||
+                trimmed.startsWith("[X] ") -> {
+                val checked = !trimmed.startsWith("[ ] ")
+                append("    ".repeat(indent / 4))
+                append(if (checked) "☑  " else "☐  ")
+                appendInlineMarkup(trimmed.substring(4))
+            }
+
             trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("+ ") -> {
                 append("    ".repeat(indent / 4))
                 append("•  ")

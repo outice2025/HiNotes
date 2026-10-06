@@ -3,10 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-      INTERNET is used only by the optional "Check for updates" action on the About screen,
-      which fetches the latest release tag. Nothing about the device or the notes is sent.
+      No INTERNET permission: the app makes no network request of its own. "Check for updates" on
+      the About screen opens the project's releases page in a browser, which is the browser's
+      request rather than the app's.
     -->
-    <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
       Declared so the biometric prompt can run on devices whose sensor needs it; both are

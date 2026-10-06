@@ -31,6 +31,7 @@ object Symbols {
     @DrawableRes val FormatSize: Int = R.drawable.sym_format_size
     @DrawableRes val GridView: Int = R.drawable.sym_grid_view
     @DrawableRes val Info: Int = R.drawable.sym_info
+    @DrawableRes val KeyboardArrowDown: Int = R.drawable.sym_keyboard_arrow_down
     @DrawableRes val Language: Int = R.drawable.sym_language
     @DrawableRes val List: Int = R.drawable.sym_list
     @DrawableRes val Lock: Int = R.drawable.sym_lock

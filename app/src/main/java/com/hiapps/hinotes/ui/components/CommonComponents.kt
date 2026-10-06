@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -23,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
@@ -70,9 +72,9 @@ fun ConfirmDialog(
  * Circular, and drawn from the very same `ic_logo_note` vector the launcher icon is generated
  * from, so the in-app identity and the home-screen icon are the same shape.
  *
- * The glyph occupies 45% of the badge's diameter. That is deliberately inside the 45-50% band
- * the mark was drawn to sit in: at 52% the pencil crowded the circle and read as if it had been
- * scaled up by mistake. The badge itself - its size, its colour and its shape - is untouched.
+ * The glyph occupies 40% of the badge's diameter. The mark has been asked for smaller twice now,
+ * so the number is stated here rather than buried: the badge itself - its size, its colour and
+ * its shape - is untouched, only the artwork inside it shrinks.
  */
 @Composable
 fun AppLogoPlaceholder(
@@ -94,7 +96,7 @@ fun AppLogoPlaceholder(
                     id = com.hiapps.hinotes.R.drawable.ic_logo_note,
                 ),
                 contentDescription = null,
-                modifier = Modifier.size(size * 0.45f),
+                modifier = Modifier.size(size * 0.40f),
             )
         }
     }
@@ -108,6 +110,10 @@ fun AppLogoPlaceholder(
  *
  * The card carries no timestamp: a note is recognised by what it says, and the date belongs in
  * the editor's properties sheet, where there is room to show it exactly.
+ *
+ * The shape is applied to the *modifier* as well as to the card's own background, so the ripple
+ * and the long-press highlight are clipped to the rounded corners. Clipping only the background
+ * left those overlays as sharp rectangles sitting on the corners of every card.
  *
  * @param content the note body, rendered as Markdown when [markdownEnabled].
  * @param compact a denser layout for the grid arrangement, where cards are half as wide.
@@ -127,14 +133,16 @@ fun NoteCard(
     compact: Boolean = false,
     bodyMaxLines: Int = if (compact) 6 else 3,
 ) {
+    val shape = RoundedCornerShape(HiNotesCorners.Card)
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .clip(shape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+        shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) {
                 MaterialTheme.colorScheme.secondaryContainer

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HiNotes</string>
 
@@ -15,7 +15,7 @@
     <string name="editor_delete">删除笔记</string>
     <string name="home_empty">无笔记</string>
     <string name="home_empty_search">没有匹配的笔记</string>
-    <string name="home_empty_hint">点击「创建笔记」写下第一条笔记。</string>
+    <string name="home_empty_hint">点击「创建笔记」写下第一条笔记</string>
     <string name="home_create_note">创建笔记</string>
     <string name="home_note_count">%1$d 条笔记</string>
     <string name="home_clear_search">清除搜索</string>
@@ -37,7 +37,6 @@
     <string name="editor_mode_preview">浏览</string>
     <string name="editor_properties">属性</string>
     <string name="editor_share">分享</string>
-    <string name="editor_saved">笔记已保存</string>
     <string name="editor_autosaved">已自动保存</string>
     <string name="editor_discard_title">放弃修改？</string>
     <string name="editor_discard_message">这条笔记尚未保存的修改将会丢失。</string>
@@ -61,7 +60,7 @@
     <string name="editor_share_chooser">分享笔记</string>
     <string name="editor_share_failed">没有可以分享这条笔记的应用</string>
     <string name="editor_preview_badge">浏览模式 · 已停止编辑</string>
-    <string name="editor_markdown_hint">Markdown 已开启 · 工具栏插入 Markdown 语法</string>
+    <string name="editor_more_actions">更多操作</string>
 
     <!-- 设置页 -->
     <string name="settings_title">设置</string>
@@ -120,6 +119,7 @@
     <string name="backup_import_confirm_message">当前数据将被所选文件的内容替换，此操作无法撤销。</string>
     <string name="backup_import_confirm">覆盖</string>
     <string name="backup_failed">备份失败：%1$s</string>
+    <string name="backup_no_app">没有可以接收文件的应用</string>
     <string name="backup_restore_defaults">恢复默认设置</string>
     <string name="backup_restore_defaults_support">重置所有设置</string>
     <string name="backup_restore_done">设置已恢复默认</string>
@@ -156,14 +156,11 @@
     <string name="about_title">关于</string>
     <string name="about_tagline">一个开源且 100%% FOSS 的笔记应用</string>
     <string name="about_version">版本号</string>
-    <string name="about_version_support">%1$s 已发布</string>
+    <string name="about_version_support">%1$s released</string>
     <string name="about_check_updates">检查更新</string>
-    <string name="about_checking">正在检查更新…</string>
-    <string name="about_up_to_date">已是最新版本</string>
-    <string name="about_update_available">发现新版本 %1$s</string>
-    <string name="about_update_failed">无法访问更新源</string>
+    <string name="about_check_updates_support">打开 releases 页面</string>
     <string name="about_repository">仓库地址</string>
-    <string name="about_repository_support">github.com/hinotes/hinotes</string>
+    <string name="about_repository_support">github.com/outice2025/hinotes</string>
     <string name="about_export_logs">导出日志</string>
     <string name="about_export_logs_support">导出诊断文件用于反馈</string>
     <string name="about_logs_exported">日志已导出</string>

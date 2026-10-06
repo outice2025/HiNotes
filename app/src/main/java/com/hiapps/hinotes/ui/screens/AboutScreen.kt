@@ -37,20 +37,25 @@ import com.hiapps.hinotes.ui.components.SettingsScaffold
 import com.hiapps.hinotes.ui.components.SettingsSection
 import com.hiapps.hinotes.ui.components.SettingsSectionGap
 import com.hiapps.hinotes.ui.icons.Symbols
-import com.hiapps.hinotes.update.UpdateChecker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Project home page, used by the repository row. */
-private const val REPOSITORY_URL = "https://github.com/hinotes/hinotes"
+private const val REPOSITORY_URL = "https://github.com/outice2025/hinotes"
+
+/** Releases page, opened by the "Check for updates" row. */
+private const val RELEASES_URL = "$REPOSITORY_URL/releases"
 
 /**
- * About: the app mark, name, tagline, version, and the update / repository / logs actions.
+ * About: the app mark, name, tagline, version, and the updates / repository / logs actions.
  *
- * All three rows do real work: the update check queries the release feed, the repository row
- * opens the project page, and the logs row writes a diagnostics file and hands it to the share
- * sheet. None of them are placeholders.
+ * All three rows do real work: the updates row opens the project's releases page in a browser,
+ * the repository row opens the project page, and the logs row writes a diagnostics file and hands
+ * it to the share sheet. None of them are placeholders.
+ *
+ * "Check for updates" is a link rather than a version comparison against a release feed, which
+ * means the app now makes no network request of its own at all and needs no INTERNET permission.
  */
 @Composable
 fun AboutScreen(
@@ -66,6 +71,14 @@ fun AboutScreen(
 
     suspend fun message(text: String) {
         snackbarHostState.showSnackbar(text)
+    }
+
+    /** Opens [url] in whatever app handles links, reporting it when nothing does. */
+    fun openLink(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(intent) }
+            .onFailure { scope.launch { message(context.getString(R.string.about_no_browser)) } }
     }
 
     SettingsScaffold(
@@ -116,23 +129,8 @@ fun AboutScreen(
             SettingsRow(
                 icon = Symbols.Update,
                 headline = stringResource(R.string.about_check_updates),
-                supporting = null,
-                onClick = {
-                    scope.launch {
-                        message(context.getString(R.string.about_checking))
-                        val outcome = withContext(Dispatchers.IO) {
-                            UpdateChecker.check(BuildConfig.VERSION_NAME)
-                        }
-                        notice = when (outcome) {
-                            is UpdateChecker.Outcome.UpToDate ->
-                                context.getString(R.string.about_up_to_date)
-                            is UpdateChecker.Outcome.Available ->
-                                context.getString(R.string.about_update_available, outcome.version)
-                            is UpdateChecker.Outcome.Failed ->
-                                context.getString(R.string.about_update_failed)
-                        }
-                    }
-                },
+                supporting = stringResource(R.string.about_check_updates_support),
+                onClick = { openLink(RELEASES_URL) },
                 trailing = { OpenInNewBadge() },
                 isFirst = true,
                 isLast = false,
@@ -141,13 +139,7 @@ fun AboutScreen(
                 icon = Symbols.Box,
                 headline = stringResource(R.string.about_repository),
                 supporting = stringResource(R.string.about_repository_support),
-                onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(REPOSITORY_URL))
-                    runCatching { context.startActivity(intent) }
-                        .onFailure {
-                            scope.launch { message(context.getString(R.string.about_no_browser)) }
-                        }
-                },
+                onClick = { openLink(REPOSITORY_URL) },
                 trailing = { OpenInNewBadge() },
                 isFirst = false,
                 isLast = false,

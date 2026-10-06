@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,8 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalTextStyle
@@ -31,6 +28,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -61,10 +61,13 @@ import com.hiapps.hinotes.ui.components.ConnectedIconButton
 import com.hiapps.hinotes.ui.components.ConnectedIconButtonGroup
 import com.hiapps.hinotes.ui.components.ExpressiveButtonSize
 import com.hiapps.hinotes.ui.components.PropertiesSheet
+import com.hiapps.hinotes.ui.components.SplitButton
+import com.hiapps.hinotes.ui.components.SplitButtonMenuItem
 import com.hiapps.hinotes.ui.editor.EditorState
 import com.hiapps.hinotes.ui.editor.Markdown
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
+import com.hiapps.hinotes.ui.theme.HiNotesCorners
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -74,19 +77,27 @@ private const val UNDO_COALESCE_MS = 400L
 /** Autosave cadence, matching the interval quoted in the editor settings screen. */
 private const val AUTOSAVE_INTERVAL_MS = 20_000L
 
-/** Editor canvas height from the design; taller than most phones, so the screen scrolls. */
-private val CANVAS_HEIGHT = 740.dp
+/** Height of the filled title box, from the design. */
+private val TITLE_HEIGHT = 68.dp
+
+/** Gap between the header row and the title box, and between the title and the canvas. */
+private val HEADER_GAP = 24.dp
+private val TITLE_GAP = 12.dp
 
 /**
  * The note editor.
  *
- * Layout follows the design: a top row with the back button and the elevated split button, the
- * outlined "Title" field, and the 380x740dp canvas (`surfaceContainerHigh`, 28dp radius) with
- * the connected formatting toolbar drawn over its lower edge.
+ * Layout follows the design: a top row with the back button and the split button (save plus its
+ * menu), a filled 68dp title box, and the canvas (`surfaceContainerHigh`, 28dp radius) with the
+ * connected formatting toolbar drawn over its lower edge.
  *
- * The canvas is taller than a phone screen, so its content scrolls inside a fixed-height frame
- * rather than being clipped - the geometry the design asks for is kept, and the note stays
- * fully reachable.
+ * The canvas takes the height that is left over instead of being pinned to the design's 712dp.
+ * Those two are the same number on the design's own frame - 44 header + 24 + 68 title + 12 leaves
+ * 712 of an 820dp frame - but pinning it means that on any shorter viewport the toolbar at the
+ * bottom of the canvas is pushed below the fold, and the one control the note cannot be written
+ * without is the one that gets cut. Taking the remainder also means the outer column never needs
+ * to scroll: the canvas scrolls its own content, and the keyboard simply shortens the canvas
+ * instead of covering the toolbar.
  */
 @Composable
 fun EditorScreen(
@@ -110,7 +121,6 @@ fun EditorScreen(
     var loadComplete by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmDeleteNote by remember { mutableStateOf(false) }
-    var sortMenuOpen by remember { mutableStateOf(false) }
     var findOpen by remember { mutableStateOf(false) }
     var findQuery by remember { mutableStateOf("") }
     var showProperties by remember { mutableStateOf(false) }
@@ -121,9 +131,14 @@ fun EditorScreen(
 
     LaunchedEffect(noteId) {
         loadComplete = false
+        // A brand-new note is *not* written to the database here. Creating the row on open meant
+        // that simply visiting the editor and backing out - or losing the app to the recents
+        // screen - left an empty "Untitled" note behind, and every restore of the editor added
+        // another one. The note is held in memory and only reaches the repository when the user
+        // saves something worth keeping.
         val note = when {
-            noteId == NEW_NOTE_ID || noteId.isBlank() -> viewModel.notesRepository.createNote()
-            else -> viewModel.notesRepository.note(noteId) ?: viewModel.notesRepository.createNote()
+            noteId == NEW_NOTE_ID || noteId.isBlank() -> Note()
+            else -> viewModel.notesRepository.note(noteId) ?: Note()
         }
         viewModel.openNote(note.id)
         loadedNote = note
@@ -213,7 +228,6 @@ fun EditorScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .imePadding()
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -240,127 +254,106 @@ fun EditorScreen(
                 // Pushes the actions to the right edge.
                 Spacer(Modifier.weight(1f))
 
-                // Two plain icon buttons, matching the back button on the left: the same 44dp
-                // circular target and the same icon size, so the row reads as one set of
-                // controls rather than a pill glued to a button.
-                IconButton(
-                    onClick = { sortMenuOpen = true },
-                    modifier = Modifier.size(44.dp),
-                    shape = RoundedCornerShape(percent = 50),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                ) {
-                    SymbolIcon(
-                        codepoint = if (previewMode) Symbols.Visibility else Symbols.Edit,
-                        contentDescription = stringResource(
-                            if (previewMode) R.string.editor_mode_preview else R.string.editor_mode_edit,
-                        ),
-                        size = 24.dp,
-                    )
-                }
-
-                Spacer(Modifier.width(4.dp))
-
-                IconButton(
-                    onClick = {
+                // Save, plus the menu of secondary actions, as one split control: the same 44dp
+                // height and the same 16dp corners as before, split in two by a 2dp seam.
+                SplitButton(
+                    primaryIcon = Symbols.Check,
+                    primaryContentDescription = stringResource(R.string.editor_save),
+                    onPrimaryClick = {
+                        // Save and leave. No snackbar on this path: `showSnackbar` suspends until
+                        // the message has been on screen for its full duration, so announcing
+                        // "saved" here held the editor open for four seconds after the tap. The
+                        // note appearing in the list behind is the feedback.
                         scope.launch {
-                            if (persist()) {
-                                snackbarHostState.showSnackbar(
-                                    context.getString(R.string.editor_saved),
-                                )
-                                onBack()
-                            } else {
-                                onBack()
-                            }
+                            persist()
+                            onBack()
                         }
                     },
-                    modifier = Modifier.size(44.dp),
-                    shape = RoundedCornerShape(percent = 50),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                ) {
-                    SymbolIcon(
-                        codepoint = Symbols.Check,
-                        contentDescription = stringResource(R.string.editor_save),
-                        size = 24.dp,
-                    )
-                }
-
-                // Overflow menu for the secondary editor actions. Anchored to this Box so it
-                // drops from the button rather than the screen corner.
-                Box {
-                    Spacer(Modifier.size(1.dp))
-                    DropdownMenu(
-                        expanded = sortMenuOpen,
-                        onDismissRequest = { sortMenuOpen = false },
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ) {
-                        EditorMenuItem(Symbols.Edit, R.string.editor_mode_edit) {
-                            previewMode = false
-                            sortMenuOpen = false
-                        }
-                        EditorMenuItem(Symbols.Visibility, R.string.editor_mode_preview) {
-                            previewMode = true
-                            sortMenuOpen = false
-                        }
-                        EditorMenuItem(Symbols.Info, R.string.editor_properties) {
-                            showProperties = true
-                            sortMenuOpen = false
-                        }
-                        EditorMenuItem(Symbols.Share, R.string.editor_share) {
-                            sortMenuOpen = false
-                            // Shares what is on screen, saved or not: a note the user is still
-                            // writing is exactly the one they may want to send. Nothing is
-                            // persisted by this action, and a blank note is still shareable
-                            // (it goes out as its title), so the share sheet always appears -
-                            // a silent no-op here is what made this button look broken.
-                            val body = editorState.value.text
-                            val heading = title.ifBlank {
-                                body.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
-                            }.ifBlank { untitled }
-                            scope.launch {
-                                if (!shareNote(context, heading, body)) {
-                                    snackbarHostState.showSnackbar(
-                                        context.getString(R.string.editor_share_failed),
-                                    )
+                    menuItems = buildList {
+                        add(
+                            SplitButtonMenuItem(
+                                icon = Symbols.Edit,
+                                label = stringResource(R.string.editor_mode_edit),
+                            ) { previewMode = false },
+                        )
+                        add(
+                            SplitButtonMenuItem(
+                                icon = Symbols.Visibility,
+                                label = stringResource(R.string.editor_mode_preview),
+                            ) { previewMode = true },
+                        )
+                        add(
+                            SplitButtonMenuItem(
+                                icon = Symbols.Info,
+                                label = stringResource(R.string.editor_properties),
+                            ) { showProperties = true },
+                        )
+                        add(
+                            SplitButtonMenuItem(
+                                icon = Symbols.Share,
+                                label = stringResource(R.string.editor_share),
+                            ) {
+                                // Shares what is on screen, saved or not: a note the user is
+                                // still writing is exactly the one they may want to send.
+                                // Nothing is persisted by this action, and a blank note is
+                                // still shareable (it goes out as its title), so the share
+                                // sheet always appears - a silent no-op here is what made this
+                                // button look broken.
+                                val body = editorState.value.text
+                                val heading = title.ifBlank {
+                                    body.lineSequence().firstOrNull { it.isNotBlank() }
+                                        ?.trim().orEmpty()
+                                }.ifBlank { untitled }
+                                scope.launch {
+                                    if (!shareNote(context, heading, body)) {
+                                        snackbarHostState.showSnackbar(
+                                            context.getString(R.string.editor_share_failed),
+                                        )
+                                    }
                                 }
-                            }
-                        }
-                        // The label follows the note's state, so the row never offers to lock
-                        // a note that is already locked.
-                        EditorMenuItem(
-                            icon = Symbols.Lock,
-                            labelRes = if (loadedNote?.isLocked == true) {
-                                R.string.unlock_make_public
-                            } else {
-                                R.string.unlock_make_private
                             },
-                        ) {
-                            sortMenuOpen = false
-                            scope.launch {
-                                // Persist first: locking a note must not discard what the user
-                                // has typed since the last save.
-                                val note = loadedNote
-                                if (note != null && persist()) {
-                                    viewModel.setNoteLocked(note.id, !note.isLocked)
+                        )
+                        // The label follows the note's state, so the menu never offers to lock a
+                        // note that is already locked.
+                        add(
+                            SplitButtonMenuItem(
+                                icon = Symbols.Lock,
+                                label = stringResource(
+                                    if (loadedNote?.isLocked == true) {
+                                        R.string.unlock_make_public
+                                    } else {
+                                        R.string.unlock_make_private
+                                    },
+                                ),
+                            ) {
+                                scope.launch {
+                                    // Persist first: locking a note must not discard what the
+                                    // user has typed since the last save.
+                                    val note = loadedNote
+                                    if (note != null && persist()) {
+                                        viewModel.setNoteLocked(note.id, !note.isLocked)
+                                    }
                                 }
-                            }
-                        }
-                        EditorMenuItem(Symbols.Delete, R.string.editor_delete) {
-                            sortMenuOpen = false
-                            confirmDeleteNote = true
-                        }
-                    }
-                }
+                            },
+                        )
+                        add(
+                            SplitButtonMenuItem(
+                                icon = Symbols.Delete,
+                                label = stringResource(R.string.editor_delete),
+                            ) { confirmDeleteNote = true },
+                        )
+                    },
+                    menuContentDescription = stringResource(R.string.editor_more_actions),
+                )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(HEADER_GAP))
 
-            // Title field. Read-only in preview mode: the preview promises that the note cannot
-            // be changed, so the title has to be locked down with the body.
-            OutlinedTextField(
+            // Title. A filled box rather than an outlined field, per the design: the same
+            // container colour and 28dp radius as the canvas below it, with the label acting as
+            // its placeholder. Read-only in preview mode, because the preview promises that the
+            // note cannot be changed.
+            TextField(
                 value = title,
                 onValueChange = {
                     title = it
@@ -369,22 +362,36 @@ fun EditorScreen(
                 label = { Text(stringResource(R.string.editor_title_label)) },
                 singleLine = true,
                 readOnly = previewMode,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(HiNotesCorners.Canvas),
+                textStyle = LocalTextStyle.current.copy(
+                    fontSize = (17f * settings.noteFontScale.multiplier).sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 56.dp),
+                    .height(TITLE_HEIGHT),
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(TITLE_GAP))
 
             // Canvas: the editor body sits on this container and the toolbar is drawn over it.
+            // It takes the height left over by everything above it, which is the design's 712dp
+            // on the design's own frame and a little less on a shorter screen.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(CANVAS_HEIGHT)
+                    .weight(1f)
                     .background(
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(HiNotesCorners.Canvas),
                     ),
             ) {
                 val bodyStyle = LocalTextStyle.current.copy(
@@ -526,8 +533,11 @@ fun EditorScreen(
                                 icon = Symbols.CheckBoxOutlineBlank,
                                 contentDescription = stringResource(R.string.editor_checkbox),
                             ) {
+                                // A bare "[ ] " rather than the GitHub task-list "- [ ] ": the
+                                // button is pressed at the start of a line to make a checkbox,
+                                // and the renderer understands both forms.
                                 editorState.applyEdit(
-                                    Markdown.toggleLinePrefix(editorState.value, "- [ ] "),
+                                    Markdown.toggleLinePrefix(editorState.value, "[ ] "),
                                 )
                             },
                             ConnectedIconButton(
@@ -542,7 +552,7 @@ fun EditorScreen(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(12.dp),
-                        size = ExpressiveButtonSize.Medium,
+                        size = ExpressiveButtonSize.Compact,
                     )
                 }
             }
@@ -557,17 +567,6 @@ fun EditorScreen(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-
-            if (settings.markdownEnabled && !previewMode) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.editor_markdown_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Spacer(Modifier.height(24.dp))
         }
     }
 
@@ -626,21 +625,4 @@ fun EditorScreen(
             // dispose scope could race with the note being deleted.
         }
     }
-}
-
-/** One row of the editor's overflow menu. */
-@Composable
-private fun EditorMenuItem(icon: Int, labelRes: Int, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = {
-            Text(
-                text = stringResource(labelRes),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        },
-        onClick = onClick,
-        leadingIcon = {
-            SymbolIcon(codepoint = icon, contentDescription = null, size = 24.dp)
-        },
-    )
 }

@@ -44,6 +44,7 @@ import com.hiapps.hinotes.ui.components.HomeSearchBar
 import com.hiapps.hinotes.ui.components.NoteCard
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
+import com.hiapps.hinotes.ui.theme.LocalDarkTheme
 import kotlinx.coroutines.launch
 
 /** The screen's outer gutter, shared by the search field and the note list. */
@@ -113,15 +114,32 @@ fun HomeScreen(
                     // Delete sits to the LEFT of "Create note". The Scaffold's FAB slot is at
                     // the end of the screen, so this order places delete first.
                     //
-                    // Same 16dp corner as "Create note" - only the colour differs, and it is the
-                    // same pair of error roles with the container and the content swapped, so the
-                    // destructive action reads as the loud one of the two.
+                    // A bare trash icon rather than a labelled button: the selected count is on
+                    // the header line directly above, so the button only has to say which action
+                    // it performs.
+                    //
+                    // The error container and its content swap places with the theme - a pale red
+                    // button carrying a dark red glyph in light mode, the reverse in dark mode -
+                    // which lands on the same visual weight either way without losing contrast.
+                    val dark = LocalDarkTheme.current
                     ExtendedFab(
                         icon = Symbols.Delete,
-                        label = stringResource(R.string.home_delete_selected, selectedIds.size),
+                        label = null,
+                        contentDescription = stringResource(
+                            R.string.home_delete_selected,
+                            selectedIds.size,
+                        ),
                         onClick = { confirmDelete = true },
-                        containerColor = MaterialTheme.colorScheme.onErrorContainer,
-                        contentColor = MaterialTheme.colorScheme.errorContainer,
+                        containerColor = if (dark) {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        } else {
+                            MaterialTheme.colorScheme.errorContainer
+                        },
+                        contentColor = if (dark) {
+                            MaterialTheme.colorScheme.errorContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        },
                     )
                     Spacer(Modifier.width(12.dp))
                 }

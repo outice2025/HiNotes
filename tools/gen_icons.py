@@ -29,7 +29,7 @@ GLYPH = "edit"
 EM_UNITS = 960.0
 
 ADAPTIVE_VIEWPORT = 108.0
-ADAPTIVE_ARTWORK = 41.0          # artwork size inside the 108dp canvas
+ADAPTIVE_ARTWORK = 38.0          # artwork size inside the 108dp canvas
 LOGO_VIEWPORT = 24.0
 LOGO_ARTWORK = 24.0              # the in-app mark fills its box
 
@@ -38,7 +38,7 @@ DENSITIES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 BG = (74, 68, 89, 255)      # fallback mono primaryContainer
 FG = (230, 224, 240, 255)   # fallback mono onPrimaryContainer
 
-PNG_ARTWORK = 0.61          # fraction of the legacy icon the glyph occupies
+PNG_ARTWORK = 0.56          # fraction of the legacy icon the glyph occupies
 
 
 def codepoint(name):

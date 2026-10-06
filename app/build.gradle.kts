@@ -16,8 +16,8 @@ val keystoreProps = Properties().apply {
     }
 }
 
-val appVersionName = "0.0.8"
-val appVersionCode = 8
+val appVersionName = "0.0.9"
+val appVersionCode = 9
 
 android {
     namespace = "com.hiapps.hinotes"

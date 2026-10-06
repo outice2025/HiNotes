@@ -96,6 +96,10 @@ fun HiNotesTheme(
         LocalMotionScheme provides motion,
         LocalContentTypeScale provides contentScale,
         LocalContentTypeWeight provides contentWeight,
+        // No colour role can answer "is this theme dark?": the error roles swap places between
+        // the modes, so a component that wants the same *effect* in both has to know which mode
+        // it is in rather than which role it is reading.
+        LocalDarkTheme provides darkTheme,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -104,6 +108,9 @@ fun HiNotesTheme(
         )
     }
 }
+
+/** True while the app is painting its dark scheme. */
+val LocalDarkTheme = staticCompositionLocalOf { false }
 
 /** Type scale applied to note content (editor body, previews, list snippets). */
 val LocalContentTypeScale = staticCompositionLocalOf { AppFontScale.Default }

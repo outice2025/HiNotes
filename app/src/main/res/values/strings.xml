@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HiNotes</string>
 
@@ -15,7 +15,7 @@
     <string name="editor_delete">Delete note</string>
     <string name="home_empty">No notes</string>
     <string name="home_empty_search">No matching notes</string>
-    <string name="home_empty_hint">Tap “Create note” to write your first note.</string>
+    <string name="home_empty_hint">Tap “Create note” to write your first note</string>
     <string name="home_create_note">Create note</string>
     <string name="home_note_count">%1$d notes</string>
     <string name="home_clear_search">Clear search</string>
@@ -37,7 +37,6 @@
     <string name="editor_mode_preview">Preview</string>
     <string name="editor_properties">Properties</string>
     <string name="editor_share">Share</string>
-    <string name="editor_saved">Note saved</string>
     <string name="editor_autosaved">Autosaved</string>
     <string name="editor_discard_title">Discard changes?</string>
     <string name="editor_discard_message">Your unsaved changes to this note will be lost.</string>
@@ -61,7 +60,7 @@
     <string name="editor_share_chooser">Share note</string>
     <string name="editor_share_failed">No app can share this note</string>
     <string name="editor_preview_badge">Preview · editing is off</string>
-    <string name="editor_markdown_hint">Markdown is on · the toolbar inserts Markdown syntax</string>
+    <string name="editor_more_actions">More actions</string>
 
     <!-- Settings root -->
     <string name="settings_title">Settings</string>
@@ -120,6 +119,7 @@
     <string name="backup_import_confirm_message">Your current data will be replaced by the contents of the selected file. This cannot be undone.</string>
     <string name="backup_import_confirm">Overwrite</string>
     <string name="backup_failed">Backup failed: %1$s</string>
+    <string name="backup_no_app">no app can receive the file</string>
     <string name="backup_restore_defaults">Restore defaults</string>
     <string name="backup_restore_defaults_support">Reset every setting</string>
     <string name="backup_restore_done">Settings restored to defaults</string>
@@ -156,13 +156,11 @@
     <string name="about_title">About</string>
     <string name="about_tagline">An open source, 100%% FOSS note-taking app</string>
     <string name="about_version">Version</string>
-    <string name="about_version_support">%1$s released</string>    <string name="about_check_updates">Check for updates</string>
-    <string name="about_checking">Checking for updates…</string>
-    <string name="about_up_to_date">You are on the latest version</string>
-    <string name="about_update_available">Version %1$s is available</string>
-    <string name="about_update_failed">Could not reach the release feed</string>
+    <string name="about_version_support">%1$s released</string>
+    <string name="about_check_updates">Check for updates</string>
+    <string name="about_check_updates_support">Open the releases page</string>
     <string name="about_repository">Repository</string>
-    <string name="about_repository_support">github.com/hinotes/hinotes</string>
+    <string name="about_repository_support">github.com/outice2025/hinotes</string>
     <string name="about_export_logs">Export logs</string>
     <string name="about_export_logs_support">Share a diagnostics file</string>
     <string name="about_logs_exported">Logs exported</string>

@@ -256,6 +256,13 @@ enum class ExpressiveButtonSize(
 ) {
     XSmall(32.dp, 20.dp, 8.dp),
     Small(40.dp, 24.dp, 8.dp),
+
+    /**
+     * 48dp: the editor toolbar's size from the design. Seven of these plus their seams come to
+     * 348dp, which fits the 380dp canvas of a 412dp screen - the whole toolbar is reachable
+     * without scrolling, where the 56dp Medium size overflowed it by half a button.
+     */
+    Compact(48.dp, 24.dp, 8.dp),
     Medium(56.dp, 24.dp, 8.dp),
     Large(96.dp, 32.dp, 12.dp),
     XLarge(136.dp, 40.dp, 16.dp),
@@ -263,8 +270,6 @@ enum class ExpressiveButtonSize(
 
 /**
  * One button inside a [ConnectedIconButtonGroup].
- *
- * @param groupPosition where the button sits in its group, which decides its corner treatment.
  */
 data class ConnectedIconButton(
     val icon: Int,

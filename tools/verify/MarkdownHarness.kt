@@ -1,4 +1,4 @@
-package com.hiapps.hinotes.ui.editor
+﻿package com.hiapps.hinotes.ui.editor
 
 import androidx.compose.ui.text.input.TextFieldValue
 
@@ -30,36 +30,44 @@ object MarkdownHarness {
     private fun toggle(text: String, prefix: String, start: Int = text.length, end: Int = start):
         TextFieldValue = Markdown.toggleLinePrefix(value(text, start, end), prefix)
 
+    /** The marker the editor's checkbox button inserts. */
+    private const val CHECKBOX = "[ ] "
+
     @JvmStatic
     fun main(args: Array<String>) {
         println("Markdown line prefix")
 
         // The reported bug: the checkbox button did nothing on a new, empty note, because a blank
         // line counted as "already prefixed".
-        val empty = toggle("", "- [ ] ")
-        check("empty note gains a checkbox", empty.text == "- [ ] ", "'${empty.text}'")
-        check("caret lands after the marker", empty.selection.start == 6, "${empty.selection}")
+        val empty = toggle("", CHECKBOX)
+        check("empty note gains a checkbox", empty.text == CHECKBOX, "'${empty.text}'")
+        check(
+            "caret lands after the marker",
+            empty.selection.start == CHECKBOX.length,
+            "${empty.selection}",
+        )
 
         val emptyBullet = toggle("", "- ")
         check("empty note gains a bullet", emptyBullet.text == "- ", "'${emptyBullet.text}'")
 
         // Pressing it again removes what it added.
-        val twice = Markdown.toggleLinePrefix(empty, "- [ ] ")
+        val twice = Markdown.toggleLinePrefix(empty, CHECKBOX)
         check("second press removes it", twice.text == "", "'${twice.text}'")
 
         // A caret on a trailing blank line: the block has text above it that is not prefixed.
-        val afterText = toggle("hello\n", "- [ ] ", start = 6)
+        val afterText = toggle("hello\n", CHECKBOX, start = 6)
         check(
             "blank trailing line gains a checkbox",
-            afterText.text == "hello\n- [ ] ",
+            afterText.text == "hello\n$CHECKBOX",
             "'${afterText.text}'",
         )
 
         // A caret on a blank line inside a prefixed list adds to that line, not removes from all.
-        val insideList = toggle("- [ ] a\n\n- [ ] b", "- [ ] ", start = 8)
+        val checkboxList = "${CHECKBOX}a\n\n${CHECKBOX}b"
+        val insideList = toggle(checkboxList, CHECKBOX, start = 6)
         check(
             "blank line inside a list gains a checkbox",
-            insideList.text == "- [ ] a\n- [ ] \n- [ ] b",
+            insideList.text == "${CHECKBOX}a\n$CHECKBOX\n${CHECKBOX}b",
             "'${insideList.text}'",
         )
 
@@ -91,6 +99,14 @@ object MarkdownHarness {
         check("bullets drawn", list.startsWith("•"), "'$list'")
         val checkbox = Markdown.render("- [ ] todo\n- [x] done").text
         check("checkboxes drawn", checkbox.contains("☐") && checkbox.contains("☑"), "'$checkbox'")
+        // The form the toolbar button writes must render as a checkbox too.
+        val bareCheckbox = Markdown.render("[ ] todo\n[x] done").text
+        check(
+            "bare checkboxes drawn",
+            bareCheckbox.contains("☐") && bareCheckbox.contains("☑") &&
+                !bareCheckbox.contains("["),
+            "'$bareCheckbox'",
+        )
         val heading = Markdown.render("# Title").text
         check("heading text kept", heading == "Title", "'$heading'")
         val fence = Markdown.render("```\ncode\n```").text

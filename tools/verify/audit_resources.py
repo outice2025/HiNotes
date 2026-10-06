@@ -48,10 +48,12 @@ if only_en:
 if only_zh:
     problems.append(f"declared in Chinese but not English: {only_zh}")
 
-# Chinese entries left in English are almost always an oversight.
+# Chinese entries left in English are almost always an oversight. These are deliberate: the app's
+# name is a brand, a repository URL is a URL, and the version line keeps the word "released".
+ALLOWED_UNTRANSLATED = {"app_name", "about_repository_support", "about_version_support"}
 untranslated = [
     k for k, v in zh.items()
-    if k not in ("app_name", "about_repository_support") and not re.search(r"[\u4e00-\u9fff]", v)
+    if k not in ALLOWED_UNTRANSLATED and not re.search(r"[\u4e00-\u9fff]", v)
 ]
 if untranslated:
     problems.append(f"Chinese strings with no Chinese text: {untranslated}")

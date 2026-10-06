@@ -1,4 +1,4 @@
-﻿package com.hiapps.hinotes.ui.screens
+package com.hiapps.hinotes.ui.screens
 
 import android.content.Context
 import android.net.Uri
@@ -42,9 +42,13 @@ private enum class ImportKind { Settings, Notes }
 /**
  * Backup settings: export and import both settings and notes, plus restoring defaults.
  *
- * Files go through the Storage Access Framework, so the user picks the destination and the app
- * needs no storage permission. Every import is confirmed first and every outcome is reported in
- * a snackbar; a failed operation reports the reason instead of taking the process down.
+ * Exports are written into the app cache and handed to the system share sheet, which is how the
+ * About screen's diagnostics export has always worked - see [DocumentExport] for why that route
+ * is used rather than a document picker. Imports read a file the user picks through the Storage
+ * Access Framework, so the app needs no storage permission either way.
+ *
+ * Every import is confirmed first and every outcome is reported in a snackbar; a failed operation
+ * reports the reason instead of taking the process down.
  */
 @Composable
 fun BackupScreen(
@@ -116,43 +120,66 @@ fun BackupScreen(
 
     // ---------------------------------------------------------------- exporters
 
-    val exportSettingsLauncher = rememberLauncherForActivityResult(
-        CreateDocumentContract("application/json"),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
+    /**
+     * Settings leave as a JSON file, notes leave as a zip of Markdown documents, and both are
+     * written into the app cache and handed to the share sheet - the same route the About
+     * screen's diagnostics export takes. A document picker would be the tidier API, but on a
+     * device whose provider does not answer `ACTION_CREATE_DOCUMENT` it fails without ever
+     * telling anyone, which is exactly the "the button does nothing" the export used to be.
+     */
+    fun exportSettings() {
         runBackup {
             val snapshot = viewModel.settings.value
-            val payload = Backup.encodeSettings(snapshot)
-            if (writeDocument(context, uri, payload.toByteArray(Charsets.UTF_8))) {
+            val payload = Backup.encodeSettings(snapshot).toByteArray(Charsets.UTF_8)
+            // The write stays off the main thread even though these files are small.
+            val opened = withContext(Dispatchers.IO) {
+                DocumentExport.share(
+                    context = context,
+                    fileName = Backup.fileName("settings"),
+                    mimeType = "application/json",
+                    chooserTitle = context.getString(R.string.backup_export_settings),
+                    bytes = payload,
+                )
+            }
+            if (opened) {
                 context.getString(
                     R.string.backup_export_settings_done,
                     snapshot.nonDefaultCount(),
                 )
             } else {
-                context.getString(R.string.backup_failed, "write error")
+                context.getString(
+                    R.string.backup_failed,
+                    context.getString(R.string.backup_no_app),
+                )
             }
         }
     }
 
-    /**
-     * Notes leave as a zip of Markdown files rather than as one JSON blob: the result is a
-     * folder of readable documents that any editor can open, and nothing about the app has to
-     * be installed to use them.
-     */
-    val exportNotesLauncher = rememberLauncherForActivityResult(
-        CreateDocumentContract("application/zip"),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
+    /** Notes leave as one Markdown document per note, zipped. */
+    fun exportNotes() {
         runBackup {
             val notes = viewModel.allNotes()
             if (notes.isEmpty()) {
                 context.getString(R.string.backup_empty)
             } else {
-                val archive = NotesArchive.encode(notes)
-                if (writeDocument(context, uri, archive)) {
+                // Zipping and writing stay off the main thread: a long note list is still small,
+                // but there is no reason to build it in the frame the user is looking at.
+                val opened = withContext(Dispatchers.IO) {
+                    DocumentExport.share(
+                        context = context,
+                        fileName = Backup.fileName("notes", "zip"),
+                        mimeType = "application/zip",
+                        chooserTitle = context.getString(R.string.backup_export_notes),
+                        bytes = NotesArchive.encode(notes),
+                    )
+                }
+                if (opened) {
                     context.getString(R.string.backup_export_notes_done, notes.size)
                 } else {
-                    context.getString(R.string.backup_failed, "write error")
+                    context.getString(
+                        R.string.backup_failed,
+                        context.getString(R.string.backup_no_app),
+                    )
                 }
             }
         }
@@ -198,9 +225,7 @@ fun BackupScreen(
                 icon = Symbols.Download,
                 headline = stringResource(R.string.backup_export_settings),
                 supporting = stringResource(R.string.backup_export_settings_support),
-                onClick = {
-                    launchPicker { exportSettingsLauncher.launch(Backup.fileName("settings")) }
-                },
+                onClick = { exportSettings() },
                 isFirst = true,
                 isLast = false,
             )
@@ -221,18 +246,17 @@ fun BackupScreen(
                 icon = Symbols.Download,
                 headline = stringResource(R.string.backup_export_notes),
                 supporting = stringResource(R.string.backup_export_notes_support),
-                onClick = {
-                    launchPicker { exportNotesLauncher.launch(Backup.fileName("notes", "zip")) }
-                },
+                onClick = { exportNotes() },
                 isFirst = true,
                 isLast = false,
             )
+            // No trailing chevron: only the rows that open another screen or dialog carry one,
+            // and this one starts a file picker directly.
             SettingsRow(
                 icon = Symbols.Upload,
                 headline = stringResource(R.string.backup_import_notes),
                 supporting = stringResource(R.string.backup_import_notes_support),
                 onClick = { pendingImport = ImportKind.Notes },
-                trailing = { Chevron() },
                 isFirst = false,
                 isLast = true,
             )
@@ -298,56 +322,6 @@ private val NOTES_MIME_TYPES = arrayOf(
     "text/plain",
     "application/octet-stream",
 )
-
-/**
- * Writes [bytes] to the document the user chose, then reads the document back to prove the
- * bytes landed.
- *
- * The read-back matters: a provider can accept a stream, report no error and still keep nothing
- * (the wrong mode, a document that was never committed), and a report of "exported" over a file
- * that is not there is worse than an error. The verification is a length comparison, so it costs
- * one read of a file the app just produced.
- *
- * Returns false - rather than throwing - for the expected failure modes, so the caller can report
- * them; only a genuinely unexpected error reaches the crash handler.
- */
-private suspend fun writeDocument(context: Context, uri: Uri, bytes: ByteArray): Boolean =
-    withContext(Dispatchers.IO) {
-        try {
-            val stream = context.contentResolver.openOutputStream(uri, "wt")
-                ?: context.contentResolver.openOutputStream(uri)
-                ?: return@withContext false
-            stream.use { out ->
-                out.write(bytes)
-                out.flush()
-            }
-        } catch (e: IOException) {
-            Log.e(TAG, "could not write export", e)
-            return@withContext false
-        } catch (e: SecurityException) {
-            Log.e(TAG, "no permission to write export", e)
-            return@withContext false
-        }
-
-        // Read the document back and compare lengths. A provider that reports no error yet keeps
-        // nothing is a real failure mode, and reporting "exported" over an empty file is worse
-        // than reporting an error. A provider that simply cannot be read back (some cloud
-        // documents) is not treated as a failure: the write itself already succeeded.
-        val written = try {
-            context.contentResolver.openInputStream(uri)?.use { it.readBytes().size }
-        } catch (e: IOException) {
-            Log.w(TAG, "could not verify export", e)
-            null
-        } catch (e: SecurityException) {
-            Log.w(TAG, "no permission to verify export", e)
-            null
-        }
-        if (written != null && written != bytes.size) {
-            Log.e(TAG, "export verification failed: wrote ${bytes.size}, read back $written")
-            return@withContext false
-        }
-        true
-    }
 
 private suspend fun readDocument(context: Context, uri: Uri): ByteArray? =
     withContext(Dispatchers.IO) {
