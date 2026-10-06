@@ -7,14 +7,17 @@ import glob
 import os
 import re
 import sys
+from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw
 
-sys.path.insert(0, r"D:\HiNotes\tools\verify")
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[1]
+sys.path.insert(0, str(HERE))
 from check_icon_geometry import flatten  # noqa: E402
 
-DRAWABLE = r"D:\HiNotes\app\src\main\res\drawable"
-OUT = r"D:\HiNotes\build\verify\badges.png"
+DRAWABLE = str(REPO / "app" / "src" / "main" / "res" / "drawable")
+OUT = str(REPO / "build" / "verify" / "badges.png")
 
 # The six settings rows, in order, and the four editor toolbar glyphs the user sees most.
 NAMES = ["palette", "edit", "language", "download", "password", "info",

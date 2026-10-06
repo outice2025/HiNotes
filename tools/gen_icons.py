@@ -17,6 +17,7 @@ left the pencil visibly off-centre inside the icon; centring on the ink puts it 
 """
 import os
 import re
+from pathlib import Path
 
 from fontTools.misc.transform import Transform
 from fontTools.pens.svgPathPen import SVGPathPen
@@ -24,9 +25,14 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 from PIL import Image, ImageDraw, ImageFont
 
-FONT = r"D:\tools\MaterialSymbolsRounded-var.ttf"
-CODEPOINTS = r"D:\tools\MaterialSymbolsRounded.codepoints"
-RES = r"D:\HiNotes\app\src\main\res"
+# This file lives in <repo>/tools, so the repository is one directory up. The Material Symbols
+# font is not redistributed with the app, so its paths come from the environment when set.
+REPO = Path(__file__).resolve().parents[1]
+FONT = os.environ.get("HINOTES_SYMBOLS_FONT", r"D:\tools\MaterialSymbolsRounded-var.ttf")
+CODEPOINTS = os.environ.get(
+    "HINOTES_SYMBOLS_CODEPOINTS", r"D:\tools\MaterialSymbolsRounded.codepoints"
+)
+RES = str(REPO / "app" / "src" / "main" / "res")
 
 GLYPH = "edit"
 EM_UNITS = 960.0

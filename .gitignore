@@ -23,3 +23,7 @@ keystore/
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Python bytecode from the tools in tools/
+__pycache__/
+*.pyc

@@ -10,10 +10,13 @@ variant for a scheme without colour.
 Run:  python tools/gen_accents.py
 """
 import os
+from pathlib import Path
 
 import material_color_utilities as m
 
-OUT = r"D:\HiNotes\app\src\main\java\com\hiapps\hinotes\ui\theme\AccentPalettes.kt"
+# This file lives in <repo>/tools, so the repository is one directory up.
+REPO = Path(__file__).resolve().parents[1]
+OUT = str(REPO / "app/src/main/java/com/hiapps/hinotes/ui/theme/AccentPalettes.kt")
 
 # enum entry -> (seed, MD3 variant). "Light purple" is not generated: it is the design's own
 # hand-specified palette and lives in ColorTokens.kt.

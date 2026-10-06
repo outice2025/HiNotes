@@ -3,7 +3,8 @@ import re
 import sys
 from pathlib import Path
 
-REPO = Path(r"D:\HiNotes")
+# This file lives in <repo>/tools/verify, so the repository is two directories up.
+REPO = Path(__file__).resolve().parents[2]
 JAVA = REPO / "app/src/main/java/com/hiapps/hinotes"
 RES = REPO / "app/src/main/res"
 

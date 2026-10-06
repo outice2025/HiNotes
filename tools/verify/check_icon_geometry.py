@@ -15,10 +15,14 @@ import glob
 import os
 import re
 import sys
+from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw
 
-DRAWABLE = r"D:\HiNotes\app\src\main\res\drawable"
+# This file lives in <repo>/tools/verify, so the repository is two directories up. Deriving it
+# keeps the check runnable from a clone anywhere.
+REPO = Path(__file__).resolve().parents[2]
+DRAWABLE = str(REPO / "app" / "src" / "main" / "res" / "drawable")
 VIEWPORT = 24.0
 PADDING = 2.0
 RES = 240          # pixels per 24dp viewport -> 0.1dp per pixel
