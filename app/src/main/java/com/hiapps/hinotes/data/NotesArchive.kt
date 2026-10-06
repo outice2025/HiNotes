@@ -84,9 +84,18 @@ object NotesArchive {
         }
     }
 
-    /** A unique, filesystem-safe `.md` name for [note] within one archive. */
+    /**
+     * A unique, filesystem-safe `.md` name for [note] within one archive.
+     *
+     * An untitled note is named after its first non-empty body line rather than after
+     * [FALLBACK_NAME]: on the home screen "Untitled" is the honest label for a note with no title,
+     * but twenty files called `Untitled.md` in one export help nobody. The name is only a file
+     * name - the note's own title is untouched by it.
+     */
     private fun uniqueName(note: Note, used: MutableSet<String>): String {
-        val cleaned = note.displayTitle(FALLBACK_NAME)
+        val cleaned = note.title.trim()
+            .ifBlank { note.content.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty() }
+            .ifBlank { FALLBACK_NAME }
             // Characters no common filesystem accepts, plus control characters.
             .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), " ")
             .replace(Regex("\\s+"), " ")

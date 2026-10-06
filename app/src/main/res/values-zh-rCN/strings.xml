@@ -59,7 +59,6 @@
     <string name="editor_props_words_hint">不含标题与标点符号</string>
     <string name="editor_share_chooser">分享笔记</string>
     <string name="editor_share_failed">没有可以分享这条笔记的应用</string>
-    <string name="editor_preview_badge">浏览模式 · 已停止编辑</string>
     <string name="editor_more_actions">更多操作</string>
 
     <!-- 设置页 -->
@@ -118,6 +117,7 @@
     <string name="backup_import_confirm_title">覆盖全部数据？</string>
     <string name="backup_import_confirm_message">当前数据将被所选文件的内容替换，此操作无法撤销。</string>
     <string name="backup_import_confirm">覆盖</string>
+    <string name="backup_import_invalid_settings">该文件不是 HiNotes 设置备份</string>
     <string name="backup_failed">备份失败：%1$s</string>
     <string name="backup_no_app">没有可以接收文件的应用</string>
     <string name="backup_restore_defaults">恢复默认设置</string>
@@ -152,9 +152,9 @@
 
     <!-- 关于 -->
     <string name="about_title">关于</string>
-    <string name="about_tagline">一个开源且 100% FOSS 的笔记应用</string>
+    <string name="about_tagline">简单易用的 100% FOSS 笔记应用</string>
     <string name="about_version">版本号</string>
-    <string name="about_version_support">%1$s released</string>
+    <string name="about_version_support">%1$s release</string>
     <string name="about_check_updates">检查更新</string>
     <string name="about_check_updates_support">打开 releases 页面</string>
     <string name="about_repository">仓库地址</string>

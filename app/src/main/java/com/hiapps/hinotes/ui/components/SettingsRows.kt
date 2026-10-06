@@ -1,21 +1,16 @@
 package com.hiapps.hinotes.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,9 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
+
+/** Row metrics, all taken from the style reference the settings list was revised to. */
+private val RowMinHeight = 76.dp
+private val RowSidePadding = 16.dp
+private val RowVerticalPadding = 16.dp
+private val RowIconGap = 16.dp
+private val RowTrailingGap = 12.dp
+private val LeadingGlyphSize = 24.dp
 
 /**
  * The corner treatment for one row inside a grouped list.
@@ -50,12 +54,16 @@ private fun groupedRowShape(isFirst: Boolean, isLast: Boolean): Shape {
 /**
  * An M3 Expressive list row.
  *
- * Matches the brief's measurements: 72dp tall, 24dp leading glyph on a 40dp `primaryContainer`
- * circle, `bodyLarge` headline and `bodyMedium` `onSurfaceVariant` supporting line, with an
- * optional trailing slot.
+ * Measured against the style reference the list was revised to: a bare 24dp glyph on the left -
+ * no badge behind it - a `titleMedium` headline, a `bodySmall` supporting line, and a row that is
+ * as tall as its own text rather than pinned to a fixed height, so a two-line row lands near
+ * 76dp and a three-line one near 88dp instead of everything being squeezed into 72dp. The glyph
+ * is vertically centred on the row, which is where the reference puts it.
  *
  * @param isFirst whether this row starts its group (rounded top corners).
  * @param isLast whether this row ends its group (rounded bottom corners).
+ * @param enabled whether the row's action can be taken; a disabled row neither ripples nor
+ *   reports itself as clickable.
  */
 @Composable
 fun SettingsRow(
@@ -66,7 +74,7 @@ fun SettingsRow(
     onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
-    showIconContainer: Boolean = true,
+    enabled: Boolean = true,
     isFirst: Boolean = true,
     isLast: Boolean = true,
 ) {
@@ -75,41 +83,34 @@ fun SettingsRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
+                .heightIn(min = RowMinHeight)
+                .padding(horizontal = RowSidePadding, vertical = RowVerticalPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Spacer(Modifier.width(16.dp))
-            LeadingIcon(
-                icon = icon,
-                inContainer = showIconContainer,
-            )
-            Spacer(Modifier.width(16.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
-            ) {
+            LeadingGlyph(icon = icon)
+            Spacer(Modifier.width(RowIconGap))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = headline,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (supporting != null) {
                     Text(
                         text = supporting,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
             if (trailing != null) {
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(RowTrailingGap))
                 trailing()
             }
-            Spacer(Modifier.width(16.dp))
         }
     }
 
@@ -118,59 +119,29 @@ fun SettingsRow(
     if (onClick != null) {
         Surface(
             onClick = onClick,
-            modifier = modifier
-                .fillMaxWidth()
-                .height(72.dp),
+            modifier = modifier.fillMaxWidth(),
             shape = shape,
             color = containerColor,
+            enabled = enabled,
         ) { content() }
     } else {
         Surface(
-            modifier = modifier
-                .fillMaxWidth()
-                .height(72.dp),
+            modifier = modifier.fillMaxWidth(),
             shape = shape,
             color = containerColor,
         ) { content() }
     }
 }
 
-/**
- * The 40dp circular `primaryContainer` badge the design puts behind a row's leading glyph, or
- * the bare 24dp glyph when a row has no badge.
- *
- * The inner box fills the surface exactly and centres the glyph, so the icon sits on the
- * circle's centre rather than on its top-left.
- */
+/** The row's leading glyph: 24dp of Material Symbols, tinted like the supporting text. */
 @Composable
-internal fun LeadingIcon(
-    icon: Int,
-    inContainer: Boolean,
-    size: androidx.compose.ui.unit.Dp = 40.dp,
-    glyphSize: androidx.compose.ui.unit.Dp = 24.dp,
-) {
-    if (!inContainer) {
-        SymbolIcon(
-            codepoint = icon,
-            contentDescription = null,
-            size = glyphSize,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        return
-    }
-    Surface(
-        modifier = Modifier.size(size),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            SymbolIcon(codepoint = icon, contentDescription = null, size = glyphSize)
-        }
-    }
+private fun LeadingGlyph(icon: Int) {
+    SymbolIcon(
+        codepoint = icon,
+        contentDescription = null,
+        size = LeadingGlyphSize,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /**
@@ -191,54 +162,23 @@ fun SwitchRow(
     isFirst: Boolean = true,
     isLast: Boolean = true,
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(72.dp),
-        shape = groupedRowShape(isFirst, isLast),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    SettingsRow(
+        icon = icon,
+        headline = headline,
+        supporting = supporting,
+        modifier = modifier,
         onClick = { onCheckedChange(!checked) },
-        enabled = enabled,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(72.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Spacer(Modifier.width(16.dp))
-            LeadingIcon(icon = icon, inContainer = true)
-            Spacer(Modifier.width(16.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = headline,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (supporting != null) {
-                    Text(
-                        text = supporting,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
+        trailing = {
             androidx.compose.material3.Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 enabled = enabled,
             )
-            Spacer(Modifier.width(16.dp))
-        }
-    }
+        },
+        enabled = enabled,
+        isFirst = isFirst,
+        isLast = isLast,
+    )
 }
 
 /**

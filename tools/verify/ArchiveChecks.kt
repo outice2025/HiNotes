@@ -58,7 +58,9 @@ object ArchiveChecks {
             )
         }
 
-        // The empty-title note takes its first body line as the file name, not "note".
+        // The empty-title note is named after its first body line rather than after "Untitled":
+        // the home screen shows "Untitled" for a note with no title, but a folder of Untitled.md
+        // files is no use to anyone.
         val names = zipEntryNames(bytes)
         check("empty title uses first line", names.any { it == "Untitled note body.md" }, names.toString())
         check("duplicate titles get a suffix", names.count { it.startsWith("Shopping list") } == 2 &&

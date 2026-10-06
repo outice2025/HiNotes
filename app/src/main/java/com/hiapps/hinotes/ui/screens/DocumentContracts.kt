@@ -21,15 +21,25 @@ import androidx.activity.result.contract.ActivityResultContract
  * the share sheet instead of to a create-document picker.
  */
 
-/** `ACTION_OPEN_DOCUMENT`: ask the user for an existing file. */
-internal class OpenDocumentContract(private val mimeTypes: Array<String>) :
+/**
+ * `ACTION_OPEN_DOCUMENT`: ask the user for an existing file.
+ *
+ * The intent is always typed as the wildcard type, so every file is selectable. [mimeTypes] only
+ * narrows the list when the caller genuinely knows what the file will be; the settings importer
+ * passes null, because the MIME type a phone reports for an exported `.json` depends on where the
+ * file came from (a download, a chat app, a file manager of its own) and a picker that filters on
+ * it greys the file out - which is what "the import does nothing" looks like from the outside.
+ * The content is validated after reading instead, which is the only check a file name cannot
+ * defeat.
+ */
+internal class OpenDocumentContract(private val mimeTypes: Array<String>? = null) :
     ActivityResultContract<Unit, Uri?>() {
 
     override fun createIntent(context: Context, input: Unit): Intent =
         Intent(Intent.ACTION_OPEN_DOCUMENT)
             .addCategory(Intent.CATEGORY_OPENABLE)
             .setType("*/*")
-            .putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+            .apply { if (mimeTypes != null) putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes) }
 
     override fun getSynchronousResult(context: Context, input: Unit): SynchronousResult<Uri?>? = null
 

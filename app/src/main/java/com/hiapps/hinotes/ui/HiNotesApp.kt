@@ -49,13 +49,16 @@ object Routes {
 /**
  * Screen transition, matching the way Android's own Settings app moves between pages.
  *
- * A pushed page slides in from the right edge while fading in, and the page underneath slides a
- * short distance left and fades out - not a full-width push, which would make both pages look
- * like they are travelling together. Popping is the exact mirror, so back always undoes the
- * forward motion.
+ * One page arrives at full width and the page underneath it drifts a quarter of the way out and
+ * fades, in both directions: forward the *new* page arrives while the old one drifts away, and
+ * back the *old* page returns while the current one drifts away. Popping is therefore the push
+ * played backwards - the same distances over the same 300ms, so the page being dismissed moves at
+ * the gentle rate in both directions.
  *
- * The dimming of the outgoing page is what makes this read as the platform's own transition:
- * without it a slide alone looks flat, and with a full-width exit it looks like a carousel.
+ * That symmetry is the point. Popping used to send the current page out at full width while the
+ * returning page only hopped a quarter of the way in, so the page the user was looking at was
+ * travelling four times faster on the way back than the one they were looking at travelled on the
+ * way in - and back read as a snap rather than as the mirror of the push.
  */
 private const val TRANSITION_MS = 300
 
@@ -81,14 +84,14 @@ private fun AnimatedContentTransitionScope<*>.pushExit(): ExitTransition =
     slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { -it / PARALLAX_DIVISOR }) +
         fadeOut(animationSpec = fadeSpec())
 
-/** A popped page returns from the left, reversing the drift it made when it was covered. */
+/** A popped page returns from the left edge at the same speed a pushed page arrives from the right. */
 private fun AnimatedContentTransitionScope<*>.popEnter(): EnterTransition =
-    slideInHorizontally(animationSpec = slideSpec(), initialOffsetX = { -it / PARALLAX_DIVISOR }) +
+    slideInHorizontally(animationSpec = slideSpec(), initialOffsetX = { -it }) +
         fadeIn(animationSpec = fadeSpec())
 
-/** The page being dismissed slides out to the right edge and fades out. */
+/** The page being dismissed drifts right a quarter width - the mirror of [pushExit]. */
 private fun AnimatedContentTransitionScope<*>.popExit(): ExitTransition =
-    slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { it }) +
+    slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { it / PARALLAX_DIVISOR }) +
         fadeOut(animationSpec = fadeSpec())
 
 /**

@@ -57,6 +57,7 @@ ICONS = {
     "Save": "save", "Download": "download", "Upload": "upload",
     "Face": "face", "Lock": "lock", "Update": "update",
     "Box": "box", "Bookmarks": "bookmarks", "OpenInNew": "open_in_new",
+    "BrightnessMedium": "brightness_medium", "Book2": "book_2",
 }
 
 UPEM = 960.0

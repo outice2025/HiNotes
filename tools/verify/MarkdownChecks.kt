@@ -92,6 +92,92 @@ object MarkdownChecks {
         val boldInside = Markdown.toggleInline(value("**hello**", 2, 7), "**")
         check("bold unwraps from inside", boldInside.text == "hello", "'${boldInside.text}'")
 
+        println("Markdown preview blocks")
+        val blocks = Markdown.previewBlocks("intro\n- [ ] one\n- [x] two\nplain")
+        check(
+            "prose and tasks split",
+            blocks.size == 4 &&
+                blocks[0] is Markdown.PreviewBlock.Prose &&
+                blocks[1] is Markdown.PreviewBlock.Task &&
+                blocks[2] is Markdown.PreviewBlock.Task &&
+                blocks[3] is Markdown.PreviewBlock.Prose,
+            "$blocks",
+        )
+        val firstTask = blocks[1] as Markdown.PreviewBlock.Task
+        check("task text loses the box", firstTask.text.text == "one", "'${firstTask.text.text}'")
+        check("task starts unchecked", !firstTask.checked)
+        check("task keeps its line number", firstTask.line == 1, "${firstTask.line}")
+        val secondTask = blocks[2] as Markdown.PreviewBlock.Task
+        check("second task keeps its line number", secondTask.line == 2, "${secondTask.line}")
+        check("second task is checked", secondTask.checked)
+        val firstProse = (blocks[0] as Markdown.PreviewBlock.Prose).text.text
+        check("prose keeps the whole run", firstProse == "intro\n", "'$firstProse'")
+
+        val checkedTask = Markdown.previewBlocks("- [x] done")[0] as Markdown.PreviewBlock.Task
+        check("checked task reports checked", checkedTask.checked)
+        // The toolbar's bare form is a task line too, so it is clickable in the preview.
+        val bare = Markdown.previewBlocks("[ ] bare")[0]
+        check("bare form is a task line", bare is Markdown.PreviewBlock.Task, "$bare")
+        // Indented task lines keep their indent in the source but not in the rendered text.
+        val indented = Markdown.previewBlocks("    - [ ] deep")[0] as Markdown.PreviewBlock.Task
+        check("indented task text is clean", indented.text.text == "deep", "'${indented.text.text}'")
+
+        // A box inside a fence is code, and code is not a checkbox.
+        val fenced = Markdown.previewBlocks("```\n- [ ] code\n```")
+        check(
+            "fenced box stays prose",
+            fenced.size == 1 && fenced[0] is Markdown.PreviewBlock.Prose,
+            "$fenced",
+        )
+        val fencedText = (fenced[0] as Markdown.PreviewBlock.Prose).text.text
+        check(
+            "fenced box still shows its brackets",
+            fencedText.contains("- [ ] code"),
+            "'$fencedText'",
+        )
+
+        println("Markdown checkbox editing")
+        val source = "a\n- [ ] one\n- [x] two\n  * [ ] three"
+        check(
+            "checking a line ticks it",
+            Markdown.setTaskChecked(source, 1, true) == "a\n- [x] one\n- [x] two\n  * [ ] three",
+            "'${Markdown.setTaskChecked(source, 1, true)}'",
+        )
+        check(
+            "unchecking a line clears it",
+            Markdown.setTaskChecked(source, 2, false) == "a\n- [ ] one\n- [ ] two\n  * [ ] three",
+            "'${Markdown.setTaskChecked(source, 2, false)}'",
+        )
+        check(
+            "indent and bullet survive",
+            Markdown.setTaskChecked(source, 3, true) == "a\n- [ ] one\n- [x] two\n  * [x] three",
+            "'${Markdown.setTaskChecked(source, 3, true)}'",
+        )
+        check(
+            "editing never changes the length",
+            Markdown.setTaskChecked(source, 1, true).length == source.length,
+        )
+        check(
+            "a prose line is left alone",
+            Markdown.setTaskChecked(source, 0, true) == source,
+            "'${Markdown.setTaskChecked(source, 0, true)}'",
+        )
+        check(
+            "a stale line index is ignored",
+            Markdown.setTaskChecked(source, 9, true) == source,
+            "'${Markdown.setTaskChecked(source, 9, true)}'",
+        )
+        check(
+            "round trip: tick then untick",
+            Markdown.setTaskChecked(Markdown.setTaskChecked(source, 1, true), 1, false) == source,
+        )
+        // The bare form the toolbar writes is editable too.
+        check(
+            "bare form toggles",
+            Markdown.setTaskChecked("[ ] bare", 0, true) == "[x] bare",
+            "'${Markdown.setTaskChecked("[ ] bare", 0, true)}'",
+        )
+
         println("Markdown rendering")
         val rendered = Markdown.render("**bold** and *italic*").text
         check("bold markers removed", rendered == "bold and italic", "'$rendered'")

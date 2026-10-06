@@ -114,6 +114,10 @@ class NotesRepository(context: Context) {
     private fun sortNotes(list: List<Note>, sort: NoteSort): List<Note> = when (sort) {
         NoteSort.UpdatedDesc -> list.sortedByDescending { it.updatedAt }
         NoteSort.CreatedDesc -> list.sortedByDescending { it.createdAt }
-        NoteSort.TitleAsc -> list.sortedBy { it.displayTitle("").lowercase() }
+        // By title: written titles first in alphabetical order, untitled notes after them, where
+        // an empty title cannot pretend to be a sort key.
+        NoteSort.TitleAsc -> list.sortedWith(
+            compareBy({ it.title.isBlank() }, { it.title.trim().lowercase() }),
+        )
     }
 }

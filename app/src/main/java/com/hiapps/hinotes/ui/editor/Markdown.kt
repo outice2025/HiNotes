@@ -115,57 +115,87 @@ object Markdown {
 
     /** One rendered element of the preview. */
     sealed interface PreviewBlock {
-        /** A run of styled text, already carrying its inline spans. */
-        data class Text(val text: AnnotatedString) : PreviewBlock
+        /** A run of prose, already carrying its inline spans. */
+        data class Prose(val text: AnnotatedString) : PreviewBlock
 
-        /** A standalone `![alt](ref)` image on its own line. */
-        data class Image(val reference: String, val alt: String) : PreviewBlock
+        /**
+         * One task-list line, drawn as an interactive checkbox rather than as a glyph.
+         *
+         * [line] is the index of the line in the note's source, which is what lets a tap on the
+         * checkbox be written back to the note the reader is looking at.
+         */
+        data class Task(
+            val text: AnnotatedString,
+            val checked: Boolean,
+            val line: Int,
+        ) : PreviewBlock
     }
 
-    private val IMAGE_LINE = Regex("^!\\[([^\\]]*)]\\(([^)\\s]+)\\)\\s*$")
+    /**
+     * A task-list line: optional indent, an optional `-`/`*`/`+` bullet, the `[ ]` box and the
+     * item's own text.
+     *
+     * The bullet is captured with the indent so [setTaskChecked] can write the line back exactly
+     * as it found it, and the spaces between the box and the text are captured separately so
+     * neither form loses its spacing.
+     */
+    private val TASK_LINE = Regex("^(\\s*(?:[-*+]\\s+)?)\\[([ xX])](\\s*)(.*)$")
 
     /**
-     * Splits Markdown source into preview blocks.
+     * Splits Markdown source into the pieces the preview draws.
      *
-     * Inline styling is resolved to an [AnnotatedString] here; images are returned as their own
-     * block so the caller can render them with Compose. Doing the split in one pass avoids
-     * re-parsing in the composable and keeps the renderer free of Compose UI types.
+     * Prose keeps the full renderer, so headings, lists, quotes and inline styling look exactly
+     * as they did when the whole note went through [render] in one call; task lines come back as
+     * their own blocks so the caller can draw a real checkbox for them and write a tap back into
+     * the source. A `- [ ] ` inside a code fence is left alone: inside a fence it is code, not a
+     * checkbox.
      */
-    fun blocks(source: String): List<PreviewBlock> {
+    fun previewBlocks(source: String): List<PreviewBlock> {
         val lines = source.split('\n')
         val out = ArrayList<PreviewBlock>()
-        val pending = StringBuilder()
+        val prose = StringBuilder()
         var inCodeBlock = false
 
-        fun flushText() {
-            if (pending.isEmpty()) return
-            out += PreviewBlock.Text(render(pending.toString()))
-            pending.setLength(0)
+        fun flushProse() {
+            if (prose.isEmpty()) return
+            out += PreviewBlock.Prose(render(prose.toString()))
+            prose.setLength(0)
         }
 
         lines.forEachIndexed { index, line ->
-            val imageMatch = if (inCodeBlock) null else IMAGE_LINE.matchEntire(line.trim())
-            when {
-                line.trimStart().startsWith("```") -> {
-                    inCodeBlock = !inCodeBlock
-                }
-
-                imageMatch != null -> {
-                    flushText()
-                    out += PreviewBlock.Image(
-                        reference = imageMatch.groupValues[2],
-                        alt = imageMatch.groupValues[1],
-                    )
-                }
-
-                else -> {
-                    pending.append(line)
-                    if (index != lines.lastIndex) pending.append('\n')
-                }
+            if (line.trimStart().startsWith("```")) inCodeBlock = !inCodeBlock
+            val task = if (inCodeBlock) null else TASK_LINE.matchEntire(line)
+            if (task == null) {
+                prose.append(line)
+                if (index != lines.lastIndex) prose.append('\n')
+            } else {
+                flushProse()
+                out += PreviewBlock.Task(
+                    text = renderInline(task.groupValues[4]),
+                    checked = task.groupValues[2] != " ",
+                    line = index,
+                )
             }
         }
-        flushText()
+        flushProse()
         return out
+    }
+
+    /**
+     * Flips the checkbox on source line [line], keeping the line's indent, bullet and spacing.
+     *
+     * A line that is not a task line is returned untouched, as is a line index outside the note:
+     * the preview can be drawn from a snapshot that a keystroke has already moved on from, and a
+     * stale tap must not corrupt the note.
+     */
+    fun setTaskChecked(source: String, line: Int, checked: Boolean): String {
+        val lines = source.split('\n')
+        if (line !in lines.indices) return source
+        val match = TASK_LINE.matchEntire(lines[line]) ?: return source
+        val box = if (checked) "[x]" else "[ ]"
+        val rebuilt = match.groupValues[1] + box + match.groupValues[3] + match.groupValues[4]
+        return lines.mapIndexed { index, text -> if (index == line) rebuilt else text }
+            .joinToString("\n")
     }
 
     /** Converts Markdown source into styled text for the preview mode. */
@@ -197,6 +227,10 @@ object Markdown {
             if (index != lines.lastIndex) append('\n')
         }
     }
+
+    /** One line's worth of inline markup, without the block-level treatment [render] adds. */
+    private fun renderInline(text: String): AnnotatedString =
+        buildAnnotatedString { appendInlineMarkup(text) }
 
     private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInline(line: String) {
         val trimmed = line.trimStart()

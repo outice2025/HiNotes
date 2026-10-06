@@ -17,10 +17,14 @@ data class Note(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
-    /** Title for display, falling back to the first non-empty content line, then a default. */
-    fun displayTitle(fallback: String): String =
-        title.ifBlank { content.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty() }
-            .ifBlank { fallback }
+    /**
+     * Title for display.
+     *
+     * A note without a title is listed as [fallback] ("Untitled") rather than borrowing its first
+     * line of text: the body is already shown underneath the title on the same card, so repeating
+     * it as a heading made every untitled note look as if it had a title after all.
+     */
+    fun displayTitle(fallback: String): String = title.ifBlank { fallback }
 }
 
 /**

@@ -18,8 +18,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,7 +49,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -219,16 +224,21 @@ fun EditorScreen(
         }
     }
 
+    /** True while neither the title nor the body holds a single character. */
+    fun isBlankNote(): Boolean = title.isBlank() && editorState.value.text.isBlank()
+
     fun leave() {
-        if (dirty) confirmDiscard = true else onBack()
+        // A note with nothing in it has nothing to lose, so it is not worth a question: leaving
+        // an empty editor just leaves. It is also not written on the way out - an emptied note
+        // keeps whatever the database already holds rather than being deleted by a back press.
+        if (dirty && !isBlankNote()) confirmDiscard = true else onBack()
     }
 
     // Back gesture and system back run the same guard as the toolbar button.
     BackHandler(enabled = dirty || findOpen) {
         when {
             findOpen -> findOpen = false
-            dirty -> confirmDiscard = true
-            else -> onBack()
+            else -> leave()
         }
     }
 
@@ -370,6 +380,12 @@ fun EditorScreen(
                         )
                     },
                     menuContentDescription = stringResource(R.string.editor_more_actions),
+                    // Dressed like the exit button on the other side of the row: no container,
+                    // and one content colour for both segments - including the save tick, which
+                    // used to be the only primary-tinted control in the header.
+                    containerColor = Color.Transparent,
+                    primaryContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    menuContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -432,11 +448,17 @@ fun EditorScreen(
                 )
 
                 if (previewMode) {
-                    val rendered = remember(editorState.value.text, settings.markdownEnabled) {
+                    // The note is split into prose and task lines so a checkbox in the preview is
+                    // a real Material 3 checkbox that writes back into the note, rather than the
+                    // ☐ glyph the renderer draws. With Markdown off the body is plain text and
+                    // `[ ]` is only ever text, so it is left alone.
+                    val blocks = remember(editorState.value.text, settings.markdownEnabled) {
                         if (settings.markdownEnabled) {
-                            Markdown.render(editorState.value.text)
+                            Markdown.previewBlocks(editorState.value.text)
                         } else {
-                            AnnotatedString(editorState.value.text)
+                            listOf(
+                                Markdown.PreviewBlock.Prose(AnnotatedString(editorState.value.text)),
+                            )
                         }
                     }
                     SelectionContainer(
@@ -445,7 +467,34 @@ fun EditorScreen(
                             .padding(16.dp)
                             .verticalScroll(rememberScrollState()),
                     ) {
-                        Text(text = rendered, style = bodyStyle)
+                        Column {
+                            blocks.forEach { block ->
+                                when (block) {
+                                    is Markdown.PreviewBlock.Prose ->
+                                        Text(text = block.text, style = bodyStyle)
+
+                                    is Markdown.PreviewBlock.Task -> PreviewTaskRow(
+                                        block = block,
+                                        style = bodyStyle,
+                                        onToggle = { checked ->
+                                            val text = editorState.value.text
+                                            // A discrete edit, so it is one undo step - and the
+                                            // line index is re-checked inside against the text
+                                            // that is current now, not the one this row drew.
+                                            editorState.applyEdit(
+                                                editorState.value.copy(
+                                                    text = Markdown.setTaskChecked(
+                                                        source = text,
+                                                        line = block.line,
+                                                        checked = checked,
+                                                    ),
+                                                ),
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
                 } else {
                     BasicTextField(
@@ -585,16 +634,9 @@ fun EditorScreen(
                 }
             }
 
-            // The mode is stated under the canvas as well as by the toolbar's absence, so
-            // "preview" can never be mistaken for "the editor stopped responding".
-            if (previewMode) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.editor_preview_badge),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
+            // Nothing is printed under the canvas in preview mode: the mode already reads from
+            // the rendered note and the toolbar's absence, and a line of chrome under a page the
+            // user is reading was one line too many.
         }
     }
 
@@ -652,5 +694,44 @@ fun EditorScreen(
             // Deliberately not saving here: `onBack` paths already persist, and saving from a
             // dispose scope could race with the note being deleted.
         }
+    }
+}
+
+/**
+ * Touch target for a checkbox inside a note.
+ *
+ * The Material 3 default is 48dp, which is right for a settings switch and heavy for a line of a
+ * note: a checklist of ten items would be 480dp of scrolling. 36dp keeps the target comfortably
+ * above the 24dp a finger needs while letting the preview still read as prose.
+ */
+private val PreviewCheckboxTarget = 36.dp
+
+/**
+ * One task-list line in the preview: a real [Checkbox] beside the item's text.
+ *
+ * The checkbox is the control the note itself asked for, so it is drawn by Material 3 rather than
+ * by the renderer's ☐ glyph, and tapping it edits the note. Merging the row's semantics keeps a
+ * screen reader announcing the item's text together with its state instead of reading a bare
+ * "checkbox" with no idea what it belongs to.
+ */
+@Composable
+private fun PreviewTaskRow(
+    block: Markdown.PreviewBlock.Task,
+    style: TextStyle,
+    onToggle: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CompositionLocalProvider(
+            LocalMinimumInteractiveComponentSize provides PreviewCheckboxTarget,
+        ) {
+            Checkbox(checked = block.checked, onCheckedChange = onToggle)
+        }
+        Spacer(Modifier.width(4.dp))
+        Text(text = block.text, style = style, modifier = Modifier.weight(1f))
     }
 }

@@ -64,6 +64,15 @@ fun BackupScreen(
     var pendingRestore by remember { mutableStateOf(false) }
 
     /**
+     * The file the user picked, waiting for its overwrite to be confirmed.
+     *
+     * Choosing the file comes first and the question comes second: the user sees the system picker
+     * the moment the row is tapped, and only then is asked whether the file they are looking at
+     * should replace everything.
+     */
+    var pickedFile by remember { mutableStateOf<Uri?>(null) }
+
+    /**
      * Runs a backup operation and reports its outcome.
      *
      * The file work and the message are deliberately decoupled: the work runs in its own
@@ -187,23 +196,24 @@ fun BackupScreen(
 
     // ------------------------------------------------------------------ importers
 
-    val importSettingsLauncher = rememberLauncherForActivityResult(
-        OpenDocumentContract(SETTINGS_MIME_TYPES),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        runBackup {
-            when (val result = importSettings(context, uri, viewModel)) {
-                is ImportResult.Success ->
-                    context.getString(R.string.backup_import_settings_done, result.count)
-                is ImportResult.Failure ->
-                    context.getString(R.string.backup_failed, result.message)
-            }
-        }
+    /**
+     * The picker contracts are remembered, not rebuilt per composition.
+     *
+     * `rememberLauncherForActivityResult` keys its registration on the contract instance, so a
+     * contract constructed inline - which is a fresh object on every recomposition - re-registers
+     * the launcher every time the screen recomposes. When that happens between the tap and the
+     * file being chosen, the result of the pick can be dropped, which looks exactly like an import
+     * button that does nothing. Remembering the contract keeps one registration for the screen's
+     * whole life.
+     */
+    val settingsPicker = remember { OpenDocumentContract() }
+    val notesPicker = remember { OpenDocumentContract(NOTES_MIME_TYPES) }
+
+    val importSettingsLauncher = rememberLauncherForActivityResult(settingsPicker) { uri ->
+        if (uri != null) pickedFile = uri
     }
 
-    val importNotesLauncher = rememberLauncherForActivityResult(
-        OpenDocumentContract(NOTES_MIME_TYPES),
-    ) { uri ->
+    val importNotesLauncher = rememberLauncherForActivityResult(notesPicker) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         runBackup {
             when (val result = importNotes(context, uri, viewModel)) {
@@ -284,11 +294,35 @@ fun BackupScreen(
             onConfirm = {
                 pendingImport = null
                 when (importing) {
+                    // Tapping the row opens the system picker straight away; the question above
+                    // is asked once a file is actually in hand.
                     ImportKind.Settings -> launchPicker { importSettingsLauncher.launch(Unit) }
                     ImportKind.Notes -> launchPicker { importNotesLauncher.launch(Unit) }
                 }
             },
             onDismiss = { pendingImport = null },
+        )
+    }
+
+    val chosen = pickedFile
+    if (chosen != null) {
+        ConfirmDialog(
+            title = stringResource(R.string.backup_import_confirm_title),
+            message = stringResource(R.string.backup_import_confirm_message),
+            confirmLabel = stringResource(R.string.backup_import_confirm),
+            dismissLabel = stringResource(R.string.common_cancel),
+            onConfirm = {
+                pickedFile = null
+                runBackup {
+                    when (val result = importSettings(context, chosen, viewModel)) {
+                        is ImportResult.Success ->
+                            context.getString(R.string.backup_import_settings_done, result.count)
+                        is ImportResult.Failure ->
+                            context.getString(R.string.backup_failed, result.message)
+                    }
+                }
+            },
+            onDismiss = { pickedFile = null },
         )
     }
 
@@ -311,9 +345,6 @@ fun BackupScreen(
 }
 
 // ------------------------------------------------------------------------ helpers
-
-/** MIME types offered when importing a settings file. */
-private val SETTINGS_MIME_TYPES = arrayOf("application/json", "text/plain")
 
 /** MIME types offered when importing notes: a JSON backup, or a zip of Markdown files. */
 private val NOTES_MIME_TYPES = arrayOf(
@@ -347,7 +378,9 @@ private suspend fun importSettings(
         raw = bytes.toString(Charsets.UTF_8),
         fallback = viewModel.settings.value,
         reader = viewModel.settingsRepository,
-    ) ?: return ImportResult.Failure("not a settings backup")
+    ) ?: return ImportResult.Failure(
+        context.getString(R.string.backup_import_invalid_settings),
+    )
     viewModel.settingsRepository.replaceAll(decoded)
     return ImportResult.Success(decoded.nonDefaultCount())
 }

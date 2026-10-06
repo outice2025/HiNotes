@@ -59,7 +59,6 @@
     <string name="editor_props_words_hint">Title and punctuation excluded</string>
     <string name="editor_share_chooser">Share note</string>
     <string name="editor_share_failed">No app can share this note</string>
-    <string name="editor_preview_badge">Preview · editing is off</string>
     <string name="editor_more_actions">More actions</string>
 
     <!-- Settings root -->
@@ -118,6 +117,7 @@
     <string name="backup_import_confirm_title">Overwrite everything?</string>
     <string name="backup_import_confirm_message">Your current data will be replaced by the contents of the selected file. This cannot be undone.</string>
     <string name="backup_import_confirm">Overwrite</string>
+    <string name="backup_import_invalid_settings">That file is not a HiNotes settings backup</string>
     <string name="backup_failed">Backup failed: %1$s</string>
     <string name="backup_no_app">no app can receive the file</string>
     <string name="backup_restore_defaults">Restore defaults</string>
@@ -152,9 +152,9 @@
 
     <!-- About -->
     <string name="about_title">About</string>
-    <string name="about_tagline">An open source, 100% FOSS note-taking app</string>
+    <string name="about_tagline">A simple, easy-to-use 100% FOSS note-taking app</string>
     <string name="about_version">Version</string>
-    <string name="about_version_support">%1$s released</string>
+    <string name="about_version_support">%1$s release</string>
     <string name="about_check_updates">Check for updates</string>
     <string name="about_check_updates_support">Open the releases page</string>
     <string name="about_repository">Repository</string>

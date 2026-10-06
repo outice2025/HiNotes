@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -36,10 +37,62 @@ private fun rememberColorScheme(
         } else {
             accent.scheme(darkTheme)
         }
-        // OLED dark is a dark-mode treatment: it only ever flattens a dark surface ramp.
-        if (darkTheme && oledDark) base.toOled() else base
+        // The lift is part of the app's dark look, so it is applied to a wallpaper-derived scheme
+        // exactly as it is to a built-in one; OLED dark then flattens the whole ramp to black.
+        val lifted = if (darkTheme) base.liftDarkSurfaces() else base
+        if (darkTheme && oledDark) lifted.toOled() else lifted
     }
 }
+
+/**
+ * How far each surface role is raised in dark mode, as the fraction of white mixed into it.
+ *
+ * Material 3's dark ramp starts at tone 6 (roughly #111318) and puts a card four tones above the
+ * page. On a phone at low brightness that reads as almost pure black, which is what "the dark
+ * background is too deep" means in practice. These fractions put the page on tone ~11 and a card
+ * on tone ~19 - the ramp the style reference uses (#1A1B20 page, #2D3037 card) - while keeping
+ * every role in the same order and leaving the light schemes untouched. They are deliberately
+ * small: a surface is a large uniform field, so a few percent of white is a visible step.
+ */
+private const val LIFT_PAGE = 0.04f
+private const val LIFT_LOWEST = 0.05f
+private const val LIFT_LOW = 0.08f
+private const val LIFT_CONTAINER = 0.04f
+private const val LIFT_HIGH = 0.05f
+private const val LIFT_HIGHEST = 0.03f
+
+/**
+ * Raises a dark scheme's surfaces off the tone-6 floor.
+ *
+ * Only the surface roles move: text, icons and accents keep the contrast Material 3 gave them,
+ * and the *relative* order of the ramp is unchanged, so a card still sits above the page it is on
+ * and the editor canvas still sits above the card. `surfaceVariant` is lifted with the rest so the
+ * dividers and inactive tracks drawn from it do not stay behind.
+ */
+internal fun ColorScheme.liftDarkSurfaces(): ColorScheme = copy(
+    surface = surface.lifted(LIFT_PAGE),
+    background = background.lifted(LIFT_PAGE),
+    surfaceContainerLowest = surfaceContainerLowest.lifted(LIFT_LOWEST),
+    surfaceContainerLow = surfaceContainerLow.lifted(LIFT_LOW),
+    surfaceContainer = surfaceContainer.lifted(LIFT_CONTAINER),
+    surfaceContainerHigh = surfaceContainerHigh.lifted(LIFT_HIGH),
+    surfaceContainerHighest = surfaceContainerHighest.lifted(LIFT_HIGHEST),
+    surfaceVariant = surfaceVariant.lifted(LIFT_CONTAINER),
+)
+
+/**
+ * [this] colour mixed [fraction] of the way toward white.
+ *
+ * Blending toward white raises a dark colour's tone without touching its hue, which is why it is
+ * used here rather than a hand-picked replacement per palette: the same rule then holds for a
+ * wallpaper-derived dark scheme, whose colours are not known until the app runs.
+ */
+private fun Color.lifted(fraction: Float): Color = Color(
+    red = red + (1f - red) * fraction,
+    green = green + (1f - green) * fraction,
+    blue = blue + (1f - blue) * fraction,
+    alpha = alpha,
+)
 
 /**
  * Flattens a scheme's surface ramp toward true black for OLED panels.

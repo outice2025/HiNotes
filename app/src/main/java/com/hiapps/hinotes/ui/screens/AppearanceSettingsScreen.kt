@@ -1,7 +1,6 @@
 package com.hiapps.hinotes.ui.screens
 
 import android.os.Build
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +68,30 @@ fun AppearanceSettingsScreen(
                 isFirst = true,
                 isLast = false,
             )
+            // Directly under dynamic colour, because the two answer the same question - where the
+            // colours come from - and it uses the same control as the rows around it rather than
+            // a switch of its own in a group of its own.
+            SwitchRow(
+                icon = Symbols.BrightnessMedium,
+                headline = stringResource(R.string.appearance_follow_system),
+                supporting = stringResource(R.string.appearance_follow_system_support),
+                checked = settings.darkMode == DarkModePreference.System,
+                onCheckedChange = { follow ->
+                    viewModel.updateSettings {
+                        setDarkMode(
+                            if (follow) {
+                                DarkModePreference.System
+                            } else if (systemDark) {
+                                DarkModePreference.On
+                            } else {
+                                DarkModePreference.Off
+                            },
+                        )
+                    }
+                },
+                isFirst = false,
+                isLast = false,
+            )
             SwitchRow(
                 icon = Symbols.DarkMode,
                 headline = stringResource(R.string.appearance_dark),
@@ -109,45 +132,6 @@ fun AppearanceSettingsScreen(
                 trailing = { Chevron() },
                 isFirst = false,
                 isLast = true,
-            )
-        }
-
-        SettingsSectionGap()
-
-        SettingsSection {
-            SettingsRow(
-                icon = Symbols.DarkMode,
-                headline = stringResource(R.string.appearance_follow_system),
-                supporting = stringResource(R.string.appearance_follow_system_support),
-                onClick = {
-                    viewModel.updateSettings {
-                        setDarkMode(
-                            if (settings.darkMode == DarkModePreference.System) {
-                                if (systemDark) DarkModePreference.On else DarkModePreference.Off
-                            } else {
-                                DarkModePreference.System
-                            },
-                        )
-                    }
-                },
-                trailing = {
-                    Switch(
-                        checked = settings.darkMode == DarkModePreference.System,
-                        onCheckedChange = { follow ->
-                            viewModel.updateSettings {
-                                setDarkMode(
-                                    if (follow) {
-                                        DarkModePreference.System
-                                    } else if (systemDark) {
-                                        DarkModePreference.On
-                                    } else {
-                                        DarkModePreference.Off
-                                    },
-                                )
-                            }
-                        },
-                    )
-                },
             )
         }
 

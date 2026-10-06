@@ -177,7 +177,7 @@ fun AboutScreen(
 
         SettingsSection {
             SettingsRow(
-                icon = Symbols.Info,
+                icon = Symbols.Book2,
                 headline = stringResource(R.string.about_licenses),
                 supporting = "Apache-2.0",
                 onClick = { notice = LICENSE_NOTICE },

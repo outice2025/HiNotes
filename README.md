@@ -4,11 +4,10 @@
 
 <div align="center">
     <h1>HiNotes</h1>
-    <p>一个开源且 100% FOSS 的笔记应用</p>
-    <p>An open source, 100% FOSS note-taking app</p>
+    <p>简单易用的 100% FOSS 笔记应用</p>
+    <p>A simple, easy-to-use 100% FOSS note-taking app</p>
     <p>English · 简体中文</p>
 </div>
-
 
 ---
 
@@ -26,8 +25,8 @@
 
 ## English
 
-An open source, 100% FOSS note-taking app for Android, built with Jetpack Compose and Material 3
-Expressive.
+A simple, easy-to-use 100% FOSS note-taking app for Android, built with Jetpack Compose and
+Material 3 Expressive.
 
 Local-first: notes live in SQLite on the device, settings in DataStore, and nothing is sent
 anywhere. The app asks for no INTERNET permission — "Check for updates" only opens the project's
@@ -47,8 +46,9 @@ releases page in your browser.
 **Editor**
 - Markdown source editing with undo/redo, bold, italic, checkbox and list buttons, and find in
   note.
+- A read-only preview where the note's own checkboxes are live: tapping one ticks it in the note.
 - Autosave every 20 s (opt-in) plus an explicit save. Leaving with unsaved changes prompts, and
-  leaving still saves.
+  leaving still saves; an empty note is not worth a question and leaves straight away.
 - A properties sheet with the note's length and its created / modified times.
 
 **Appearance**
@@ -134,7 +134,7 @@ Rounded (Apache-2.0); no typeface is redistributed.
 
 ## 简体中文
 
-一个开源且 100% FOSS 的 Android 笔记应用，使用 Jetpack Compose 与 Material 3 Expressive 构建。
+简单易用的 100% FOSS Android 笔记应用，使用 Jetpack Compose 与 Material 3 Expressive 构建。
 
 本地优先：笔记存在设备的 SQLite 中，设置存在 DataStore 中，不会发送到任何地方。应用不申请
 INTERNET 权限 ——「检查更新」只是在浏览器中打开项目的 releases 页面。
@@ -151,7 +151,9 @@ INTERNET 权限 ——「检查更新」只是在浏览器中打开项目的 rel
 
 **编辑器**
 - Markdown 源码编辑，支持撤销/重做、粗体、斜体、复选框、项目符号与笔记内查找。
-- 每 20 秒自动保存（可选），也可显式保存。带着未保存的修改返回会提示，选择离开也会先保存。
+- 只读预览里的复选框可以直接点击勾选，改动会写回笔记本身。
+- 每 20 秒自动保存（可选），也可显式保存。带着未保存的修改返回会提示，选择离开也会先保存；
+  空笔记不值得多问一句，直接返回。
 - 属性面板显示笔记字数与创建、修改时间。
 
 **外观**
