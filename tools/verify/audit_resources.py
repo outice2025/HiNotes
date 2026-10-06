@@ -95,7 +95,7 @@ stale_terms = [
     "material_symbols_rounded",
     # Removed with the fingerprint switch and the update check.
     "unlock_fingerprint", "biometric_fingerprint", "BiometricFingerprint", "UpdateChecker",
-    "about_update_", "ArchiveHarness", "MarkdownHarness",
+    "about_update_",
 ]
 for term in stale_terms:
     hits = []
