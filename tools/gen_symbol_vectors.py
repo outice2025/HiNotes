@@ -60,6 +60,14 @@ ICONS = {
     "BrightnessMedium": "brightness_medium", "Book2": "book_2",
 }
 
+# Glyphs the app wants in their filled style, drawn from the variable font's FILL axis at 1.
+# Material Symbols is one font whose FILL axis turns every outline into its solid counterpart, so
+# these are still the published Material artwork rather than anything redrawn here. Each entry is
+# constant name -> (icon name, output drawable name).
+FILLED_ICONS = {
+    "EditFilled": ("edit", "edit_filled"),
+}
+
 UPEM = 960.0
 VIEWPORT = 24.0
 # A 24dp viewport that draws 20dp of artwork inside a 2dp padding ring, matching the optical
@@ -131,8 +139,7 @@ def glyph_bounds(font, glyph_name):
     return glyph.xMin, glyph.yMin, glyph.xMax, glyph.yMax
 
 
-def glyph_path(glyph_name, transform):
-    font = TTFont(FONT, lazy=True)
+def glyph_path(font, glyph_name, transform):
     glyph_set = font.getGlyphSet()
     pen = SVGPathPen(glyph_set)
     glyph_set[glyph_name].draw(TransformPen(pen, transform))
@@ -159,16 +166,32 @@ def write_vector(res_name, path_data):
     return len(path_data)
 
 
+def filled_font():
+    """The same font with its FILL axis pinned to 1: the solid style of every glyph.
+
+    Material Symbols is a variable font whose FILL axis turns an outline into its filled
+    counterpart, so the solid artwork comes out of the published font rather than being redrawn
+    here. The instance is built once and reused for every filled icon.
+    """
+    from fontTools.varLib import instancer
+
+    return instancer.instantiateVariableFont(TTFont(FONT), {"FILL": 1.0})
+
+
 def main():
     global SHARED_SCALE
 
     table = codepoints()
     missing = [n for n in ICONS.values() if n not in table]
+    missing += [name for name, _ in FILLED_ICONS.values() if name not in table]
     if missing:
         raise SystemExit("missing codepoints: %s" % missing)
 
-    # One scale for every icon, taken from the union of their ink boxes, so no glyph overflows
-    # the viewport and all of them share the same optical size. Centring is per glyph.
+    # One scale for every icon, taken from the union of the outlined glyphs' ink boxes, so no
+    # glyph overflows the viewport and all of them share the same optical size. Centring is per
+    # glyph. The union deliberately covers the outlined set only: a filled glyph is the same shape
+    # with its interior painted, so it takes the same scale, and the outlined vectors stay byte
+    # for byte what they were.
     font = TTFont(FONT, lazy=True)
     names = sorted(set(ICONS.values()))
     bounds = ink_union(font, names)
@@ -196,16 +219,25 @@ def main():
         name = ICONS[ident]
         # Centred on this glyph's own ink box, at the scale shared by the whole set.
         transform = make_transform(glyph_bounds(font, name))
-        size = write_vector(name, glyph_path(name, transform))
+        size = write_vector(name, glyph_path(font, name, transform))
         total += size
         lines.append("    @DrawableRes val %s: Int = R.drawable.sym_%s" % (ident, name))
+
+    if FILLED_ICONS:
+        solid = filled_font()
+        for ident in sorted(FILLED_ICONS):
+            name, res_name = FILLED_ICONS[ident]
+            transform = make_transform(glyph_bounds(solid, name))
+            total += write_vector(res_name, glyph_path(solid, name, transform))
+            lines.append("    @DrawableRes val %s: Int = R.drawable.sym_%s" % (ident, res_name))
     lines.append("}")
 
     os.makedirs(os.path.dirname(KT), exist_ok=True)
     with open(KT, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("\n".join(lines) + "\n")
 
-    print("generated %d vectors (%d chars of path data)" % (len(ICONS), total))
+    print("generated %d vectors (%d chars of path data)"
+          % (len(ICONS) + len(FILLED_ICONS), total))
     print("wrote", KT)
 
 

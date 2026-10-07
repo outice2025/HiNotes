@@ -1,6 +1,10 @@
 package com.hiapps.hinotes
 
+import android.app.Activity
+import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -14,6 +18,8 @@ import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.AppViewModelFactory
 import com.hiapps.hinotes.ui.HiNotesApp
 import com.hiapps.hinotes.ui.LockGate
+import com.hiapps.hinotes.ui.screens.PickedDocumentRelay
+import com.hiapps.hinotes.ui.screens.REQUEST_OPEN_DOCUMENT
 import com.hiapps.hinotes.ui.theme.HiNotesTheme
 
 /**
@@ -29,7 +35,14 @@ class MainActivity : FragmentActivity() {
         // Install the last-resort crash recorder before anything else can throw, so a crash
         // leaves a report the user can export from the About screen.
         CrashLogger.install(this)
-        enableEdgeToEdge()
+        // Both bars are transparent, and the navigation bar is asked for by name: the edge-to-edge
+        // helper's default style paints a translucent scrim behind the navigation buttons on API
+        // 28 and below, and a scrim is exactly the band this removes. Behind the bar the app's own
+        // surface shows through, painted to the bottom of the window.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         setContent {
             val context = LocalContext.current
@@ -57,5 +70,21 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Receives the file the backup screen's picker returned.
+     *
+     * The pick is started with `startActivityForResult` rather than through the activity-result
+     * registry - see [PickedDocumentRelay] for why - so its result arrives here. Only
+     * [REQUEST_OPEN_DOCUMENT] is ours, and a cancelled picker reports `RESULT_CANCELED` rather
+     * than a URI, so both are checked before anything is published.
+     */
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_OPEN_DOCUMENT) return
+        if (resultCode != Activity.RESULT_OK) return
+        data?.data?.let { PickedDocumentRelay.publish(it) }
     }
 }

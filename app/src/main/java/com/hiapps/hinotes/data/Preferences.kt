@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import java.io.IOException
 
 /**
@@ -166,6 +167,20 @@ class SettingsRepository(private val context: Context) {
         }
 
     suspend fun current(): HiNotesSettings = settings.first()
+
+    /**
+     * Reads the settings once, blocking until they are in hand.
+     *
+     * Called before anything is drawn, because the first frame needs to know what the theme is:
+     * the flow above emits the stored values a moment after the app starts, so a composition that
+     * begins before that shows the defaults - which, when the system is in light mode and this app
+     * has been set to dark, is a light screen flashing in front of a dark app.
+     *
+     * Blocking the main thread is the whole point here and it is bounded: reading one small
+     * preferences file once, before the first frame, while the app's own launch window is still on
+     * screen. Everything after this reads the flow.
+     */
+    fun currentBlocking(): HiNotesSettings = runBlocking { current() }
 
     suspend fun setDynamicColor(value: Boolean) = edit { it[Keys.dynamicColor] = value }
 

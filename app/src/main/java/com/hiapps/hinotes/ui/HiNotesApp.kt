@@ -5,8 +5,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -49,16 +47,23 @@ object Routes {
 /**
  * Screen transition, matching the way Android's own Settings app moves between pages.
  *
- * One page arrives at full width and the page underneath it drifts a quarter of the way out and
- * fades, in both directions: forward the *new* page arrives while the old one drifts away, and
- * back the *old* page returns while the current one drifts away. Popping is therefore the push
- * played backwards - the same distances over the same 300ms, so the page being dismissed moves at
- * the gentle rate in both directions.
+ * One page arrives at full width and the page underneath it drifts a quarter of the way out, in
+ * both directions: forward the *new* page arrives while the old one drifts away, and back the
+ * *old* page returns while the current one drifts away. Popping is therefore the push played
+ * backwards - the same distances over the same 300ms - so the page being dismissed moves at the
+ * gentle rate in both directions, and neither direction snaps.
  *
- * That symmetry is the point. Popping used to send the current page out at full width while the
- * returning page only hopped a quarter of the way in, so the page the user was looking at was
- * travelling four times faster on the way back than the one they were looking at travelled on the
- * way in - and back read as a snap rather than as the mirror of the push.
+ * Pushing: the arriving page sweeps the full width over the page drifting away, and nothing fades.
+ * Two full-screen opaque pages cross-fading are both half transparent at the same moment, which is
+ * exactly what an afterimage is, so forward there is no fade at all.
+ *
+ * Popping: the page being dismissed sweeps the full width to the right at the same speed the page
+ * being returned to drifts its quarter width back underneath it. The dismissed page stays opaque
+ * the whole way, so it cannot blend with anything, and it is completely gone when the motion ends.
+ * The two designs before this one both failed that last point: left at a quarter width it was cut
+ * off mid-screen, and faded out while it travelled it turned translucent over the page underneath,
+ * which is the ghost. A full-width opaque slide has neither problem, and it is the push played
+ * exactly backwards, so the two directions still mirror each other.
  */
 private const val TRANSITION_MS = 300
 
@@ -68,31 +73,24 @@ private val StandardEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private fun slideSpec(durationMs: Int = TRANSITION_MS) =
     tween<androidx.compose.ui.unit.IntOffset>(durationMs, easing = StandardEasing)
 
-private fun fadeSpec(durationMs: Int = TRANSITION_MS) =
-    tween<Float>(durationMs, easing = StandardEasing)
-
 /** How far the covered page drifts while a new one covers it. */
 private const val PARALLAX_DIVISOR = 4
 
-/** A pushed page slides in from the right edge and fades in. */
+/** A pushed page slides in from the right edge. */
 private fun AnimatedContentTransitionScope<*>.pushEnter(): EnterTransition =
-    slideInHorizontally(animationSpec = slideSpec(), initialOffsetX = { it }) +
-        fadeIn(animationSpec = fadeSpec())
+    slideInHorizontally(animationSpec = slideSpec(), initialOffsetX = { it })
 
-/** The page being covered drifts left a quarter width and dims out. */
+/** The page being covered drifts left a quarter width; the page above it hides the rest. */
 private fun AnimatedContentTransitionScope<*>.pushExit(): ExitTransition =
-    slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { -it / PARALLAX_DIVISOR }) +
-        fadeOut(animationSpec = fadeSpec())
+    slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { -it / PARALLAX_DIVISOR })
 
-/** A popped page returns from the left edge at the same speed a pushed page arrives from the right. */
+/** The page being returned to drifts back in from the left, mirroring [pushExit]. */
 private fun AnimatedContentTransitionScope<*>.popEnter(): EnterTransition =
-    slideInHorizontally(animationSpec = slideSpec(), initialOffsetX = { -it }) +
-        fadeIn(animationSpec = fadeSpec())
+    slideInHorizontally(animationSpec = slideSpec(), initialOffsetX = { -it / PARALLAX_DIVISOR })
 
-/** The page being dismissed drifts right a quarter width - the mirror of [pushExit]. */
+/** The dismissed page slides the whole way off to the right, opaque until it is gone. */
 private fun AnimatedContentTransitionScope<*>.popExit(): ExitTransition =
-    slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { it / PARALLAX_DIVISOR }) +
-        fadeOut(animationSpec = fadeSpec())
+    slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { it })
 
 /**
  * The app's navigation host.

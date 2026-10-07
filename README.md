@@ -1,3 +1,5 @@
+<a id="user-content-hinotes"></a>
+
 <div align="center">
     <img width="180" height="180" src="logo.png">
 </div>
@@ -6,7 +8,7 @@
     <h1>HiNotes</h1>
     <p>简单易用的 100% FOSS 笔记应用</p>
     <p>A simple, easy-to-use 100% FOSS note-taking app</p>
-    <p><a href="#english">English</a> · <a href="#简体中文">简体中文</a></p>
+    <p><a href="#user-content-english">English</a> · <a href="#user-content-简体中文">简体中文</a></p>
 </div>
 
 ---
@@ -230,3 +232,5 @@ python tools/verify/check_icon_geometry.py
 
 Apache License 2.0 —— 见 [LICENSE](LICENSE)。图标素材派生自 Material Symbols Rounded
 （Apache-2.0）；不重新分发任何字体文件。
+
+<p align="right"><a href="#user-content-hinotes">↑ 回到顶部</a> · <a href="#user-content-english">English</a></p>

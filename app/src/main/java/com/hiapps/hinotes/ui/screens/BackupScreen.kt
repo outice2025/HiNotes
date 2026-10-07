@@ -1,13 +1,16 @@
 package com.hiapps.hinotes.ui.screens
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,12 +35,19 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.IOException
+import java.io.File
+import java.io.FileInputStream
 
 private const val TAG = "HiNotesBackup"
 
-/** Which payload a pending import will replace. */
-private enum class ImportKind { Settings, Notes }
+/** Which payload a pending import will replace, and how that import reports success. */
+private enum class ImportKind(val doneMessage: Int) {
+    Settings(R.string.backup_import_settings_done),
+    Notes(R.string.backup_import_notes_done),
+}
+
+/** A file the picker returned, with the import it was picked for and how it is named on screen. */
+private data class PickedDocument(val uri: Uri, val kind: ImportKind, val name: String)
 
 /**
  * Backup settings: export and import both settings and notes, plus restoring defaults.
@@ -47,8 +57,12 @@ private enum class ImportKind { Settings, Notes }
  * is used rather than a document picker. Imports read a file the user picks through the Storage
  * Access Framework, so the app needs no storage permission either way.
  *
- * Every import is confirmed first and every outcome is reported in a snackbar; a failed operation
- * reports the reason instead of taking the process down.
+ * Picking comes first and the question comes second: the row opens the system picker, and only a
+ * file that actually came back is asked about - by name. A question asked before the picker had
+ * even opened talked about "the selected file" when nothing had been selected.
+ *
+ * Every outcome is reported in a snackbar; a failed operation reports the reason instead of taking
+ * the process down.
  */
 @Composable
 fun BackupScreen(
@@ -63,14 +77,33 @@ fun BackupScreen(
     var pendingImport by remember { mutableStateOf<ImportKind?>(null) }
     var pendingRestore by remember { mutableStateOf(false) }
 
+    /** The file the picker returned, waiting for its overwrite to be confirmed. */
+    var pickedFile by remember { mutableStateOf<PickedDocument?>(null) }
+
     /**
-     * The file the user picked, waiting for its overwrite to be confirmed.
+     * Turns a returned file into a question about that file.
      *
-     * Choosing the file comes first and the question comes second: the user sees the system picker
-     * the moment the row is tapped, and only then is asked whether the file they are looking at
-     * should replace everything.
+     * The relay is consumed first so the same pick cannot be handled twice, and the file's own
+     * name goes into the question: a confirmation that cannot say what it is about to replace the
+     * data with is a confirmation nobody can answer.
      */
-    var pickedFile by remember { mutableStateOf<Uri?>(null) }
+    val handlePickedDocument: (Uri) -> Unit = { uri ->
+        PickedDocumentRelay.consume()
+        pickedFile = PickedDocument(
+            uri = uri,
+            kind = pendingImport ?: ImportKind.Settings,
+            name = displayName(context, uri),
+        )
+        pendingImport = null
+    }
+
+    // The picker's result arrives at the activity, so it is watched for here and turned into the
+    // question the moment it lands. The key never changes: the handler clears the value it read.
+    val relayedPick by PickedDocumentRelay.uri
+    LaunchedEffect(relayedPick) {
+        val picked = relayedPick ?: return@LaunchedEffect
+        handlePickedDocument(picked)
+    }
 
     /**
      * Runs a backup operation and reports its outcome.
@@ -88,7 +121,7 @@ fun BackupScreen(
                 throw cancelled
             } catch (t: Throwable) {
                 Log.e(TAG, "backup operation failed", t)
-                context.getString(R.string.backup_failed, t.javaClass.simpleName)
+                context.getString(R.string.backup_failed, describe(t))
             }
             try {
                 snackbarHostState.showSnackbar(text, duration = SnackbarDuration.Short)
@@ -100,22 +133,50 @@ fun BackupScreen(
         }
     }
 
+    // ------------------------------------------------------------------ importers
+
+    // ------------------------------------------------------------------- pickers
+
     /**
-     * Launches a system file picker, reporting rather than crashing if none can handle it.
+     * Opens the system file picker for one of the two imports, reporting rather than crashing
+     * when no app on the device can handle the request.
      *
-     * `launch()` runs synchronously on the click, outside any coroutine, so an
-     * `ActivityNotFoundException` (or a provider that rejects the request) would otherwise take
-     * the process down before the operation's own error handling ever runs.
+     * The pick is started on the activity directly rather than through
+     * `rememberLauncherForActivityResult`: see [PickedDocumentRelay] for the Android 16 device that
+     * refused the registry's request code. The result comes back through that relay, which
+     * [handlePickedDocument] picks up.
      */
-    fun launchPicker(action: () -> Unit) {
-        try {
-            action()
-        } catch (t: Throwable) {
-            Log.e(TAG, "could not open the system file picker", t)
+    fun pickDocument(kind: ImportKind) {
+        val activity = context.findActivity()
+        if (activity == null) {
+            // Not hosted by an activity, so there is nothing to start a picker from.
             scope.launch {
                 try {
                     snackbarHostState.showSnackbar(
-                        context.getString(R.string.backup_failed, t.javaClass.simpleName),
+                        context.getString(R.string.backup_failed, context.getString(R.string.backup_no_app)),
+                        duration = SnackbarDuration.Short,
+                    )
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (inner: Throwable) {
+                    Log.e(TAG, "could not show snackbar", inner)
+                }
+            }
+            return
+        }
+        try {
+            pendingImport = kind
+            activity.startActivityForResult(openDocumentIntent(), REQUEST_OPEN_DOCUMENT)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (t: Throwable) {
+            // A device with nothing registered for ACTION_OPEN_DOCUMENT throws here, on the tap.
+            Log.e(TAG, "could not open the system file picker", t)
+            pendingImport = null
+            scope.launch {
+                try {
+                    snackbarHostState.showSnackbar(
+                        context.getString(R.string.backup_failed, describe(t)),
                         duration = SnackbarDuration.Short,
                     )
                 } catch (cancelled: CancellationException) {
@@ -125,6 +186,23 @@ fun BackupScreen(
                 }
             }
         }
+    }
+
+    /**
+     * Turns a returned file into a question about that file.
+     *
+     * The relay is consumed first so the same pick cannot be handled twice, and the file's own
+     * name goes into the question: a confirmation that cannot say what it is about to replace the
+     * data with is a confirmation nobody can answer.
+     */
+    fun handlePickedDocument(uri: Uri) {
+        PickedDocumentRelay.consume()
+        pickedFile = PickedDocument(
+            uri = uri,
+            kind = pendingImport ?: ImportKind.Settings,
+            name = displayName(context, uri),
+        )
+        pendingImport = null
     }
 
     // ---------------------------------------------------------------- exporters
@@ -151,10 +229,10 @@ fun BackupScreen(
                 )
             }
             if (opened) {
-                context.getString(
-                    R.string.backup_export_settings_done,
-                    snapshot.nonDefaultCount(),
-                )
+                // "Exported settings" rather than "exported N settings": the file holds every
+                // setting, and counting only the ones that differ from the defaults made the
+                // number look wrong next to what the user remembers having changed.
+                context.getString(R.string.backup_export_settings_done)
             } else {
                 context.getString(
                     R.string.backup_failed,
@@ -196,35 +274,6 @@ fun BackupScreen(
 
     // ------------------------------------------------------------------ importers
 
-    /**
-     * The picker contracts are remembered, not rebuilt per composition.
-     *
-     * `rememberLauncherForActivityResult` keys its registration on the contract instance, so a
-     * contract constructed inline - which is a fresh object on every recomposition - re-registers
-     * the launcher every time the screen recomposes. When that happens between the tap and the
-     * file being chosen, the result of the pick can be dropped, which looks exactly like an import
-     * button that does nothing. Remembering the contract keeps one registration for the screen's
-     * whole life.
-     */
-    val settingsPicker = remember { OpenDocumentContract() }
-    val notesPicker = remember { OpenDocumentContract(NOTES_MIME_TYPES) }
-
-    val importSettingsLauncher = rememberLauncherForActivityResult(settingsPicker) { uri ->
-        if (uri != null) pickedFile = uri
-    }
-
-    val importNotesLauncher = rememberLauncherForActivityResult(notesPicker) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        runBackup {
-            when (val result = importNotes(context, uri, viewModel)) {
-                is ImportResult.Success ->
-                    context.getString(R.string.backup_import_notes_done, result.count)
-                is ImportResult.Failure ->
-                    context.getString(R.string.backup_failed, result.message)
-            }
-        }
-    }
-
     SettingsScaffold(
         title = stringResource(R.string.backup_title),
         onBack = onBack,
@@ -243,7 +292,7 @@ fun BackupScreen(
                 icon = Symbols.Upload,
                 headline = stringResource(R.string.backup_import_settings),
                 supporting = stringResource(R.string.backup_import_settings_support),
-                onClick = { pendingImport = ImportKind.Settings },
+                onClick = { pickDocument(ImportKind.Settings) },
                 isFirst = false,
                 isLast = true,
             )
@@ -266,7 +315,7 @@ fun BackupScreen(
                 icon = Symbols.Upload,
                 headline = stringResource(R.string.backup_import_notes),
                 supporting = stringResource(R.string.backup_import_notes_support),
-                onClick = { pendingImport = ImportKind.Notes },
+                onClick = { pickDocument(ImportKind.Notes) },
                 isFirst = false,
                 isLast = true,
             )
@@ -284,41 +333,23 @@ fun BackupScreen(
         }
     }
 
-    val importing = pendingImport
-    if (importing != null) {
-        ConfirmDialog(
-            title = stringResource(R.string.backup_import_confirm_title),
-            message = stringResource(R.string.backup_import_confirm_message),
-            confirmLabel = stringResource(R.string.backup_import_confirm),
-            dismissLabel = stringResource(R.string.common_cancel),
-            onConfirm = {
-                pendingImport = null
-                when (importing) {
-                    // Tapping the row opens the system picker straight away; the question above
-                    // is asked once a file is actually in hand.
-                    ImportKind.Settings -> launchPicker { importSettingsLauncher.launch(Unit) }
-                    ImportKind.Notes -> launchPicker { importNotesLauncher.launch(Unit) }
-                }
-            },
-            onDismiss = { pendingImport = null },
-        )
-    }
-
     val chosen = pickedFile
     if (chosen != null) {
         ConfirmDialog(
             title = stringResource(R.string.backup_import_confirm_title),
-            message = stringResource(R.string.backup_import_confirm_message),
+            message = stringResource(R.string.backup_import_confirm_message, chosen.name),
             confirmLabel = stringResource(R.string.backup_import_confirm),
             dismissLabel = stringResource(R.string.common_cancel),
             onConfirm = {
                 pickedFile = null
                 runBackup {
-                    when (val result = importSettings(context, chosen, viewModel)) {
-                        is ImportResult.Success ->
-                            context.getString(R.string.backup_import_settings_done, result.count)
-                        is ImportResult.Failure ->
-                            context.getString(R.string.backup_failed, result.message)
+                    val result = when (chosen.kind) {
+                        ImportKind.Settings -> importSettings(context, chosen.uri, viewModel)
+                        ImportKind.Notes -> importNotes(context, chosen.uri, viewModel)
+                    }
+                    when (result) {
+                        is ImportResult.Success -> context.getString(chosen.kind.doneMessage, result.count)
+                        is ImportResult.Failure -> context.getString(R.string.backup_failed, result.message)
                     }
                 }
             },
@@ -329,7 +360,9 @@ fun BackupScreen(
     if (pendingRestore) {
         ConfirmDialog(
             title = stringResource(R.string.backup_restore_defaults),
-            message = stringResource(R.string.backup_import_confirm_message),
+            // Restoring defaults replaces the same data an import does, so it asks the same
+            // question - but there is no file involved, hence the file-less wording.
+            message = stringResource(R.string.backup_restore_confirm_message),
             confirmLabel = stringResource(R.string.backup_import_confirm),
             dismissLabel = stringResource(R.string.common_cancel),
             onConfirm = {
@@ -346,25 +379,95 @@ fun BackupScreen(
 
 // ------------------------------------------------------------------------ helpers
 
-/** MIME types offered when importing notes: a JSON backup, or a zip of Markdown files. */
-private val NOTES_MIME_TYPES = arrayOf(
-    "application/zip",
-    "application/json",
-    "text/plain",
-    "application/octet-stream",
-)
+/**
+ * The activity this composition is hosted by, or null when there is none.
+ *
+ * `LocalContext` is a [ContextWrapper] around the activity, not the activity itself, so the
+ * wrappers are unwrapped one at a time and anything else - a service, a test host, a preview - is
+ * reported as "no activity" instead of being cast and crashing.
+ */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
-private suspend fun readDocument(context: Context, uri: Uri): ByteArray? =
+/**
+ * The name a picked document is shown under.
+ *
+ * A `content://` URI carries no file name of its own, so the provider that issued it is asked;
+ * when even that has nothing to say, the last path segment is the best remaining guess, and
+ * failing that the whole URI - a confirmation that cannot name the file is worse than one that
+ * names it clumsily.
+ */
+private fun displayName(context: Context, uri: Uri): String {
+    val fromProvider = try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
+            }
+    } catch (t: Throwable) {
+        // A provider that refuses the query is not a reason to refuse the import.
+        Log.w(TAG, "could not read the display name of $uri", t)
+        null
+    }
+    return fromProvider?.takeIf { it.isNotBlank() }
+        ?: uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+        ?: uri.toString()
+}
+
+/** MIME types offered when importing notes: a JSON backup, or a zip of Markdown files. */
+
+/** What reading a picked document produced: its bytes, or the reason there are none. */
+private sealed interface ReadResult {
+    data class Ok(val bytes: ByteArray) : ReadResult
+    data class Failed(val reason: String) : ReadResult
+}
+
+/** One line of diagnostics: the failure's type, and as much of its message as is readable. */
+private fun describe(t: Throwable): String =
+    t.javaClass.simpleName + (t.message?.take(100)?.let { ": $it" } ?: "")
+
+/**
+ * Reads the document the user picked.
+ *
+ * Three strategies, because the URI a picker hands back is not ours to choose: a stream through
+ * the content resolver, a file descriptor, and - for the `file://` URIs some file managers still
+ * return - the path itself. Whichever one works, works; and when none does, the reason is handed
+ * back instead of being swallowed, because a file that cannot be opened and an import button that
+ * does nothing look identical from the outside. Every attempt is logged with its URI as well.
+ */
+private suspend fun readDocument(context: Context, uri: Uri): ReadResult =
     withContext(Dispatchers.IO) {
-        try {
-            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        } catch (e: IOException) {
-            Log.e(TAG, "could not read import", e)
-            null
-        } catch (e: SecurityException) {
-            Log.e(TAG, "no permission to read import", e)
-            null
+        val resolver = context.contentResolver
+        val attempts: List<Pair<String, () -> ByteArray?>> = listOf(
+            "openInputStream" to { resolver.openInputStream(uri)?.use { it.readBytes() } },
+            "openFileDescriptor" to {
+                resolver.openFileDescriptor(uri, "r")?.use { fd ->
+                    FileInputStream(fd.fileDescriptor).use { it.readBytes() }
+                }
+            },
+            "path" to { uri.path?.let { path -> File(path).takeIf { it.isFile }?.readBytes() } },
+        )
+
+        val reasons = ArrayList<String>()
+        attempts.forEach { (label, open) ->
+            val bytes = try {
+                open()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                Log.e(TAG, "$label could not read $uri", t)
+                reasons += describe(t)
+                null
+            }
+            if (bytes != null) return@withContext ReadResult.Ok(bytes)
         }
+        val detail = reasons.distinct().joinToString("; ")
+        ReadResult.Failed(
+            detail.ifEmpty { context.getString(R.string.backup_import_unreadable_unknown) },
+        )
     }
 
 private suspend fun importSettings(
@@ -372,8 +475,11 @@ private suspend fun importSettings(
     uri: Uri,
     viewModel: AppViewModel,
 ): ImportResult {
-    val bytes = readDocument(context, uri)
-        ?: return ImportResult.Failure(context.getString(R.string.backup_empty))
+    val bytes = when (val read = readDocument(context, uri)) {
+        is ReadResult.Ok -> read.bytes
+        is ReadResult.Failed ->
+            return ImportResult.Failure(context.getString(R.string.backup_import_unreadable, read.reason))
+    }
     val decoded = Backup.decodeSettings(
         raw = bytes.toString(Charsets.UTF_8),
         fallback = viewModel.settings.value,
@@ -395,14 +501,17 @@ private suspend fun importNotes(
     uri: Uri,
     viewModel: AppViewModel,
 ): ImportResult {
-    val bytes = readDocument(context, uri)
-        ?: return ImportResult.Failure(context.getString(R.string.backup_empty))
+    val bytes = when (val read = readDocument(context, uri)) {
+        is ReadResult.Ok -> read.bytes
+        is ReadResult.Failed ->
+            return ImportResult.Failure(context.getString(R.string.backup_import_unreadable, read.reason))
+    }
     val notes: List<Note> = if (NotesArchive.looksLikeArchive(bytes)) {
         NotesArchive.decode(bytes)
-            ?: return ImportResult.Failure("not a readable notes archive")
+            ?: return ImportResult.Failure(context.getString(R.string.backup_import_invalid_notes))
     } else {
         Backup.decodeNotes(bytes.toString(Charsets.UTF_8))
-            ?: return ImportResult.Failure("not a notes backup")
+            ?: return ImportResult.Failure(context.getString(R.string.backup_import_invalid_notes))
     }
     if (notes.isEmpty()) return ImportResult.Failure(context.getString(R.string.backup_empty))
     val written = viewModel.replaceAllNotes(notes)

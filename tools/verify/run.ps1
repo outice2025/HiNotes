@@ -74,15 +74,27 @@ $libCp = (($libJars + $stdlib) -join ';')
 $src = Join-Path $repo 'app\src\main\java\com\hiapps\hinotes'
 $failures = 0
 
-function Invoke-Check($name, $checkFile, $sources) {
+# The platform classes, for the checks that touch an Android type on the way past. They are the
+# stubs, so every method body throws if it is called - the checks that use this compile against the
+# types and read constants, never call them.
+$androidJar = $null
+if ($env:ANDROID_HOME -and (Test-Path (Join-Path $env:ANDROID_HOME 'platforms'))) {
+    $platform = Get-ChildItem (Join-Path $env:ANDROID_HOME 'platforms') -Directory |
+        Sort-Object Name -Descending | Select-Object -First 1
+    $candidate = Join-Path $platform.FullName 'android.jar'
+    if (Test-Path $candidate) { $androidJar = $candidate }
+}
+
+function Invoke-Check($name, $checkFile, $sources, $extraCp) {
     Write-Host ""
     Write-Host "=== $name ==="
     $out = Join-Path $work $name
     Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force -Path $out | Out-Null
 
+    $cp = if ($extraCp) { "$libCp;$extraCp" } else { $libCp }
     $args = @('-cp', $compilerCp, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler',
-        '-no-stdlib', '-jvm-target', '17', '-classpath', $libCp, '-d', $out, $checkFile) + $sources
+        '-no-stdlib', '-jvm-target', '17', '-classpath', $cp, '-d', $out, $checkFile) + $sources
     $p = Start-Process -FilePath $java -ArgumentList $args -Wait -NoNewWindow -PassThru `
         -RedirectStandardOutput "$out\compile.out" -RedirectStandardError "$out\compile.err"
     if ($p.ExitCode -ne 0) {
@@ -92,7 +104,7 @@ function Invoke-Check($name, $checkFile, $sources) {
         return
     }
 
-    $runArgs = @('-cp', "$out;$libCp", "com.hiapps.hinotes.$name")
+    $runArgs = @('-cp', "$out;$cp", "com.hiapps.hinotes.$name")
     $r = Start-Process -FilePath $java -ArgumentList $runArgs -Wait -NoNewWindow -PassThru `
         -RedirectStandardOutput "$out\run.out" -RedirectStandardError "$out\run.err"
     Get-Content "$out\run.out"
@@ -109,6 +121,10 @@ Invoke-Check 'data.ArchiveChecks' (Join-Path $PSScriptRoot 'ArchiveChecks.kt') @
 Invoke-Check 'ui.editor.MarkdownChecks' (Join-Path $PSScriptRoot 'MarkdownChecks.kt') @(
     "$src\ui\editor\Markdown.kt"
 )
+
+Invoke-Check 'ui.screens.DocumentPickChecks' (Join-Path $PSScriptRoot 'DocumentPickChecks.kt') @(
+    "$src\ui\screens\DocumentPick.kt"
+) $androidJar
 
 Write-Host ""
 if ($failures -eq 0) {

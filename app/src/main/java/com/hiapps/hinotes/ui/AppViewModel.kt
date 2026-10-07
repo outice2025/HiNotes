@@ -33,9 +33,20 @@ class AppViewModel(context: Context) : ViewModel() {
     val settingsRepository = SettingsRepository(appContext)
     val lockStore = LockStore(appContext)
 
-    /** Persisted settings, defaulted until DataStore has emitted. */
+    /** The stored settings, read before the first frame so the app starts in the right theme. */
+    private val initialSettings: HiNotesSettings = settingsRepository.currentBlocking()
+
+    /**
+     * Persisted settings, ready before the first frame.
+     *
+     * The repository is asked for its stored values up front rather than letting this start at the
+     * defaults and catch up: the theme is derived from this flow, and a frame drawn before the
+     * stored values arrive shows the wrong one - a light screen in front of a dark app whenever the
+     * system is set the other way round. One blocking read, before anything is drawn, is the price
+     * of the app opening in the colour it was left in.
+     */
     val settings: StateFlow<HiNotesSettings> = settingsRepository.settings
-        .stateIn(viewModelScope, SharingStarted.Eagerly, HiNotesSettings())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, initialSettings)
 
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
     val notes: StateFlow<List<Note>> = _notes.asStateFlow()

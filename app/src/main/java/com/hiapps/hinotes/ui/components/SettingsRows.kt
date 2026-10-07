@@ -234,6 +234,16 @@ fun SettingsSection(
 
 /** Vertical space between two [SettingsSection]s. */
 @Composable
-fun SettingsSectionGap(height: androidx.compose.ui.unit.Dp = 16.dp) {
+fun SettingsSectionGap(height: androidx.compose.ui.unit.Dp = SectionGap) {
     Spacer(Modifier.height(height))
 }
+
+/**
+ * Space between two groups of rows.
+ *
+ * Slightly wider than it was. On the reference device the gap between two groups measured 16dp
+ * against the 3dp seam inside a group and read as a single list; 20dp separates the groups without
+ * breaking the page into separate cards. The seam itself is unchanged - it is what makes a group
+ * look connected.
+ */
+private val SectionGap = 20.dp

@@ -129,6 +129,15 @@ object Markdown {
             val checked: Boolean,
             val line: Int,
         ) : PreviewBlock
+
+        /**
+         * A horizontal rule - `---`, `***` or `___` alone on a line - drawn as a real divider.
+         *
+         * It used to be drawn as a run of box-drawing characters, which is a fixed number of
+         * glyphs wide: in a narrow canvas or at a large font size the run came out wider than the
+         * line it was on, wrapped, and arrived as a broken rule with a stub hanging under it.
+         */
+        data object Divider : PreviewBlock
     }
 
     /**
@@ -142,13 +151,20 @@ object Markdown {
     private val TASK_LINE = Regex("^(\\s*(?:[-*+]\\s+)?)\\[([ xX])](\\s*)(.*)$")
 
     /**
+     * A thematic break: three or more `-`, `*` or `_` and nothing else on the line.
+     *
+     * Three is the minimum CommonMark accepts, and it accepts any number beyond that, so `----`
+     * is a rule too rather than a paragraph of dashes.
+     */
+    private val RULE_LINE = Regex("^ {0,3}(?:-{3,}|\\*{3,}|_{3,})\\s*$")
+
+    /**
      * Splits Markdown source into the pieces the preview draws.
      *
      * Prose keeps the full renderer, so headings, lists, quotes and inline styling look exactly
-     * as they did when the whole note went through [render] in one call; task lines come back as
-     * their own blocks so the caller can draw a real checkbox for them and write a tap back into
-     * the source. A `- [ ] ` inside a code fence is left alone: inside a fence it is code, not a
-     * checkbox.
+     * as they did when the whole note went through [render] in one call; task lines and horizontal
+     * rules come back as their own blocks so the caller can draw a real checkbox or a real divider
+     * for them. Neither is recognised inside a code fence: there it is code, not Markdown.
      */
     fun previewBlocks(source: String): List<PreviewBlock> {
         val lines = source.split('\n')
@@ -165,16 +181,26 @@ object Markdown {
         lines.forEachIndexed { index, line ->
             if (line.trimStart().startsWith("```")) inCodeBlock = !inCodeBlock
             val task = if (inCodeBlock) null else TASK_LINE.matchEntire(line)
-            if (task == null) {
-                prose.append(line)
-                if (index != lines.lastIndex) prose.append('\n')
-            } else {
-                flushProse()
-                out += PreviewBlock.Task(
-                    text = renderInline(task.groupValues[4]),
-                    checked = task.groupValues[2] != " ",
-                    line = index,
-                )
+            val rule = !inCodeBlock && task == null && RULE_LINE.matches(line)
+            when {
+                rule -> {
+                    flushProse()
+                    out += PreviewBlock.Divider
+                }
+
+                task != null -> {
+                    flushProse()
+                    out += PreviewBlock.Task(
+                        text = renderInline(task.groupValues[4]),
+                        checked = task.groupValues[2] != " ",
+                        line = index,
+                    )
+                }
+
+                else -> {
+                    prose.append(line)
+                    if (index != lines.lastIndex) prose.append('\n')
+                }
             }
         }
         flushProse()
@@ -293,7 +319,7 @@ object Markdown {
                 }
             }
 
-            trimmed == "---" || trimmed == "***" -> append("─".repeat(24))
+            RULE_LINE.matches(line) -> append("─".repeat(RULER_WIDTH))
 
             else -> appendInlineMarkup(line)
         }
@@ -353,4 +379,14 @@ object Markdown {
     private val PREVIEW_H1 = 26.sp
     private val PREVIEW_H2 = 22.sp
     private val PREVIEW_H3 = 19.sp
+
+    /**
+     * Width of the text-mode rule, in glyphs.
+     *
+     * The note's own preview draws a rule as a divider, so this only ever appears where the note
+     * is rendered as text without a layout to draw in - the list cards. Twelve box-drawing glyphs
+     * stay inside a card at any font size the editor offers, where 24 of them wrapped and left a
+     * stub on the next line.
+     */
+    private const val RULER_WIDTH = 12
 }

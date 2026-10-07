@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -472,6 +473,14 @@ fun EditorScreen(
                                 when (block) {
                                     is Markdown.PreviewBlock.Prose ->
                                         Text(text = block.text, style = bodyStyle)
+
+                                    // A rule is a drawn line rather than a run of dashes: it spans
+                                    // the note's own width at any font size, and it cannot wrap the
+                                    // way a fixed number of glyphs could.
+                                    Markdown.PreviewBlock.Divider -> HorizontalDivider(
+                                        modifier = Modifier.padding(vertical = 12.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
 
                                     is Markdown.PreviewBlock.Task -> PreviewTaskRow(
                                         block = block,

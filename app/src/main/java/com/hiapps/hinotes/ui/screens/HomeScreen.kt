@@ -6,10 +6,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -108,8 +115,24 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
+        // Only the top and the sides keep a system inset. The page's own background is painted to
+        // the bottom of the window and the list scrolls all the way down behind the navigation
+        // bar, so nothing is reserved there for a bar the user cannot see; the list's own bottom
+        // padding is what keeps its last note and the create button clear of the gesture handle.
+        contentWindowInsets = WindowInsets.systemBars.only(
+            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+        ),
         floatingActionButton = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // The IME is an overlay in an edge-to-edge window, so the action buttons have to be
+            // moved above it themselves - otherwise tapping the search field buries the one
+            // control the empty screen is telling the user to press. The same inset keeps them
+            // clear of the gesture handle when no keyboard is up.
+            Row(
+                modifier = Modifier.windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 if (selecting) {
                     // Delete sits to the LEFT of "Create note". The Scaffold's FAB slot is at
                     // the end of the screen, so this order places delete first.
@@ -144,7 +167,9 @@ fun HomeScreen(
                     Spacer(Modifier.width(12.dp))
                 }
                 ExtendedFab(
-                    icon = Symbols.Edit,
+                    // The solid pencil, not the outline: this is the one action a new user takes,
+                    // so it carries the filled weight of the primary button it sits in.
+                    icon = Symbols.EditFilled,
                     label = stringResource(R.string.home_create_note),
                     onClick = onCreateNote,
                     // The emphasis is inverted against the delete button beside it: this one is
@@ -159,7 +184,10 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                // While the keyboard is up it covers the lower part of the window, so the list is
+                // given the height that is left rather than scrolling underneath the keys.
+                .imePadding(),
         ) {
             Box(Modifier.padding(horizontal = HomeGutter, vertical = 12.dp)) {
                 HomeSearchBar(

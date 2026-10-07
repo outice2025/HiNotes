@@ -25,11 +25,50 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
+
+/**
+ * How much larger a card's title is than the body text beneath it, in the single-column list.
+ *
+ * The body is `bodyMedium` (14sp), so 1.125 lands the title on 18sp: close enough to the M3 scale
+ * to look native, far enough above the body that the two lines never read as one paragraph.
+ */
+private const val CardTitleSizeStep = 1.125f
+
+/**
+ * A note card's title style.
+ *
+ * A plain `titleMedium` is not enough here. The app-wide font weight moves every role together,
+ * so the title and the body underneath it end up at exactly the same weight and differ only by the
+ * two points of size the roles carry - which is what "the title does not look like a title" means
+ * on screen. The title is therefore one clear step up in size and one step up in weight from the
+ * body it heads, and it follows both the app's type scale and its weight setting either way.
+ *
+ * @param compact the two-column grid, where half the width means the smaller of the two steps.
+ */
+@Composable
+private fun cardTitleStyle(compact: Boolean): TextStyle {
+    val base = MaterialTheme.typography.titleMedium
+    val step = if (compact) 1f else CardTitleSizeStep
+    return base.copy(
+        fontSize = base.fontSize * step,
+        lineHeight = base.lineHeight * step,
+        fontWeight = heavierThan(MaterialTheme.typography.bodyMedium.fontWeight ?: FontWeight.Normal),
+    )
+}
+
+/** The next weight up from [weight], so a title never matches the text it heads. */
+private fun heavierThan(weight: FontWeight): FontWeight = when (weight) {
+    FontWeight.Light, FontWeight.Normal -> FontWeight.Medium
+    FontWeight.Medium -> FontWeight.SemiBold
+    else -> FontWeight.Bold
+}
 
 /** Standard Material 3 confirmation dialog used for every destructive action. */
 @Composable
@@ -168,11 +207,7 @@ fun NoteCard(
                 }
                 Text(
                     text = title,
-                    style = if (compact) {
-                        MaterialTheme.typography.titleSmall
-                    } else {
-                        MaterialTheme.typography.titleMedium
-                    },
+                    style = cardTitleStyle(compact),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

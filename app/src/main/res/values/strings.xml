@@ -110,18 +110,22 @@
     <string name="backup_export_notes_support">Export all notes</string>
     <string name="backup_import_notes">Import notes</string>
     <string name="backup_import_notes_support">Import and overwrite notes</string>
-    <string name="backup_export_settings_done">Exported %1$d settings</string>
+    <string name="backup_export_settings_done">Exported all settings</string>
     <string name="backup_import_settings_done">Imported %1$d settings</string>
     <string name="backup_export_notes_done">Exported %1$d notes</string>
     <string name="backup_import_notes_done">Imported %1$d notes</string>
     <string name="backup_import_confirm_title">Overwrite everything?</string>
-    <string name="backup_import_confirm_message">Your current data will be replaced by the contents of the selected file. This cannot be undone.</string>
+    <string name="backup_import_confirm_message">Your current data will be replaced by the contents of %1$s. This cannot be undone.</string>
     <string name="backup_import_confirm">Overwrite</string>
     <string name="backup_import_invalid_settings">That file is not a HiNotes settings backup</string>
+    <string name="backup_import_invalid_notes">That file is not a HiNotes notes backup</string>
+    <string name="backup_import_unreadable">Could not read the selected file (%1$s)</string>
+    <string name="backup_import_unreadable_unknown">the file could not be opened</string>
     <string name="backup_failed">Backup failed: %1$s</string>
     <string name="backup_no_app">no app can receive the file</string>
     <string name="backup_restore_defaults">Restore defaults</string>
     <string name="backup_restore_defaults_support">Reset every setting</string>
+    <string name="backup_restore_confirm_message">Every setting will be reset to its default value. This cannot be undone.</string>
     <string name="backup_restore_done">Settings restored to defaults</string>
     <string name="backup_empty">Nothing to export yet</string>
 

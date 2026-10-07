@@ -136,6 +136,35 @@ object MarkdownChecks {
             "'$fencedText'",
         )
 
+        // A horizontal rule is its own block, so the preview can draw a real line for it instead
+        // of a fixed run of dashes that could wrap and leave a stub behind.
+        val ruled = Markdown.previewBlocks("above\n\n---\n\nbelow")
+        check("a rule becomes a divider", ruled.any { it is Markdown.PreviewBlock.Divider }, "$ruled")
+        check(
+            "the rule is not also drawn as prose",
+            ruled.filterIsInstance<Markdown.PreviewBlock.Prose>()
+                .none { it.text.text.contains("─") },
+            "$ruled",
+        )
+        check(
+            "two dashes are not a rule",
+            Markdown.previewBlocks("a -- b").none { it is Markdown.PreviewBlock.Divider },
+        )
+        check(
+            "every rule form is recognised",
+            listOf("---", "----", "***", "___", "  ---  ").all { line ->
+                Markdown.previewBlocks(line).any { it is Markdown.PreviewBlock.Divider }
+            },
+        )
+        check(
+            "a rule inside a fence stays code",
+            Markdown.previewBlocks("```\n---\n```").none { it is Markdown.PreviewBlock.Divider },
+        )
+        // The text-mode renderer still draws something for a rule - the list cards have no layout
+        // to place a divider in - and what it draws has to stay inside a card.
+        val ruler = Markdown.render("---").text
+        check("text mode draws a short ruler", ruler.length in 6..14, "'$ruler' (${ruler.length})")
+
         println("Markdown checkbox editing")
         val source = "a\n- [ ] one\n- [x] two\n  * [ ] three"
         check(

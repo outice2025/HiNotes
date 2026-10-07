@@ -53,4 +53,5 @@ object Symbols {
     @DrawableRes val Upload: Int = R.drawable.sym_upload
     @DrawableRes val ViewList: Int = R.drawable.sym_view_list
     @DrawableRes val Visibility: Int = R.drawable.sym_visibility
+    @DrawableRes val EditFilled: Int = R.drawable.sym_edit_filled
 }

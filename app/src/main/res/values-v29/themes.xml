@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Light system-bar icons, and the navigation bar left completely alone.
+
+      From API 29 the platform is allowed to draw its own translucent scrim over a transparent
+      navigation bar "for contrast", and from API 28 it may draw a divider along the bar's top
+      edge. Both are turned off here: the app paints its own surface behind the bar, so anything
+      the system adds on top is a band of a colour the app never asked for.
+    -->
+    <style name="Theme.HiNotes" parent="">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">@bool/window_light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/window_light_bars</item>
+        <item name="android:navigationBarDividerColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+    </style>
+</resources>
