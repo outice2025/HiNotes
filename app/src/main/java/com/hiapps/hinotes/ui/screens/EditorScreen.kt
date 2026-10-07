@@ -286,6 +286,35 @@ fun EditorScreen(
                     )
                 }
 
+                // Edit / preview, one button, both directions.
+                //
+                // It lives in the header rather than in the toolbar because the toolbar is an
+                // editing control and preview mode takes it away: a switch drawn there could only
+                // ever be pressed one way, leaving the overflow menu to do the actual coming back.
+                // Up here it is present in both modes, which is what makes it a switch. The glyph
+                // shows the mode the tap leads to.
+                Spacer(Modifier.width(4.dp))
+                IconButton(
+                    onClick = { previewMode = !previewMode },
+                    modifier = Modifier.size(44.dp),
+                    shape = RoundedCornerShape(percent = 50),
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                ) {
+                    SymbolIcon(
+                        codepoint = if (previewMode) Symbols.Edit else Symbols.Visibility,
+                        contentDescription = stringResource(
+                            if (previewMode) {
+                                R.string.editor_mode_edit
+                            } else {
+                                R.string.editor_mode_preview
+                            },
+                        ),
+                        size = 24.dp,
+                    )
+                }
+
                 // Pushes the actions to the right edge.
                 Spacer(Modifier.weight(1f))
 
@@ -305,18 +334,6 @@ fun EditorScreen(
                         }
                     },
                     menuItems = buildList {
-                        add(
-                            SplitButtonMenuItem(
-                                icon = Symbols.Edit,
-                                label = stringResource(R.string.editor_mode_edit),
-                            ) { previewMode = false },
-                        )
-                        add(
-                            SplitButtonMenuItem(
-                                icon = Symbols.Visibility,
-                                label = stringResource(R.string.editor_mode_preview),
-                            ) { previewMode = true },
-                        )
                         add(
                             SplitButtonMenuItem(
                                 icon = Symbols.Info,

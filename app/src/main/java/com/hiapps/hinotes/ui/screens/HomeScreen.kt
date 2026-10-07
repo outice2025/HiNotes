@@ -167,9 +167,8 @@ fun HomeScreen(
                     Spacer(Modifier.width(12.dp))
                 }
                 ExtendedFab(
-                    // The solid pencil, not the outline: this is the one action a new user takes,
-                    // so it carries the filled weight of the primary button it sits in.
-                    icon = Symbols.EditFilled,
+                    // The standard outlined pencil.
+                    icon = Symbols.Edit,
                     label = stringResource(R.string.home_create_note),
                     onClick = onCreateNote,
                     // The emphasis is inverted against the delete button beside it: this one is

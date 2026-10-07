@@ -62,11 +62,10 @@ ICONS = {
 
 # Glyphs the app wants in their filled style, drawn from the variable font's FILL axis at 1.
 # Material Symbols is one font whose FILL axis turns every outline into its solid counterpart, so
-# these are still the published Material artwork rather than anything redrawn here. Each entry is
-# constant name -> (icon name, output drawable name).
-FILLED_ICONS = {
-    "EditFilled": ("edit", "edit_filled"),
-}
+# these would still be the published Material artwork rather than anything redrawn here. Each entry
+# is constant name -> (icon name, output drawable name). Empty at the moment: the one icon that
+# asked for a solid style was reverted to its outline.
+FILLED_ICONS = {}
 
 UPEM = 960.0
 VIEWPORT = 24.0
