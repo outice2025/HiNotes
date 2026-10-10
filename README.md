@@ -26,7 +26,7 @@
 ---
 
 ## English
----
+
 A simple, easy-to-use 100% FOSS note-taking app for Android, built with Jetpack Compose and
 Material 3 Expressive.
 
@@ -34,7 +34,7 @@ Local-first: notes live in SQLite on the device, settings in DataStore. The app 
 INTERNET permission.
 
 ### Features
----
+
 **Notes**
 - Create, edit and delete notes.
 - Search titles and bodies; sort by updated, created or title.
@@ -67,7 +67,7 @@ INTERNET permission.
 - English and Simplified Chinese.
 
 ### Building
----
+
 JDK 17+ and an Android SDK with platform 37 and build-tools 36+.
 
 ```bash
@@ -82,7 +82,7 @@ sdk.dir=/path/to/AndroidSDK
 ```
 
 ### Release signing
----
+
 `app/build.gradle.kts` reads `keystore.properties` from the project root (git-ignored):
 
 ```properties
@@ -97,7 +97,7 @@ copied to `releases/v<version>/`, outside `build/`, so a `clean` cannot destroy 
 deliverable.
 
 ### Layout
----
+
 ```
 app/src/main/java/com/hiapps/hinotes/
 ├── MainActivity.kt      single activity, edge-to-edge, theme wiring
@@ -115,25 +115,25 @@ python tools/verify/check_icon_geometry.py
 ```
 
 ### Privacy
----
+
 - No analytics, no tracking, no accounts.
 - Notes and settings stay on the device.
 - The app makes no network request of its own.
 
 ### Licence
----
+
 Apache License 2.0.
 
 ---
 
 ## 简体中文
----
+
 简单易用的 100% FOSS Android 笔记应用，使用 Jetpack Compose 与 Material 3 Expressive 构建。
 
 本地优先：笔记存在设备的 SQLite 中，设置存在 DataStore 中。应用不申请 INTERNET 权限。
 
 ### 功能
----
+
 **笔记**
 - 新建、编辑、删除笔记。
 - 按标题与正文搜索；按最近修改、创建时间或标题排序。
@@ -166,7 +166,7 @@ Apache License 2.0.
 - 支持英文与简体中文。
 
 ### 构建
----
+
 需要 JDK 17+，以及包含 platform 37 与 build-tools 36+ 的 Android SDK。
 
 ```bash
@@ -181,7 +181,7 @@ sdk.dir=/path/to/AndroidSDK
 ```
 
 ### Release 签名
----
+
 `app/build.gradle.kts` 会读取项目根目录下的 `keystore.properties`（已被 gitignore）：
 
 ```properties
@@ -195,7 +195,7 @@ keyPassword=…
 `build/` 之外的 `releases/v<版本号>/`，因此 `clean` 不会毁掉上一版交付物。
 
 ### 目录结构
----
+
 ```
 app/src/main/java/com/hiapps/hinotes/
 ├── MainActivity.kt      单 Activity，边到边，主题装配
@@ -212,11 +212,11 @@ python tools/verify/check_icon_geometry.py
 ```
 
 ### 隐私
----
+
 - 无统计、无追踪、无账号。
 - 笔记与设置都留在设备上。
 - 应用不发起任何网络请求。
 
 ### 许可证
----
+
 本项目采用 Apache License 2.0 。
