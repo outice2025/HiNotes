@@ -37,11 +37,9 @@
     <string name="editor_mode_preview">Preview</string>
     <string name="editor_properties">Properties</string>
     <string name="editor_share">Share</string>
-    <string name="editor_autosaved">Autosaved</string>
-    <string name="editor_discard_title">Discard changes?</string>
-    <string name="editor_discard_message">Your unsaved changes to this note will be lost.</string>
-    <string name="editor_discard_confirm">Discard</string>
-    <string name="editor_keep_editing">Keep editing</string>
+    <string name="editor_discard_title">Not saved</string>
+    <string name="editor_discard_message">This note has not been saved. Leaving now will lose it.</string>
+    <string name="editor_discard_confirm">Save and exit</string>
     <string name="editor_undo">Undo</string>
     <string name="editor_redo">Redo</string>
     <string name="editor_bold">Bold</string>
@@ -96,7 +94,7 @@
     <string name="editor_settings_markdown">Enable Markdown</string>
     <string name="editor_settings_markdown_support">Write notes in Markdown</string>
     <string name="editor_settings_autosave">Autosave</string>
-    <string name="editor_settings_autosave_support">Notes are saved every %1$d s</string>
+    <string name="editor_settings_autosave_support">Notes are saved as you write them</string>
     <string name="editor_settings_font_size">Note font size</string>
     <string name="editor_settings_font_size_support">Set the note font size</string>
 
@@ -151,7 +149,7 @@
     <string name="unlock_enter_support">Unlock HiNotes to continue</string>
     <string name="unlock_action">Unlock</string>
     <string name="unlock_use_biometric">Use biometrics</string>
-    <string name="unlock_make_private">Lock this note</string>
+    <string name="unlock_make_private">Lock note</string>
     <string name="unlock_make_public">Remove note lock</string>
 
     <!-- About -->

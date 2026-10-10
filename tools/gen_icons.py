@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 """Generate HiNotes launcher icons and the in-app mark from the Material Symbols 'edit' glyph.
 
-The icon is painted in the app's default accent - the blue the app opens with - so the launcher
-and the first screen agree.
+The launcher icon is a pale blue tile carrying a deep blue pencil - a fixed pair of colours, so
+the icon looks the same on every device and in both themes.
 
 Outputs:
   * res/drawable/ic_logo_note.xml            - in-app About/lock mark (24dp vector)
   * res/drawable/ic_launcher_foreground.xml  - adaptive-icon foreground (108dp vector)
-  * res/drawable/ic_launcher_monochrome.xml  - themed-icon (monochrome) layer
   * res/mipmap-anydpi-v26/ic_launcher{,_round}.xml
   * res/mipmap-*/ic_launcher{,_round}.png    - legacy icons for API < 26
 
@@ -42,18 +41,17 @@ GLYPH = "edit"
 EM_UNITS = 960.0
 
 ADAPTIVE_VIEWPORT = 108.0
-ADAPTIVE_ARTWORK = 38.0          # artwork size inside the 108dp canvas
+ADAPTIVE_ARTWORK = 34.0          # artwork size inside the 108dp canvas
 LOGO_VIEWPORT = 24.0
 LOGO_ARTWORK = 24.0              # the in-app mark fills its box
 
 DENSITIES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 
-# The default accent's own colours, so the icon on the home screen and the app's first screen are
-# the same blue: primary behind, primaryContainer in front.
-BG = (73, 93, 146, 255)      # Blue light primary        #495D92
-FG = (218, 226, 255, 255)    # Blue light primaryContainer #DAE2FF
+# The icon's two colours: a pale blue tile with a deep blue pencil on it.
+BG = (195, 215, 250, 255)    # #C3D7FA
+FG = (56, 81, 121, 255)      # #385179
 
-PNG_ARTWORK = 0.56          # fraction of the legacy icon the glyph occupies
+PNG_ARTWORK = 0.50          # fraction of the legacy icon the glyph occupies
 
 
 def codepoint(name):
@@ -101,7 +99,7 @@ def glyph_path(viewport, artwork):
     return round_numbers(pen.getCommands())
 
 
-def write_drawable(name, path_data, viewport, size_dp):
+def write_drawable(name, path_data, viewport, size_dp, fill="#FFFFFFFF"):
     body = f'''<?xml version="1.0" encoding="utf-8"?>
 <!--
   Material Symbols Rounded "{GLYPH}", centred on its ink box.
@@ -113,7 +111,7 @@ def write_drawable(name, path_data, viewport, size_dp):
     android:viewportWidth="{viewport:g}"
     android:viewportHeight="{viewport:g}">
     <path
-        android:fillColor="#FFFFFFFF"
+        android:fillColor="{fill}"
         android:pathData="{path_data}" />
 </vector>
 '''
@@ -125,7 +123,10 @@ def write_drawable(name, path_data, viewport, size_dp):
 
 
 def glyph_layer(size, cp):
-    """White glyph on transparent, its ink centred and occupying PNG_ARTWORK of `size`.
+    """The glyph on transparent, its ink centred and occupying PNG_ARTWORK of `size`.
+
+    Drawn in white whichever colour the icon uses, and tinted by `compose` on the way onto the
+    tile, so the glyph's artwork is written once.
 
     The ink's position is *measured* rather than derived: the glyph is first drawn onto a scratch
     canvas at a known origin, the resulting ink box is read back, and the placement is solved from
@@ -190,8 +191,13 @@ def main():
 
     write_drawable("ic_logo_note.xml", glyph_path(LOGO_VIEWPORT, LOGO_ARTWORK), LOGO_VIEWPORT, 24.0)
     adaptive = glyph_path(ADAPTIVE_VIEWPORT, ADAPTIVE_ARTWORK)
-    write_drawable("ic_launcher_foreground.xml", adaptive, ADAPTIVE_VIEWPORT, ADAPTIVE_VIEWPORT)
-    write_drawable("ic_launcher_monochrome.xml", adaptive, ADAPTIVE_VIEWPORT, ADAPTIVE_VIEWPORT)
+    write_drawable(
+        "ic_launcher_foreground.xml",
+        adaptive,
+        ADAPTIVE_VIEWPORT,
+        ADAPTIVE_VIEWPORT,
+        fill="#FF385179",
+    )
 
     anydpi = os.path.join(RES, "mipmap-anydpi-v26")
     os.makedirs(anydpi, exist_ok=True)
@@ -199,7 +205,6 @@ def main():
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
-    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
 </adaptive-icon>
 '''
     for name in ("ic_launcher.xml", "ic_launcher_round.xml"):

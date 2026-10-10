@@ -46,7 +46,7 @@ ICONS = {
     "Settings": "settings", "Search": "search", "Edit": "edit",
     "Close": "close", "Delete": "delete", "Sort": "sort",
     "GridView": "grid_view", "ViewList": "view_list", "SelectAll": "select_all",
-    "ArrowBack": "arrow_back", "Check": "check", "Visibility": "visibility",
+    "ArrowBack": "arrow_back", "Check": "check", "SpaceDashboard": "space_dashboard",
     "Info": "info", "Share": "share", "KeyboardArrowDown": "keyboard_arrow_down",
     "Undo": "undo", "Redo": "redo", "FormatBold": "format_bold",
     "FormatItalic": "format_italic", "CheckBoxOutlineBlank": "check_box_outline_blank",

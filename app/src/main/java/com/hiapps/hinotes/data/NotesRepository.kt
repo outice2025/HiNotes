@@ -39,8 +39,17 @@ class NotesRepository(context: Context) {
         _notes.value = sortNotes(_notes.value, value)
     }
 
-    fun note(id: String): Note? = _notes.value.firstOrNull { it.id == id }
-        ?: database.byId(id)
+    /** The note with [id] when the in-memory snapshot holds it; never touches the database. */
+    fun cachedNote(id: String): Note? = _notes.value.firstOrNull { it.id == id }
+
+    /**
+     * The note with [id], falling back to the database when the snapshot does not hold it.
+     *
+     * The fallback runs on [Dispatchers.IO]. Callers include the editor as it opens, and a
+     * synchronous query there costs a frame in the middle of the push animation.
+     */
+    suspend fun note(id: String): Note? =
+        cachedNote(id) ?: withContext(Dispatchers.IO) { database.byId(id) }
 
     /**
      * Notes matching the active search query, in the active sort order.

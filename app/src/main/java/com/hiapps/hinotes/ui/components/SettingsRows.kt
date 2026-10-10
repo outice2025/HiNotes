@@ -25,10 +25,18 @@ import androidx.compose.ui.unit.dp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
 
-/** Row metrics, all taken from the style reference the settings list was revised to. */
+/**
+ * Row metrics, all taken from the style reference the settings list was revised to.
+ *
+ * The vertical padding is the one exception, and it is deliberate: 1.0.4's 16dp made a row with a
+ * one-line supporting text 76dp tall, and the list keeps the height it has now, which is 86dp for
+ * that same row. 23dp of padding around a `titleMedium` headline and a `bodySmall` supporting
+ * line comes to exactly 86dp, and a row with no supporting text still rests on [RowMinHeight]
+ * as it did before.
+ */
 private val RowMinHeight = 76.dp
 private val RowSidePadding = 16.dp
-private val RowVerticalPadding = 16.dp
+private val RowVerticalPadding = 23.dp
 private val RowIconGap = 16.dp
 private val RowTrailingGap = 12.dp
 private val LeadingGlyphSize = 24.dp

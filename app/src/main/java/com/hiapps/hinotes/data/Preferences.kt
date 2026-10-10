@@ -51,8 +51,8 @@ enum class DarkModePreference(val key: String) {
  * Everything the user can configure, in one immutable snapshot.
  *
  * Defaults here are the app's out-of-the-box behaviour: the Blue accent is used (dynamic
- * color off), the theme opens in light mode, Markdown and autosave are off, and the editor opens
- * in edit mode.
+ * color off), the theme opens in light mode, Markdown is off, save-as-you-type is on, and the
+ * editor opens in edit mode.
  */
 data class HiNotesSettings(
     val dynamicColor: Boolean = false,
@@ -62,7 +62,7 @@ data class HiNotesSettings(
     val appFontScale: AppFontScale = AppFontScale.Default,
     val appFontWeight: AppFontWeight = AppFontWeight.Regular,
     val markdownEnabled: Boolean = false,
-    val autoSave: Boolean = false,
+    val autoSave: Boolean = true,
     val noteFontScale: AppFontScale = AppFontScale.Default,
     val noteFontWeight: AppFontWeight = AppFontWeight.Regular,
     val biometricFace: Boolean = false,

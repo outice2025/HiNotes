@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,6 +64,18 @@ private fun cardTitleStyle(compact: Boolean): TextStyle {
     )
 }
 
+/**
+ * A note card's own metrics.
+ *
+ * The card's padding is the same on all four sides except at the top, where the title's own
+ * margin is added to it, and between the title and the body underneath - the two gaps around the
+ * title, which the list was asked to open up a little.
+ */
+private val CardPadding = 16.dp
+private val CardPaddingCompact = 12.dp
+private val CardTitleTopGap = 4.dp
+private val CardTitleBottomGap = 8.dp
+
 /** The next weight up from [weight], so a title never matches the text it heads. */
 private fun heavierThan(weight: FontWeight): FontWeight = when (weight) {
     FontWeight.Light, FontWeight.Normal -> FontWeight.Medium
@@ -70,7 +83,17 @@ private fun heavierThan(weight: FontWeight): FontWeight = when (weight) {
     else -> FontWeight.Bold
 }
 
-/** Standard Material 3 confirmation dialog used for every destructive action. */
+/**
+ * How a [ConfirmDialog]'s labels are coloured.
+ *
+ * [Destructive] marks an action that removes something: the confirm label takes the error colour
+ * and the dismiss label keeps the button's own. [Accent] paints both labels in the palette's
+ * accent, for a dialog that is a question rather than a warning - the same colour the palette
+ * gives every other button in the app, so it follows the accent and the wallpaper with them.
+ */
+enum class ConfirmStyle { Destructive, Accent }
+
+/** Standard Material 3 confirmation dialog. */
 @Composable
 fun ConfirmDialog(
     title: String,
@@ -79,8 +102,9 @@ fun ConfirmDialog(
     dismissLabel: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    destructive: Boolean = true,
+    style: ConfirmStyle = ConfirmStyle.Destructive,
 ) {
+    val accent = style == ConfirmStyle.Accent
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
@@ -89,16 +113,27 @@ fun ConfirmDialog(
             TextButton(onClick = onConfirm) {
                 Text(
                     text = confirmLabel,
-                    color = if (destructive) {
-                        MaterialTheme.colorScheme.error
-                    } else {
+                    color = if (accent) {
                         MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
                     },
                 )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(dismissLabel) }
+            // `Unspecified` leaves the label on the button's own colour for the destructive
+            // style; the accent style gives both buttons the palette's colour.
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = dismissLabel,
+                    color = if (accent) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        Color.Unspecified
+                    },
+                )
+            }
         },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(HiNotesCorners.GroupOuter),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -173,6 +208,7 @@ fun NoteCard(
     bodyMaxLines: Int = if (compact) 6 else 3,
 ) {
     val shape = RoundedCornerShape(HiNotesCorners.Card)
+    val side = if (compact) CardPaddingCompact else CardPadding
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -190,7 +226,14 @@ fun NoteCard(
             },
         ),
     ) {
-        Column(Modifier.padding(if (compact) 12.dp else 16.dp)) {
+        Column(
+            Modifier.padding(
+                start = side,
+                end = side,
+                top = side + CardTitleTopGap,
+                bottom = side,
+            ),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (selecting) {
                     SymbolIcon(
@@ -224,7 +267,7 @@ fun NoteCard(
                 }
             }
             if (content.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(CardTitleBottomGap))
                 MarkdownPreview(
                     content = content,
                     markdownEnabled = markdownEnabled,

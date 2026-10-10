@@ -1,5 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="window_background">#121318</color>
-    <color name="ic_launcher_background">#495D92</color>
+    <!--
+      The launcher icon has one pair of colours for both themes - see values/colors.xml - so the
+      icon background is deliberately not overridden here. A night value would make the launcher
+      paint the icon in the app's old blue after dark, under a pencil that is no longer white.
+    -->
 </resources>

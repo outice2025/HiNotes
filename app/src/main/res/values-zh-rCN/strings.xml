@@ -37,11 +37,9 @@
     <string name="editor_mode_preview">浏览</string>
     <string name="editor_properties">属性</string>
     <string name="editor_share">分享</string>
-    <string name="editor_autosaved">已自动保存</string>
-    <string name="editor_discard_title">放弃修改？</string>
-    <string name="editor_discard_message">这条笔记尚未保存的修改将会丢失。</string>
-    <string name="editor_discard_confirm">放弃</string>
-    <string name="editor_keep_editing">继续编辑</string>
+    <string name="editor_discard_title">尚未保存</string>
+    <string name="editor_discard_message">尚未保存，直接退出将会丢失笔记。</string>
+    <string name="editor_discard_confirm">保存并退出</string>
     <string name="editor_undo">撤销</string>
     <string name="editor_redo">重做</string>
     <string name="editor_bold">粗体</string>
@@ -96,7 +94,7 @@
     <string name="editor_settings_markdown">启用 Markdown</string>
     <string name="editor_settings_markdown_support">笔记以 Markdown 格式书写</string>
     <string name="editor_settings_autosave">自动保存</string>
-    <string name="editor_settings_autosave_support">笔记将每隔 %1$d s 自动保存</string>
+    <string name="editor_settings_autosave_support">编辑笔记时随写随存</string>
     <string name="editor_settings_font_size">笔记字体大小</string>
     <string name="editor_settings_font_size_support">设置笔记字体大小</string>
 
@@ -151,7 +149,7 @@
     <string name="unlock_enter_support">解锁 HiNotes 以继续</string>
     <string name="unlock_action">解锁</string>
     <string name="unlock_use_biometric">使用生物识别</string>
-    <string name="unlock_make_private">锁定这条笔记</string>
+    <string name="unlock_make_private">锁定笔记</string>
     <string name="unlock_make_public">取消笔记锁定</string>
 
     <!-- 关于 -->

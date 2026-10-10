@@ -31,8 +31,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -48,10 +46,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -63,6 +63,7 @@ import com.hiapps.hinotes.data.countNoteCharacters
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.NEW_NOTE_ID
 import com.hiapps.hinotes.ui.components.ConfirmDialog
+import com.hiapps.hinotes.ui.components.ConfirmStyle
 import com.hiapps.hinotes.ui.components.ConnectedIconButton
 import com.hiapps.hinotes.ui.components.ConnectedIconButtonGroup
 import com.hiapps.hinotes.ui.components.ExpressiveButtonSize
@@ -74,14 +75,24 @@ import com.hiapps.hinotes.ui.editor.Markdown
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
+import com.hiapps.hinotes.ui.theme.LocalDarkTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** How long typing must pause before an edit becomes its own undo step. */
 private const val UNDO_COALESCE_MS = 400L
 
-/** Autosave cadence, matching the interval quoted in the editor settings screen. */
-private const val AUTOSAVE_INTERVAL_MS = 20_000L
+/**
+ * How long save-as-you-type waits after the last keystroke before it writes.
+ *
+ * Long enough that a burst of typing is one write rather than one per character, short enough
+ * that the note on disk is never more than a moment behind the note on screen - which is what
+ * lets the editor leave without asking anything.
+ */
+private const val SAVE_AS_YOU_TYPE_MS = 1_200L
+
+/** How close to the canvas edge a dragged selection keeps the handle it is following. */
+private val SelectionFollowMargin = 8.dp
 
 /** Height of the filled title box, from the design. */
 private val TITLE_HEIGHT = 68.dp
@@ -113,6 +124,20 @@ private val CanvasShape = RoundedCornerShape(
 )
 
 /**
+ * The container the title box and the canvas are painted with.
+ *
+ * The light scheme keeps both on `surfaceContainerHigh`. The dark scheme steps one container
+ * level down, which is what "slightly deeper" means on a phone at low brightness: the note's own
+ * surface still sits above the page, but the step between it and the text on it is wider.
+ */
+@Composable
+private fun editorContainer(): Color = if (LocalDarkTheme.current) {
+    MaterialTheme.colorScheme.surfaceContainer
+} else {
+    MaterialTheme.colorScheme.surfaceContainerHigh
+}
+
+/**
  * The note editor.
  *
  * Layout follows the design: a top row with the back button and the split button (save plus its
@@ -141,14 +166,25 @@ fun EditorScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val editorState = remember { EditorState() }
-    var title by remember { mutableStateOf("") }
-    var loadedNote by remember { mutableStateOf<Note?>(null) }
+    // The note the editor opens on.
+    //
+    // Read here rather than in the effect below, because a note opened from the list is already in
+    // the repository's in-memory snapshot and the frame that slides in can therefore carry its
+    // text. Loading it after that frame had been drawn left the editor empty for one frame and
+    // then laid the whole note out again, in the middle of the push animation - which is what the
+    // stutter on the way into a note was. `cachedNote` reads memory only, so nothing waits on disk.
+    val incoming = remember(noteId) {
+        if (noteId == NEW_NOTE_ID || noteId.isBlank()) {
+            Note()
+        } else {
+            viewModel.notesRepository.cachedNote(noteId)
+        }
+    }
+
+    val editorState = remember { EditorState(TextFieldValue(incoming?.content.orEmpty())) }
+    var title by remember { mutableStateOf(incoming?.title.orEmpty()) }
+    var loadedNote by remember { mutableStateOf(incoming) }
     var previewMode by remember { mutableStateOf(false) }
-    var dirty by remember { mutableStateOf(false) }
-    // Guards the dirty flag against the initial load: the text-change flow emits once as soon
-    // as it starts collecting, which would otherwise mark a freshly opened note as modified.
-    var loadComplete by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmDeleteNote by remember { mutableStateOf(false) }
     var findOpen by remember { mutableStateOf(false) }
@@ -157,26 +193,36 @@ fun EditorScreen(
 
     val untitled = stringResource(R.string.home_untitled)
 
+    /**
+     * Whether the note on screen differs from the note on disk.
+     *
+     * Derived from the two rather than tracked with a flag while the user types. A flag has to be
+     * told when the initial load has finished, and the flow that reports typing fires while that
+     * load is still in flight - which is how a note that had just been opened came to look
+     * modified, and why leaving one asked about changes that had never been made.
+     */
+    val modified = title != loadedNote?.title.orEmpty() ||
+        editorState.value.text != loadedNote?.content.orEmpty()
+
     // ------------------------------------------------------------ load the note
 
     LaunchedEffect(noteId) {
-        loadComplete = false
         // A brand-new note is *not* written to the database here. Creating the row on open meant
         // that simply visiting the editor and backing out - or losing the app to the recents
         // screen - left an empty "Untitled" note behind, and every restore of the editor added
         // another one. The note is held in memory and only reaches the repository when the user
         // saves something worth keeping.
-        val note = when {
-            noteId == NEW_NOTE_ID || noteId.isBlank() -> Note()
-            else -> viewModel.notesRepository.note(noteId) ?: Note()
-        }
+        //
+        // The note itself is already on screen unless it was missing from the snapshot, in which
+        // case it is read from the database here - off the main thread.
+        val note = loadedNote ?: viewModel.notesRepository.note(noteId) ?: Note()
         viewModel.openNote(note.id)
-        loadedNote = note
-        title = note.title
-        editorState.reset(TextFieldValue(note.content))
+        if (note !== loadedNote) {
+            loadedNote = note
+            title = note.title
+            editorState.reset(TextFieldValue(note.content))
+        }
         previewMode = settings.startInPreview
-        dirty = false
-        loadComplete = true
     }
 
     // Keep the bound note in step when the repository changes it (e.g. lock toggled).
@@ -195,48 +241,57 @@ fun EditorScreen(
             false
         } else {
             loadedNote = stored
-            dirty = false
             true
-        }
-    }
-
-    // ------------------------------------------------------------ undo coalescing
-
-    LaunchedEffect(editorState) {
-        snapshotFlow { editorState.value.text }
-            .collect {
-                if (loadComplete) dirty = true
-                delay(UNDO_COALESCE_MS)
-                editorState.commitPending()
-            }
-    }
-
-    // -------------------------------------------------------------------- autosave
-
-    LaunchedEffect(settings.autoSave, dirty) {
-        if (!settings.autoSave) return@LaunchedEffect
-        while (dirty) {
-            delay(AUTOSAVE_INTERVAL_MS)
-            if (dirty) {
-                if (persist()) {
-                    snackbarHostState.showSnackbar(context.getString(R.string.editor_autosaved))
-                }
-            }
         }
     }
 
     /** True while neither the title nor the body holds a single character. */
     fun isBlankNote(): Boolean = title.isBlank() && editorState.value.text.isBlank()
 
+    // ------------------------------------------------------------ undo coalescing
+
+    LaunchedEffect(editorState) {
+        snapshotFlow { editorState.value.text }
+            .collect {
+                delay(UNDO_COALESCE_MS)
+                editorState.commitPending()
+            }
+    }
+
+    // --------------------------------------------------------- save as you type
+
+    // The text is part of the key, so every keystroke restarts the delay: a burst of typing is one
+    // write, and what is on disk is never more than a moment behind what is on screen. Nothing is
+    // announced - a note that writes itself should not interrupt the writing.
+    LaunchedEffect(settings.autoSave, title, editorState.value.text) {
+        if (!settings.autoSave || !modified || isBlankNote()) return@LaunchedEffect
+        delay(SAVE_AS_YOU_TYPE_MS)
+        persist()
+    }
+
     fun leave() {
         // A note with nothing in it has nothing to lose, so it is not worth a question: leaving
         // an empty editor just leaves. It is also not written on the way out - an emptied note
         // keeps whatever the database already holds rather than being deleted by a back press.
-        if (dirty && !isBlankNote()) confirmDiscard = true else onBack()
+        val unsaved = modified && !isBlankNote()
+        when {
+            // Save-as-you-type already holds the note, so the last write only picks up the
+            // keystrokes since it ran and the user is not asked about work that is on disk.
+            settings.autoSave && unsaved -> scope.launch {
+                persist()
+                onBack()
+            }
+            // With it off, that same work is worth one question.
+            !settings.autoSave && unsaved -> confirmDiscard = true
+            // Nothing to write and nothing to ask about: a note that was opened and read, or one
+            // that was emptied while it was open. Writing here would move it up a list sorted by
+            // "last updated" for no reason at all.
+            else -> onBack()
+        }
     }
 
-    // Back gesture and system back run the same guard as the toolbar button.
-    BackHandler(enabled = dirty || findOpen) {
+    // Back gesture and system back run the same guard as the header button.
+    BackHandler(enabled = modified || findOpen) {
         when {
             findOpen -> findOpen = false
             else -> leave()
@@ -303,7 +358,7 @@ fun EditorScreen(
                     ),
                 ) {
                     SymbolIcon(
-                        codepoint = if (previewMode) Symbols.Edit else Symbols.Visibility,
+                        codepoint = if (previewMode) Symbols.Edit else Symbols.SpaceDashboard,
                         contentDescription = stringResource(
                             if (previewMode) {
                                 R.string.editor_mode_edit
@@ -394,6 +449,9 @@ fun EditorScreen(
                                 label = stringResource(R.string.editor_delete),
                                 onClick = { confirmDeleteNote = true },
                                 destructive = true,
+                                // A locked note keeps its lock until it is unlocked from this
+                                // same menu, and a locked note cannot be deleted.
+                                enabled = loadedNote?.isLocked != true,
                             ),
                         )
                     },
@@ -410,35 +468,46 @@ fun EditorScreen(
             Spacer(Modifier.height(HEADER_GAP))
 
             // Title. A filled box rather than an outlined field, per the design: the same
-            // container colour as the canvas below it, with the label acting as its placeholder
-            // and its lower corners pulled in so the two boxes read as one connected surface.
-            // Read-only in preview mode, because the preview promises that the note cannot be
-            // changed.
-            TextField(
+            // container colour as the canvas below it, and its lower corners pulled in so the two
+            // boxes read as one connected surface. Read-only in preview mode, because the preview
+            // promises that the note cannot be changed.
+            //
+            // Built like the body underneath it: a bare text field on the container, with the hint
+            // drawn inside the box. A Material label would instead float up to the top-left corner
+            // of the box as soon as the field was focused, which is not what the body's hint does
+            // and not what a title's hint should do - it should disappear once there is a title.
+            val titleStyle = LocalTextStyle.current.copy(
+                fontSize = (17f * settings.noteFontScale.multiplier).sp,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            BasicTextField(
                 value = title,
-                onValueChange = {
-                    title = it
-                    dirty = true
-                },
-                label = { Text(stringResource(R.string.editor_title_label)) },
+                onValueChange = { title = it },
                 singleLine = true,
                 readOnly = previewMode,
-                shape = TitleShape,
-                textStyle = LocalTextStyle.current.copy(
-                    fontSize = (17f * settings.noteFontScale.multiplier).sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                ),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                ),
+                textStyle = titleStyle,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(TITLE_HEIGHT),
+                    .height(TITLE_HEIGHT)
+                    .background(color = editorContainer(), shape = TitleShape)
+                    .padding(horizontal = 16.dp),
+                decorationBox = { inner ->
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        if (title.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.editor_title_label),
+                                style = titleStyle.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            )
+                        }
+                        inner()
+                    }
+                },
             )
 
             // The 3dp seam between the two boxes, the same one that separates two settings rows.
@@ -452,7 +521,7 @@ fun EditorScreen(
                     .fillMaxWidth()
                     .weight(1f)
                     .background(
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        color = editorContainer(),
                         shape = CanvasShape,
                     ),
             ) {
@@ -523,15 +592,55 @@ fun EditorScreen(
                         }
                     }
                 } else {
+                    val bodyScroll = rememberScrollState()
+                    var bodyLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+                    val followedHandle = remember { mutableStateOf(editorState.value.selection) }
+                    val followMargin = with(LocalDensity.current) {
+                        SelectionFollowMargin.toPx()
+                    }
+
+                    // Keep the handle that is being dragged inside the canvas.
+                    //
+                    // A text field that scrolls its own content does this by itself; this one is
+                    // scrolled by the canvas it sits in, and the platform's selection gestures only
+                    // move the handles. Without this, dragging a handle past the lower edge went on
+                    // selecting text that had scrolled out of sight, so the selection grew somewhere
+                    // the user could not see it. The end that moved is the one to follow: dragging
+                    // the far handle moves the end, dragging the near one moves the start.
+                    LaunchedEffect(editorState.value.selection, bodyScroll.viewportSize) {
+                        val layout = bodyLayout ?: return@LaunchedEffect
+                        val viewport = bodyScroll.viewportSize
+                        if (viewport == 0) return@LaunchedEffect
+                        val selection = editorState.value.selection
+                        val previous = followedHandle.value
+                        followedHandle.value = selection
+                        // Clamped against the layout rather than the text: the layout this runs
+                        // against can be one frame behind a paste or an undo.
+                        val followed = (
+                            if (selection.end != previous.end) selection.end else selection.start
+                            ).coerceIn(0, layout.layoutInput.text.length)
+                        val caret = layout.getCursorRect(followed)
+                        val top = caret.top - bodyScroll.value
+                        val bottom = caret.bottom - bodyScroll.value
+                        when {
+                            top < followMargin ->
+                                bodyScroll.scrollTo((bodyScroll.value + top - followMargin).toInt())
+                            bottom > viewport - followMargin -> bodyScroll.scrollTo(
+                                (bodyScroll.value + bottom + followMargin - viewport).toInt(),
+                            )
+                        }
+                    }
+
                     BasicTextField(
                         value = editorState.value,
                         onValueChange = editorState::onUserInput,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(bodyScroll),
                         textStyle = bodyStyle,
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        onTextLayout = { bodyLayout = it },
                         decorationBox = { inner ->
                             Box {
                                 if (editorState.value.text.isEmpty()) {
@@ -656,6 +765,10 @@ fun EditorScreen(
                             .align(Alignment.BottomCenter)
                             .padding(12.dp),
                         size = ExpressiveButtonSize.Compact,
+                        // The same container as the note behind it, so the buttons read as
+                        // controls lying on the page rather than as a second surface with an
+                        // edge of its own. Only their glyphs and their pressed states show.
+                        containerColor = editorContainer(),
                     )
                 }
             }
@@ -671,10 +784,14 @@ fun EditorScreen(
             title = stringResource(R.string.editor_discard_title),
             message = stringResource(R.string.editor_discard_message),
             confirmLabel = stringResource(R.string.editor_discard_confirm),
-            dismissLabel = stringResource(R.string.editor_keep_editing),
+            dismissLabel = stringResource(R.string.common_cancel),
+            // A question rather than a warning: the labels carry the palette's accent colour,
+            // which is what every other button in the app does - so this one follows the accent
+            // palette and the wallpaper along with them.
+            style = ConfirmStyle.Accent,
             onConfirm = {
                 confirmDiscard = false
-                // Keep whatever the user typed rather than losing it silently.
+                // Leaves with the note written, which is what the button says.
                 scope.launch {
                     persist()
                     onBack()

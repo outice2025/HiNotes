@@ -25,8 +25,8 @@ import com.hiapps.hinotes.ui.editor.Markdown
  * under a text-selection handle instead of starting multi-select. Copying is served by the
  * editor's preview and by sharing the note, both of which are explicit actions.
  *
- * @param maxLines how much of the body to show before ellipsising; pass [Int.MAX_VALUE] for all
- *   of it.
+ * @param maxLines how much of the body to show; what does not fit is cut off, without the
+ *   ellipsis a truncated sentence would carry. Pass [Int.MAX_VALUE] for all of it.
  */
 @Composable
 fun MarkdownPreview(
@@ -51,7 +51,7 @@ fun MarkdownPreview(
             style = style,
             color = color,
             maxLines = maxLines,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Clip,
         )
     }
 }

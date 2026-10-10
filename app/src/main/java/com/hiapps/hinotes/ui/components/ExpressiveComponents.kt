@@ -41,11 +41,13 @@ import com.hiapps.hinotes.ui.theme.LocalMotionScheme
  *
  * @param destructive paints the entry in the error colour, the way Material 3 marks an action
  *   that removes something.
+ * @param enabled whether the action is available now; a disabled entry is dimmed and takes no tap.
  */
 data class SplitButtonMenuItem(
     val icon: Int,
     val label: String,
     val destructive: Boolean = false,
+    val enabled: Boolean = true,
     val onClick: () -> Unit,
 )
 
@@ -132,10 +134,12 @@ fun SplitButton(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 menuItems.forEach { item ->
-                    val tint = if (item.destructive) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
+                    val tint = when {
+                        // Dimmed by hand: the entry's own label and glyph carry an explicit
+                        // colour, which would otherwise override the menu item's disabled state.
+                        !item.enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        item.destructive -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurface
                     }
                     DropdownMenuItem(
                         text = { Text(item.label, style = MaterialTheme.typography.bodyLarge, color = tint) },
@@ -143,6 +147,7 @@ fun SplitButton(
                             expanded = false
                             item.onClick()
                         },
+                        enabled = item.enabled,
                         leadingIcon = {
                             SymbolIcon(
                                 codepoint = item.icon,
