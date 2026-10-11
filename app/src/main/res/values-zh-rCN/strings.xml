@@ -57,6 +57,7 @@
     <string name="editor_props_words_hint">不含标题与标点符号</string>
     <string name="editor_share_chooser">分享笔记</string>
     <string name="editor_share_failed">没有可以分享这条笔记的应用</string>
+    <string name="editor_save_failed">笔记保存失败</string>
     <string name="editor_more_actions">更多操作</string>
 
     <!-- 设置页 -->
@@ -65,6 +66,8 @@
     <string name="settings_appearance_support">应用外观、主题</string>
     <string name="settings_editor">编辑器</string>
     <string name="settings_editor_support">编辑器样式、字体、自动保存</string>
+    <string name="settings_widget">微件</string>
+    <string name="settings_widget_support">桌面微件</string>
     <string name="settings_language">语言</string>
     <string name="settings_language_support">应用内语言</string>
     <string name="settings_backup">备份</string>
@@ -122,7 +125,6 @@
     <string name="backup_failed">备份失败：%1$s</string>
     <string name="backup_no_app">没有可以接收文件的应用</string>
     <string name="backup_restore_defaults">恢复默认设置</string>
-    <string name="backup_restore_defaults_support">重置所有设置</string>
     <string name="backup_restore_confirm_message">所有设置将恢复为默认值，此操作无法撤销。</string>
     <string name="backup_restore_done">设置已恢复默认</string>
     <string name="backup_empty">暂无可导出的内容</string>
@@ -136,6 +138,7 @@
     <string name="unlock_set_password_title">设置密码</string>
     <string name="unlock_change_password_title">修改密码</string>
     <string name="unlock_remove_password_title">移除密码</string>
+    <string name="unlock_remove_confirm_message">解锁密码将被移除，应用不再要求输入密码。此操作无法撤销。</string>
     <string name="unlock_current_password">当前密码</string>
     <string name="unlock_new_password">新密码</string>
     <string name="unlock_confirm_password">重复密码</string>
@@ -195,4 +198,15 @@
     <string name="accent_orange">橙色</string>
     <string name="accent_yellow">黄色</string>
     <string name="appearance_typography">字体排版</string>
+
+    <!-- 桌面微件 -->
+    <string name="widget_label">HiNotes 微件</string>
+    <string name="widget_description">在桌面显示一篇笔记</string>
+    <string name="widget_title">微件</string>
+    <string name="widget_pick_title">选择笔记</string>
+    <string name="widget_pick_empty">还没有笔记，请先在应用里新建一篇</string>
+    <string name="widget_settings_font">设置微件字体大小</string>
+    <string name="widget_settings_font_support">设置桌面微件字体大小</string>
+    <string name="picker_font_size_widget_title">微件字体大小</string>
+    <string name="picker_weight_widget_title">微件字重</string>
 </resources>

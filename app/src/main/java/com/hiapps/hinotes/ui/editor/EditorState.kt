@@ -10,7 +10,7 @@ import androidx.compose.ui.text.input.TextFieldValue
  * Editor text state with an undo/redo history.
  *
  * Every mutation funnels through [push]/[applyEdit] so the history stays consistent, and
- * [markDirtyExternally] lets a debounced snapshot record typing without flooding the stack.
+ * [commitPending] lets a debounced snapshot record typing without flooding the stack.
  */
 class EditorState(initial: TextFieldValue = TextFieldValue()) {
 

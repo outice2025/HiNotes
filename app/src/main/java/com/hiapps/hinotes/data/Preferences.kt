@@ -21,9 +21,9 @@ import java.io.IOException
 /**
  * Dark-theme preference.
  *
- * Out of the box this is [Off]: the app opens in light mode regardless of what the device is
- * set to, so a fresh install looks the same everywhere. [System] is available on the Appearance
- * screen for users who want the app to track the device, and [On] pins dark mode.
+ * Out of the box this is [System]: a fresh install follows the device, so the app is dark on a
+ * phone that is dark and light on one that is not. [On] and [Off] pin it either way from the
+ * Appearance screen.
  */
 enum class DarkModePreference(val key: String) {
     System("system"),
@@ -39,8 +39,8 @@ enum class DarkModePreference(val key: String) {
     }
 
     companion object {
-        /** The out-of-the-box value: light mode. */
-        val Default = Off
+        /** The out-of-the-box value: whatever the device is set to. */
+        val Default = System
 
         fun fromKey(key: String?): DarkModePreference =
             entries.firstOrNull { it.key == key } ?: Default
@@ -50,21 +50,23 @@ enum class DarkModePreference(val key: String) {
 /**
  * Everything the user can configure, in one immutable snapshot.
  *
- * Defaults here are the app's out-of-the-box behaviour: the Blue accent is used (dynamic
- * color off), the theme opens in light mode, Markdown is off, save-as-you-type is on, and the
- * editor opens in edit mode.
+ * Defaults here are the app's out-of-the-box behaviour: wallpaper-derived dynamic colour is on
+ * where the platform supports it (the Blue accent is the fallback), the theme follows the device,
+ * Markdown is on, save-as-you-type is on, and the editor opens in edit mode.
  */
 data class HiNotesSettings(
-    val dynamicColor: Boolean = false,
+    val dynamicColor: Boolean = true,
     val accentPalette: AccentPalette = AccentPalette.Default,
     val darkMode: DarkModePreference = DarkModePreference.Default,
     val oledDark: Boolean = false,
     val appFontScale: AppFontScale = AppFontScale.Default,
     val appFontWeight: AppFontWeight = AppFontWeight.Regular,
-    val markdownEnabled: Boolean = false,
+    val markdownEnabled: Boolean = true,
     val autoSave: Boolean = true,
     val noteFontScale: AppFontScale = AppFontScale.Default,
     val noteFontWeight: AppFontWeight = AppFontWeight.Regular,
+    val widgetFontScale: AppFontScale = AppFontScale.Default,
+    val widgetFontWeight: AppFontWeight = AppFontWeight.Default,
     val biometricFace: Boolean = false,
     val sortOrder: NoteSort = NoteSort.UpdatedDesc,
     val startInPreview: Boolean = false,
@@ -89,6 +91,8 @@ enum class SettingKey(val storageKey: String) {
     AutoSave("auto_save"),
     NoteFontScale("note_font_scale"),
     NoteFontWeight("note_font_weight"),
+    WidgetFontScale("widget_font_scale"),
+    WidgetFontWeight("widget_font_weight"),
     BiometricFace("biometric_face"),
     SortOrder("sort_order"),
     StartInPreview("start_in_preview"),
@@ -106,6 +110,8 @@ enum class SettingKey(val storageKey: String) {
         AutoSave -> settings.autoSave.toString()
         NoteFontScale -> settings.noteFontScale.name
         NoteFontWeight -> settings.noteFontWeight.name
+        WidgetFontScale -> settings.widgetFontScale.name
+        WidgetFontWeight -> settings.widgetFontWeight.name
         BiometricFace -> settings.biometricFace.toString()
         SortOrder -> settings.sortOrder.key
         StartInPreview -> settings.startInPreview.toString()
@@ -129,6 +135,8 @@ class SettingsRepository(private val context: Context) {
         val autoSave = booleanPreferencesKey("auto_save")
         val noteFontScale = stringPreferencesKey("note_font_scale")
         val noteFontWeight = stringPreferencesKey("note_font_weight")
+        val widgetFontScale = stringPreferencesKey("widget_font_scale")
+        val widgetFontWeight = stringPreferencesKey("widget_font_weight")
         val biometricFace = booleanPreferencesKey("biometric_face")
         val sortOrder = stringPreferencesKey("sort_order")
         val startInPreview = booleanPreferencesKey("start_in_preview")
@@ -158,6 +166,10 @@ class SettingsRepository(private val context: Context) {
                     ?: defaults.noteFontScale,
                 noteFontWeight = prefs[Keys.noteFontWeight]?.let(AppFontWeight::fromKey)
                     ?: defaults.noteFontWeight,
+                widgetFontScale = prefs[Keys.widgetFontScale]?.let(AppFontScale::fromKey)
+                    ?: defaults.widgetFontScale,
+                widgetFontWeight = prefs[Keys.widgetFontWeight]?.let(AppFontWeight::fromKey)
+                    ?: defaults.widgetFontWeight,
                 biometricFace = prefs[Keys.biometricFace] ?: defaults.biometricFace,
                 sortOrder = prefs[Keys.sortOrder]?.let(NoteSort::fromKey) ?: defaults.sortOrder,
                 startInPreview = prefs[Keys.startInPreview] ?: defaults.startInPreview,
@@ -207,6 +219,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun setNoteFontWeight(value: AppFontWeight) =
         edit { it[Keys.noteFontWeight] = value.name }
 
+    suspend fun setWidgetFontScale(value: AppFontScale) =
+        edit { it[Keys.widgetFontScale] = value.name }
+
+    suspend fun setWidgetFontWeight(value: AppFontWeight) =
+        edit { it[Keys.widgetFontWeight] = value.name }
+
     suspend fun setBiometricFace(value: Boolean) = edit { it[Keys.biometricFace] = value }
 
     suspend fun setSortOrder(value: NoteSort) = edit { it[Keys.sortOrder] = value.key }
@@ -233,6 +251,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.autoSave] = settings.autoSave
             prefs[Keys.noteFontScale] = settings.noteFontScale.name
             prefs[Keys.noteFontWeight] = settings.noteFontWeight.name
+            prefs[Keys.widgetFontScale] = settings.widgetFontScale.name
+            prefs[Keys.widgetFontWeight] = settings.widgetFontWeight.name
             prefs[Keys.biometricFace] = settings.biometricFace
             prefs[Keys.sortOrder] = settings.sortOrder.key
             prefs[Keys.startInPreview] = settings.startInPreview
@@ -262,6 +282,10 @@ class SettingsRepository(private val context: Context) {
                 ?.let(AppFontScale::fromKey) ?: fallback.noteFontScale,
             noteFontWeight = pairs[SettingKey.NoteFontWeight.storageKey]
                 ?.let(AppFontWeight::fromKey) ?: fallback.noteFontWeight,
+            widgetFontScale = pairs[SettingKey.WidgetFontScale.storageKey]
+                ?.let(AppFontScale::fromKey) ?: fallback.widgetFontScale,
+            widgetFontWeight = pairs[SettingKey.WidgetFontWeight.storageKey]
+                ?.let(AppFontWeight::fromKey) ?: fallback.widgetFontWeight,
             biometricFace = bool(SettingKey.BiometricFace, fallback.biometricFace),
             sortOrder = pairs[SettingKey.SortOrder.storageKey]
                 ?.let(NoteSort::fromKey) ?: fallback.sortOrder,
@@ -278,5 +302,3 @@ class SettingsRepository(private val context: Context) {
 
 /** Convenience for code that needs the out-of-the-box snapshot. */
 internal val DefaultSettings: HiNotesSettings = HiNotesSettings()
-
-internal operator fun HiNotesSettings.get(key: SettingKey): String = key.read(this)

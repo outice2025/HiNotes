@@ -30,6 +30,7 @@ import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.Biometrics
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.components.AlertMessage
+import com.hiapps.hinotes.ui.components.ConfirmStyle
 import com.hiapps.hinotes.ui.components.SettingsRow
 import com.hiapps.hinotes.ui.components.SettingsScaffold
 import com.hiapps.hinotes.ui.components.SettingsSection
@@ -125,6 +126,8 @@ fun UnlockScreen(
                 viewModel.lockStore.setPassword(newPassword)
                 hasPassword = true
                 passwordDialog = false
+                // A widget shows nothing while a password is set, so setting one redraws the cards.
+                viewModel.refreshWidgets()
                 notice = context.getString(R.string.unlock_password_set)
             },
             onDismiss = { passwordDialog = false },
@@ -134,15 +137,20 @@ fun UnlockScreen(
     if (removeDialog) {
         com.hiapps.hinotes.ui.components.ConfirmDialog(
             title = stringResource(R.string.unlock_remove_password_title),
-            message = stringResource(R.string.backup_import_confirm_message),
+            message = stringResource(R.string.unlock_remove_confirm_message),
             confirmLabel = stringResource(R.string.common_delete),
             dismissLabel = stringResource(R.string.common_cancel),
+            // A question rather than a warning, like every other confirmation in the app: the
+            // labels carry the palette's accent colour.
+            style = ConfirmStyle.Accent,
             onConfirm = {
                 viewModel.lockStore.clear()
                 viewModel.updateSettings { setBiometricFace(false) }
                 hasPassword = false
                 removeDialog = false
                 viewModel.refreshLockState()
+                // And removing it lets the cards show their notes again.
+                viewModel.refreshWidgets()
                 notice = context.getString(R.string.unlock_password_removed)
             },
             onDismiss = { removeDialog = false },

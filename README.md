@@ -40,9 +40,15 @@ INTERNET permission.
 - Search titles and bodies; sort by updated, created or title.
 - A single-column list or a two-column staggered grid on the home screen.
 - Write notes in Markdown.
-- Long-press to select several notes and delete them together.
+- Long-press to select several notes and delete them together, or export just those.
 - Share a note as text or as a Markdown attachment.
 - Notes can be locked to keep them from being deleted.
+
+**Widget**
+- A home screen widget showing one note, chosen for each widget as it is added.
+- The title stays put and the note scrolls underneath it, without a scrollbar.
+- Drawn in the app's colour scheme, and follows the Markdown switch.
+- Its own font size and weight.
 
 **Editor**
 - Markdown source editing and find in note.
@@ -56,7 +62,8 @@ INTERNET permission.
 - OLED dark, and app-wide font size and weight.
 
 **Backup**
-- Export and import settings files and note files.
+- Export and import settings files and note files - notes leave as `.md` files while Markdown is
+  on and as `.txt` files while it is off.
 - Restore defaults.
 - Export a diagnostics report.
 
@@ -68,7 +75,8 @@ INTERNET permission.
 
 ### Building
 
-JDK 17+ and an Android SDK with platform 37 and build-tools 36+.
+JDK 17+ and an Android SDK with platform 37 and the build-tools revision the Android Gradle Plugin
+asks for.
 
 ```bash
 ./gradlew :app:assembleDebug      # debug
@@ -86,7 +94,7 @@ sdk.dir=/path/to/AndroidSDK
 `app/build.gradle.kts` reads `keystore.properties` from the project root (git-ignored):
 
 ```properties
-storeFile=keystore/release.jks
+storeFile=keystore/hinotes-release.jks
 storePassword=…
 keyAlias=…
 keyPassword=…
@@ -100,16 +108,22 @@ deliverable.
 
 ```
 app/src/main/java/com/hiapps/hinotes/
-├── MainActivity.kt      single activity, edge-to-edge, theme wiring
+├── MainActivity.kt      the app's activity: edge-to-edge, theme wiring
 ├── data/                notes, SQLite store, archive, settings, lock, biometrics
-└── ui/                  navigation, view model, lock gate, components, screens, theme
+├── ui/                  navigation, view model, lock gate, components, screens, theme
+└── widget/              the home screen widget: provider, collection service, picker
 ```
 
-`tools/` holds the generators for the app icon, the symbol vectors and the accent palettes;
-`tools/verify/` holds the checks:
+`widget/` also holds the app's second activity and its only exported entry point: the note picker
+the launcher opens when a widget is placed.
+
+`tools/` holds the generators for the app icon, the symbol vectors and the accent palettes, and the
+renderers used to look at a glyph or a corner radius; `tools/verify/` holds the checks, with
+`sweep.ps1` running all of them and then reporting on the archived APK:
 
 ```bash
-pwsh -File tools/verify/run.ps1          # archive round trip and Markdown verbs, on a JVM
+pwsh -File tools/verify/sweep.ps1        # everything below, plus the APK's signature and hash
+pwsh -File tools/verify/run.ps1          # archive, Markdown and document-pick checks, on a JVM
 python tools/verify/audit_resources.py   # string, symbol and drawable references
 python tools/verify/check_icon_geometry.py
 ```
@@ -139,9 +153,15 @@ Apache License 2.0.
 - 按标题与正文搜索；按最近修改、创建时间或标题排序。
 - 首页支持单列列表或两列瀑布流网格。
 - 支持以 Markdown 格式书写笔记。
-- 长按进入多选，可批量删除。
+- 长按进入多选，可批量删除，也可只导出所选笔记。
 - 笔记可分享为文本或 Markdown 附件。
 - 可锁定笔记，防止删除。
+
+**微件**
+- 桌面微件显示一篇笔记，添加时为每个微件单独选择笔记。
+- 标题固定，正文在下方滚动，不显示滚动条。
+- 配色跟随应用配色方案，并跟随 Markdown 开关。
+- 可单独设置微件的字号与字重。
 
 **编辑器**
 - 支持 Markdown 源码编辑、笔记内查找。
@@ -155,7 +175,7 @@ Apache License 2.0.
 - 支持 OLED 深色模式与应用级字体大小、字重。
 
 **备份**
-- 可导出/导入设置文件、笔记文件。
+- 可导出/导入设置文件、笔记文件；笔记在 Markdown 开启时导出为 `.md`，关闭时导出为 `.txt`。
 - 可恢复默认设置。
 - 可导出诊断报告。
 
@@ -167,7 +187,7 @@ Apache License 2.0.
 
 ### 构建
 
-需要 JDK 17+，以及包含 platform 37 与 build-tools 36+ 的 Android SDK。
+需要 JDK 17+，以及包含 platform 37 的 Android SDK（build-tools 版本由 Android Gradle Plugin 决定）。
 
 ```bash
 ./gradlew :app:assembleDebug      # 调试版
@@ -185,7 +205,7 @@ sdk.dir=/path/to/AndroidSDK
 `app/build.gradle.kts` 会读取项目根目录下的 `keystore.properties`（已被 gitignore）：
 
 ```properties
-storeFile=keystore/release.jks
+storeFile=keystore/hinotes-release.jks
 storePassword=…
 keyAlias=…
 keyPassword=…
@@ -198,15 +218,20 @@ keyPassword=…
 
 ```
 app/src/main/java/com/hiapps/hinotes/
-├── MainActivity.kt      单 Activity，边到边，主题装配
+├── MainActivity.kt      应用主 Activity：边到边、主题装配
 ├── data/                笔记、SQLite 存储、归档、设置、密码存储、生物识别
-└── ui/                  路由、ViewModel、锁屏、组件、屏幕、主题
+├── ui/                  路由、ViewModel、锁屏、组件、屏幕、主题
+└── widget/              桌面微件：提供者、集合服务、选择器
 ```
 
-`tools/` 存放应用图标、符号矢量图与强调色配色的生成脚本；`tools/verify/` 存放检查：
+`widget/` 里还有应用的第二个 Activity，也是唯一导出的入口：添加微件时由启动器打开的笔记选择器。
+
+`tools/` 存放应用图标、符号矢量图与强调色配色的生成脚本，以及用来看字形、圆角半径的渲染脚本；
+`tools/verify/` 存放各项检查，`sweep.ps1` 会依次运行全部检查并报告归档的 APK：
 
 ```bash
-pwsh -File tools/verify/run.ps1          # 归档往返与 Markdown 动词，在 JVM 上执行
+pwsh -File tools/verify/sweep.ps1        # 下列全部检查，外加 APK 的签名与哈希
+pwsh -File tools/verify/run.ps1          # 归档、Markdown 与文档选择的检查，在 JVM 上执行
 python tools/verify/audit_resources.py   # 字符串、图标、矢量图引用审计
 python tools/verify/check_icon_geometry.py
 ```

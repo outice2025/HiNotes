@@ -87,7 +87,7 @@ fun BackupScreen(
      * name goes into the question: a confirmation that cannot say what it is about to replace the
      * data with is a confirmation nobody can answer.
      */
-    val handlePickedDocument: (Uri) -> Unit = { uri ->
+    fun handlePickedDocument(uri: Uri) {
         PickedDocumentRelay.consume()
         pickedFile = PickedDocument(
             uri = uri,
@@ -188,27 +188,11 @@ fun BackupScreen(
         }
     }
 
-    /**
-     * Turns a returned file into a question about that file.
-     *
-     * The relay is consumed first so the same pick cannot be handled twice, and the file's own
-     * name goes into the question: a confirmation that cannot say what it is about to replace the
-     * data with is a confirmation nobody can answer.
-     */
-    fun handlePickedDocument(uri: Uri) {
-        PickedDocumentRelay.consume()
-        pickedFile = PickedDocument(
-            uri = uri,
-            kind = pendingImport ?: ImportKind.Settings,
-            name = displayName(context, uri),
-        )
-        pendingImport = null
-    }
-
     // ---------------------------------------------------------------- exporters
 
     /**
-     * Settings leave as a JSON file, notes leave as a zip of Markdown documents, and both are
+     * Settings leave as a JSON file, notes leave as a zip of documents - Markdown or plain text,
+ * whichever the editor is writing - and both are
      * written into the app cache and handed to the share sheet - the same route the About
      * screen's diagnostics export takes. A document picker would be the tidier API, but on a
      * device whose provider does not answer `ACTION_CREATE_DOCUMENT` it fails without ever
@@ -242,34 +226,9 @@ fun BackupScreen(
         }
     }
 
-    /** Notes leave as one Markdown document per note, zipped. */
+    /** Notes leave as one document per note, zipped - every note, or a chosen few. */
     fun exportNotes() {
-        runBackup {
-            val notes = viewModel.allNotes()
-            if (notes.isEmpty()) {
-                context.getString(R.string.backup_empty)
-            } else {
-                // Zipping and writing stay off the main thread: a long note list is still small,
-                // but there is no reason to build it in the frame the user is looking at.
-                val opened = withContext(Dispatchers.IO) {
-                    DocumentExport.share(
-                        context = context,
-                        fileName = Backup.fileName("notes", "zip"),
-                        mimeType = "application/zip",
-                        chooserTitle = context.getString(R.string.backup_export_notes),
-                        bytes = NotesArchive.encode(notes),
-                    )
-                }
-                if (opened) {
-                    context.getString(R.string.backup_export_notes_done, notes.size)
-                } else {
-                    context.getString(
-                        R.string.backup_failed,
-                        context.getString(R.string.backup_no_app),
-                    )
-                }
-            }
-        }
+        runBackup { shareNotes(context, viewModel.allNotes(), settings.markdownEnabled) }
     }
 
     // ------------------------------------------------------------------ importers
@@ -327,7 +286,6 @@ fun BackupScreen(
             SettingsRow(
                 icon = Symbols.Close,
                 headline = stringResource(R.string.backup_restore_defaults),
-                supporting = stringResource(R.string.backup_restore_defaults_support),
                 onClick = { pendingRestore = true },
             )
         }
@@ -368,7 +326,7 @@ fun BackupScreen(
             onConfirm = {
                 pendingRestore = false
                 runBackup {
-                    viewModel.settingsRepository.restoreDefaults()
+                    viewModel.applySettings { restoreDefaults() }
                     context.getString(R.string.backup_restore_done)
                 }
             },
@@ -417,17 +375,11 @@ private fun displayName(context: Context, uri: Uri): String {
         ?: uri.toString()
 }
 
-/** MIME types offered when importing notes: a JSON backup, or a zip of Markdown files. */
-
 /** What reading a picked document produced: its bytes, or the reason there are none. */
 private sealed interface ReadResult {
     data class Ok(val bytes: ByteArray) : ReadResult
     data class Failed(val reason: String) : ReadResult
 }
-
-/** One line of diagnostics: the failure's type, and as much of its message as is readable. */
-private fun describe(t: Throwable): String =
-    t.javaClass.simpleName + (t.message?.take(100)?.let { ": $it" } ?: "")
 
 /**
  * Reads the document the user picked.
@@ -487,14 +439,15 @@ private suspend fun importSettings(
     ) ?: return ImportResult.Failure(
         context.getString(R.string.backup_import_invalid_settings),
     )
-    viewModel.settingsRepository.replaceAll(decoded)
+    viewModel.applySettings { replaceAll(decoded) }
     return ImportResult.Success(decoded.nonDefaultCount())
 }
 
 /**
  * Reads notes from either shape the app can produce: the older JSON backup, or the zip of
- * Markdown files the export writes now. The zip is recognised by its signature rather than by
- * the file name, so a renamed or re-extensioned file still imports.
+ * documents the export writes now - Markdown or plain text, whichever the editor was writing. The
+ * zip is recognised by its signature rather than by the file name, so a renamed or re-extensioned
+ * file still imports.
  */
 private suspend fun importNotes(
     context: Context,

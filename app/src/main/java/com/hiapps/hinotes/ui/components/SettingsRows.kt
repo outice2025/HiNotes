@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
@@ -65,7 +64,7 @@ private fun groupedRowShape(isFirst: Boolean, isLast: Boolean): Shape {
  * Measured against the style reference the list was revised to: a bare 24dp glyph on the left -
  * no badge behind it - a `titleMedium` headline, a `bodySmall` supporting line, and a row that is
  * as tall as its own text rather than pinned to a fixed height, so a two-line row lands near
- * 76dp and a three-line one near 88dp instead of everything being squeezed into 72dp. The glyph
+ * 86dp and a three-line one near 110dp instead of everything being squeezed into 72dp. The glyph
  * is vertically centred on the row, which is where the reference puts it.
  *
  * @param isFirst whether this row starts its group (rounded top corners).
@@ -230,11 +229,10 @@ data class ConnectedIconButton(
 /** A vertical run of settings rows, with 3dp between neighbours. */
 @Composable
 fun SettingsSection(
-    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(HiNotesCorners.GroupGap),
         content = content,
     )
@@ -242,8 +240,8 @@ fun SettingsSection(
 
 /** Vertical space between two [SettingsSection]s. */
 @Composable
-fun SettingsSectionGap(height: androidx.compose.ui.unit.Dp = SectionGap) {
-    Spacer(Modifier.height(height))
+fun SettingsSectionGap() {
+    Spacer(Modifier.height(SectionGap))
 }
 
 /**

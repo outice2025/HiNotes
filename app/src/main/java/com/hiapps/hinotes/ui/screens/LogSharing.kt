@@ -14,7 +14,7 @@ internal object LogSharing {
     /** Returns true when a share sheet could be opened. */
     fun share(context: Context, report: String): Boolean = DocumentExport.share(
         context = context,
-        fileName = "hinotes-logs-${System.currentTimeMillis()}.json",
+        fileName = "HiNotes-logs-${System.currentTimeMillis()}.json",
         mimeType = "application/json",
         chooserTitle = null,
         bytes = report.toByteArray(Charsets.UTF_8),

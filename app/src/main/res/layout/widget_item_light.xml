@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One chunk of the note's body, at the weight the widget's own type setting asks for.
+
+  There is a layout per weight because a RemoteViews cannot be handed a `Typeface`, and the size and
+  colour are set at runtime on top of this. The line spacing is a 1.4 multiplier, close to the app's
+  own leading, so a paragraph reads at the same rhythm on the home screen as it does in the editor.
+  The size and colour below are only what the launcher draws before the first item arrives - the
+  runtime values are what is shown.
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_chunk"
+    style="@style/WidgetBody.Light"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:lineSpacingMultiplier="1.4"
+    android:textColor="#FF000000"
+    android:textSize="14sp" />

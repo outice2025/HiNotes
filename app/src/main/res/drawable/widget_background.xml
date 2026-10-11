@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The widget's surface: a rounded rectangle, filled at runtime with the app's own container colour.
+  The corners are the app's large-surface radius - the one its own dialogs, grouped lists and editor
+  canvas use - because a widget is a surface of its own on the home screen rather than a card inside
+  one of the app's lists. The fill below is only what the launcher draws before the first drawing
+  tints it.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="28dp" />
+    <solid android:color="#FFFFFFFF" />
+</shape>

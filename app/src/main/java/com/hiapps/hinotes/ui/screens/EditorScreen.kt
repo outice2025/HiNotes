@@ -33,7 +33,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +75,7 @@ import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
 import com.hiapps.hinotes.ui.theme.LocalDarkTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -181,9 +181,11 @@ fun EditorScreen(
         }
     }
 
-    val editorState = remember { EditorState(TextFieldValue(incoming?.content.orEmpty())) }
-    var title by remember { mutableStateOf(incoming?.title.orEmpty()) }
-    var loadedNote by remember { mutableStateOf(incoming) }
+    // The note, so a different note opening in the same editor entry starts from its own text
+    // instead of leaving the previous one's behind.
+    val editorState = remember(noteId) { EditorState(TextFieldValue(incoming?.content.orEmpty())) }
+    var title by remember(noteId) { mutableStateOf(incoming?.title.orEmpty()) }
+    var loadedNote by remember(noteId) { mutableStateOf(incoming) }
     var previewMode by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmDeleteNote by remember { mutableStateOf(false) }
@@ -201,7 +203,11 @@ fun EditorScreen(
      * load is still in flight - which is how a note that had just been opened came to look
      * modified, and why leaving one asked about changes that had never been made.
      */
-    val modified = title != loadedNote?.title.orEmpty() ||
+    // The title is compared trimmed, because that is how the repository stores it: comparing the
+    // raw draft against the stored title left a title with a trailing space looking modified
+    // forever, which asked about work that was already on disk and moved the note up a list
+    // sorted by "last updated" for no reason.
+    val modified = title.trim() != loadedNote?.title?.trim().orEmpty() ||
         editorState.value.text != loadedNote?.content.orEmpty()
 
     // ------------------------------------------------------------ load the note
@@ -231,17 +237,27 @@ fun EditorScreen(
         boundNote?.let { if (it.id == loadedNote?.id) loadedNote = it }
     }
 
+    /**
+     * Writes the draft, and reports whether it reached the database.
+     *
+     * False means nothing was written: the note had not loaded yet, the draft was blank and the
+     * repository discarded it, or the write itself failed. A failed write is reported rather than
+     * thrown, so a storage problem cannot take the editor - and the text still in it - down; a
+     * cancelled one is not a failure and is passed on, because swallowing it would leave the caller
+     * acting on an answer that never came.
+     */
     suspend fun persist(): Boolean {
         val note = loadedNote ?: return false
-        val stored = viewModel.saveNote(
-            note.copy(title = title, content = editorState.value.text),
-        )
-        return if (stored == null) {
-            // Everything was blank: the note was discarded rather than stored.
-            false
-        } else {
+        return try {
+            val stored = viewModel.saveNote(
+                note.copy(title = title, content = editorState.value.text),
+            ) ?: return false
             loadedNote = stored
             true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (t: Throwable) {
+            false
         }
     }
 
@@ -273,6 +289,9 @@ fun EditorScreen(
         // A note with nothing in it has nothing to lose, so it is not worth a question: leaving
         // an empty editor just leaves. It is also not written on the way out - an emptied note
         // keeps whatever the database already holds rather than being deleted by a back press.
+        //
+        // Leaving is also the only thing that writes on the way out: there is no dispose-time save,
+        // because a write racing the note's own deletion would put the note back.
         val unsaved = modified && !isBlankNote()
         when {
             // Save-as-you-type already holds the note, so the last write only picks up the
@@ -384,8 +403,18 @@ fun EditorScreen(
                         // "saved" here held the editor open for four seconds after the tap. The
                         // note appearing in the list behind is the feedback.
                         scope.launch {
-                            persist()
-                            onBack()
+                            // A blank draft is left alone rather than saved: the repository
+                            // discards blank notes, so writing here would delete an existing note
+                            // without asking. Deleting is the menu's job, where it is confirmed.
+                            if (isBlankNote()) {
+                                onBack()
+                            } else if (persist()) {
+                                onBack()
+                            } else {
+                                snackbarHostState.showSnackbar(
+                                    context.getString(R.string.editor_save_failed),
+                                )
+                            }
                         }
                     },
                     menuItems = buildList {
@@ -791,10 +820,16 @@ fun EditorScreen(
             style = ConfirmStyle.Accent,
             onConfirm = {
                 confirmDiscard = false
-                // Leaves with the note written, which is what the button says.
+                // Leaves with the note written, which is what the button says; a write that fails
+                // says so and keeps the text on screen instead of leaving without it.
                 scope.launch {
-                    persist()
-                    onBack()
+                    if (persist()) {
+                        onBack()
+                    } else {
+                        snackbarHostState.showSnackbar(
+                            context.getString(R.string.editor_save_failed),
+                        )
+                    }
                 }
             },
             onDismiss = { confirmDiscard = false },
@@ -829,14 +864,6 @@ fun EditorScreen(
             },
             onDismiss = { confirmDeleteNote = false },
         )
-    }
-
-    // Persist when the editor leaves the composition, so nothing typed is lost.
-    DisposableEffect(Unit) {
-        onDispose {
-            // Deliberately not saving here: `onBack` paths already persist, and saving from a
-            // dispose scope could race with the note being deleted.
-        }
     }
 }
 

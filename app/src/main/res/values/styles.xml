@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The widget body's type weight, one style per stop the picker offers.
+
+      A RemoteViews cannot be handed a `Typeface`, so a widget's weight cannot be set on the view at
+      runtime: each stop has its own item layout, and that layout names the style for the weight it
+      draws. Below API 28 a text style can only be normal or bold, which is what this file provides;
+      `values-v28` replaces each stop with the real weight from the system font's variable axis.
+    -->
+    <style name="WidgetBody.Light" parent="">
+        <item name="android:textStyle">normal</item>
+    </style>
+    <style name="WidgetBody.Regular" parent="">
+        <item name="android:textStyle">normal</item>
+    </style>
+    <style name="WidgetBody.Medium" parent="">
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="WidgetBody.SemiBold" parent="">
+        <item name="android:textStyle">bold</item>
+    </style>
+</resources>

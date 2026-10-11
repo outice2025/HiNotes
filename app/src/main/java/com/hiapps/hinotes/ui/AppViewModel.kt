@@ -10,12 +10,14 @@ import com.hiapps.hinotes.data.Note
 import com.hiapps.hinotes.data.NoteSort
 import com.hiapps.hinotes.data.NotesRepository
 import com.hiapps.hinotes.data.SettingsRepository
+import com.hiapps.hinotes.widget.HiNotesWidgetProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Single source of truth for the running app: note list, the active search query and sort,
@@ -48,13 +50,21 @@ class AppViewModel(context: Context) : ViewModel() {
     val settings: StateFlow<HiNotesSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.Eagerly, initialSettings)
 
+    /**
+     * The notes the home screen shows, read before the first frame.
+     *
+     * Filled by the read in the `init` block below rather than starting empty and catching up: a
+     * list that arrives a frame late paints the "no notes" screen in front of someone who has
+     * notes. It is empty here only until that read has happened, which is before anything is drawn.
+     */
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
     val notes: StateFlow<List<Note>> = _notes.asStateFlow()
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
-    private val _sort = MutableStateFlow(NoteSort.UpdatedDesc)
+    /** Starts at the stored order, which is the order the notes are read in below. */
+    private val _sort = MutableStateFlow(initialSettings.sortOrder)
     val sort: StateFlow<NoteSort> = _sort.asStateFlow()
 
     /** The note the editor is bound to; set when the editor is opened. */
@@ -75,8 +85,15 @@ class AppViewModel(context: Context) : ViewModel() {
     val selectedNoteIds: StateFlow<Set<String>> = _selectedNoteIds.asStateFlow()
 
     init {
-        viewModelScope.launch { refreshNotes() }
-        // Keep the sort preference and the in-memory sort in step.
+        // The notes are read here, while the app is still starting, the way the settings above are:
+        // a list that starts empty and is filled a frame later shows "no notes" to someone who has
+        // notes. One blocking read before anything is drawn is the price of opening on the list the
+        // user left - and it is the same read the app would otherwise make a frame afterwards.
+        // Nothing else is drawn in the meantime, because this runs before the first composition
+        // returns, so the wait is invisible and the first frame is already the real list.
+        runBlocking { refreshNotes() }
+        // Keep the sort preference and the in-memory sort in step. The sort the list was just read
+        // with is the stored one, so this has nothing to do until the setting itself changes.
         viewModelScope.launch {
             settingsRepository.settings.collect { snapshot ->
                 if (_sort.value != snapshot.sortOrder) {
@@ -123,6 +140,9 @@ class AppViewModel(context: Context) : ViewModel() {
         val stored = notesRepository.saveNote(note)
         _editingNote.value = stored
         recomputeVisible()
+        // Only the widgets that show this note are redrawn, and only when one exists: a save that
+        // no widget is watching costs a lookup of the widget table and nothing else.
+        HiNotesWidgetProvider.refreshNote(appContext, note.id)
         return stored
     }
 
@@ -130,6 +150,7 @@ class AppViewModel(context: Context) : ViewModel() {
         notesRepository.deleteNote(id)
         if (_editingNote.value?.id == id) _editingNote.value = null
         recomputeVisible()
+        HiNotesWidgetProvider.refreshNote(appContext, id)
     }
 
     suspend fun setNoteLocked(id: String, locked: Boolean) {
@@ -138,6 +159,7 @@ class AppViewModel(context: Context) : ViewModel() {
             _editingNote.value = notesRepository.note(id)
         }
         recomputeVisible()
+        HiNotesWidgetProvider.refreshNote(appContext, id)
     }
 
     fun setQuery(value: String) {
@@ -200,6 +222,8 @@ class AppViewModel(context: Context) : ViewModel() {
         if (_editingNote.value?.id in ids) _editingNote.value = null
         _selectedNoteIds.value = emptySet()
         recomputeVisible()
+        // One redraw per widget, however many of the deleted notes one of them was showing.
+        HiNotesWidgetProvider.refreshNotes(appContext, ids)
     }
 
     suspend fun noteCount(): Int = notesRepository.count()
@@ -209,13 +233,54 @@ class AppViewModel(context: Context) : ViewModel() {
     suspend fun replaceAllNotes(notes: List<Note>): Int {
         val written = notesRepository.replaceAll(notes)
         recomputeVisible()
+        // An import can have changed every note at once, so every widget is redrawn.
+        HiNotesWidgetProvider.refreshAll(appContext)
         return written
     }
 
     // ---------------------------------------------------------------- settings
 
     fun updateSettings(block: suspend SettingsRepository.() -> Unit) {
-        viewModelScope.launch { settingsRepository.block() }
+        viewModelScope.launch { applySettings(block) }
+    }
+
+    /**
+     * Applies a settings write, and redraws the widgets when it changed something they draw with.
+     *
+     * Importing settings and restoring the defaults write the whole snapshot at once; both come
+     * through here, so a widget never keeps painting a scheme the user has just replaced.
+     */
+    suspend fun applySettings(block: suspend SettingsRepository.() -> Unit) {
+        val before = settingsRepository.current()
+        settingsRepository.block()
+        if (widgetSettings(before) != widgetSettings(settingsRepository.current())) {
+            HiNotesWidgetProvider.refreshAll(appContext)
+        }
+    }
+
+    /**
+     * The settings a widget is drawn with: its palette and theme, and whether notes are rendered as
+     * Markdown. A dragged font-size slider writes settings on every step and none of those steps
+     * change what a widget looks like, which is what this comparison keeps out of the widget's way.
+     */
+    private fun widgetSettings(settings: HiNotesSettings) = listOf(
+        settings.dynamicColor,
+        settings.accentPalette,
+        settings.darkMode,
+        settings.oledDark,
+        settings.markdownEnabled,
+        settings.widgetFontScale,
+        settings.widgetFontWeight,
+    )
+
+    /**
+     * Redraws every placed widget.
+     *
+     * For a change a widget draws that is not a setting: the unlock password, whose presence decides
+     * whether the card shows anything at all.
+     */
+    fun refreshWidgets() {
+        HiNotesWidgetProvider.refreshAll(appContext)
     }
 
     // -------------------------------------------------------------------- lock
@@ -223,10 +288,6 @@ class AppViewModel(context: Context) : ViewModel() {
     /** Unlocks the app for this session after the password has been verified by the caller. */
     fun unlock() {
         _locked.value = false
-    }
-
-    fun lockNow() {
-        if (lockStore.isConfigured) _locked.value = true
     }
 
     /** Re-evaluates whether the app should be locked, e.g. after removing the password. */

@@ -14,10 +14,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,7 +28,6 @@ import com.hiapps.hinotes.BuildConfig
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.Backup
 import com.hiapps.hinotes.ui.AppViewModel
-import com.hiapps.hinotes.ui.components.AlertMessage
 import com.hiapps.hinotes.ui.components.AppLogoPlaceholder
 import com.hiapps.hinotes.ui.components.SettingsRow
 import com.hiapps.hinotes.ui.components.SettingsScaffold
@@ -56,6 +53,8 @@ private const val RELEASES_URL = "$REPOSITORY_URL/releases"
  *
  * "Check for updates" is a link rather than a version comparison against a release feed, which
  * means the app now makes no network request of its own at all and needs no INTERNET permission.
+ * The licence is stated rather than shown: the row names it, and the file itself is in the
+ * repository the row above opens.
  */
 @Composable
 fun AboutScreen(
@@ -66,8 +65,6 @@ fun AboutScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-
-    var notice by remember { mutableStateOf<String?>(null) }
 
     suspend fun message(text: String) {
         snackbarHostState.showSnackbar(text)
@@ -175,23 +172,15 @@ fun AboutScreen(
 
         SettingsSectionGap()
 
+        // A statement rather than an action: no tap, no chevron and no dialog. The licence itself is
+        // the repository's LICENSE file, which the repository row above leads to.
         SettingsSection {
             SettingsRow(
                 icon = Symbols.Book2,
                 headline = stringResource(R.string.about_licenses),
                 supporting = "Apache-2.0",
-                onClick = { notice = LICENSE_NOTICE },
             )
         }
-    }
-
-    if (notice != null) {
-        AlertMessage(
-            title = stringResource(R.string.about_title),
-            message = notice!!,
-            confirmLabel = stringResource(R.string.common_ok),
-            onDismiss = { notice = null },
-        )
     }
 }
 
@@ -205,11 +194,3 @@ private fun OpenInNewBadge() {
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
-
-private const val LICENSE_NOTICE =
-    "HiNotes is free software under the Apache License 2.0.\n\n" +
-        "Its icons are vector artwork derived from Material Symbols Rounded (Apache License " +
-        "2.0), and it builds on Jetpack Compose, AndroidX and Kotlin (Apache License 2.0). " +
-        "Text is drawn with the device's own font, so no typeface is redistributed.\n\n" +
-        "No analytics, and no network access of its own: the app declares no INTERNET " +
-        "permission, and every link here is opened by another app."

@@ -37,6 +37,15 @@ for path, text in kotlin_sources():
     for m in re.finditer(r"R\.string\.(\w+)", text):
         referenced.setdefault(m.group(1), []).append(path.name)
 
+# Resources are also named from XML: the manifest labels a component with @string/..., and a widget
+# declares its description with one. Those count as references too, or a string the platform reads
+# would be reported as unused.
+for path in (REPO / "app/src/main").rglob("*.xml"):
+    if path in (EN, ZH):
+        continue
+    for m in re.finditer(r"@string/(\w+)", path.read_text(encoding="utf-8")):
+        referenced.setdefault(m.group(1), []).append(path.name)
+
 missing = sorted(k for k in referenced if k not in en)
 if missing:
     problems.append(f"R.string keys with no declaration: {missing}")

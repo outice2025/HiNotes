@@ -2,5 +2,11 @@
 <full-backup-content>
     <include domain="database" path="hinotes.db" />
     <include domain="sharedpref" path="." />
+    <!-- Restored onto another device the password would be unusable, and must not travel. -->
     <exclude domain="sharedpref" path="hinotes_lock.xml" />
+    <!--
+      Which note each widget shows, keyed by an id the launcher hands out: those ids mean nothing
+      on another device, and a restored binding could point a new widget at a note nobody chose.
+    -->
+    <exclude domain="sharedpref" path="hinotes_widgets.xml" />
 </full-backup-content>

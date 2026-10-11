@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One chunk of the note's body at the medium weight; see widget_item_light.xml for why there is one
+  layout per weight.
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_chunk"
+    style="@style/WidgetBody.Medium"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:lineSpacingMultiplier="1.4"
+    android:textColor="#FF000000"
+    android:textSize="14sp" />

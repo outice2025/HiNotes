@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -24,9 +25,10 @@ import com.hiapps.hinotes.ui.screens.EditorSettingsScreen
 import com.hiapps.hinotes.ui.screens.HomeScreen
 import com.hiapps.hinotes.ui.screens.SettingsScreen
 import com.hiapps.hinotes.ui.screens.UnlockScreen
+import com.hiapps.hinotes.ui.screens.WidgetSettingsScreen
 
 /**
- * Route names for the app's eight screens.
+ * Route names for the app's screens.
  *
  * The editor carries the note id, because the home screen and the editor are the only places a
  * note identity matters; every settings screen is a fixed destination.
@@ -37,6 +39,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val SETTINGS_APPEARANCE = "settings/appearance"
     const val SETTINGS_EDITOR = "settings/editor"
+    const val SETTINGS_WIDGET = "settings/widget"
     const val SETTINGS_BACKUP = "settings/backup"
     const val SETTINGS_UNLOCK = "settings/unlock"
     const val ABOUT = "about"
@@ -106,8 +109,20 @@ private fun AnimatedContentTransitionScope<*>.popExit(): ExitTransition =
 fun HiNotesApp(
     viewModel: AppViewModel,
     navController: NavHostController = rememberNavController(),
+    startNoteId: String? = null,
+    onStartNoteShown: () -> Unit = {},
 ) {
     val back: () -> Unit = { navController.popBackStack() }
+
+    // A tapped widget asks for one note by name: the editor opens over the home screen, which
+    // stays in the back stack underneath, and the request is reported as shown so a recomposition
+    // or a rotation does not open it a second time. Tapping the same widget again while its note
+    // is already open brings that page forward rather than stacking a second copy of it.
+    LaunchedEffect(startNoteId) {
+        val noteId = startNoteId ?: return@LaunchedEffect
+        navController.navigate(Routes.editor(noteId)) { launchSingleTop = true }
+        onStartNoteShown()
+    }
 
     NavHost(
         navController = navController,
@@ -146,6 +161,7 @@ fun HiNotesApp(
                 onBack = back,
                 onOpenAppearance = { navController.navigate(Routes.SETTINGS_APPEARANCE) },
                 onOpenEditorSettings = { navController.navigate(Routes.SETTINGS_EDITOR) },
+                onOpenWidgetSettings = { navController.navigate(Routes.SETTINGS_WIDGET) },
                 onOpenBackup = { navController.navigate(Routes.SETTINGS_BACKUP) },
                 onOpenUnlock = { navController.navigate(Routes.SETTINGS_UNLOCK) },
                 onOpenAbout = { navController.navigate(Routes.ABOUT) },
@@ -158,6 +174,10 @@ fun HiNotesApp(
 
         composable(Routes.SETTINGS_EDITOR) {
             EditorSettingsScreen(viewModel = viewModel, onBack = back)
+        }
+
+        composable(Routes.SETTINGS_WIDGET) {
+            WidgetSettingsScreen(viewModel = viewModel, onBack = back)
         }
 
         composable(Routes.SETTINGS_BACKUP) {

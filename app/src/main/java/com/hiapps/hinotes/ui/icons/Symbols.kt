@@ -48,6 +48,7 @@ object Symbols {
     @DrawableRes val Share: Int = R.drawable.sym_share
     @DrawableRes val Sort: Int = R.drawable.sym_sort
     @DrawableRes val SpaceDashboard: Int = R.drawable.sym_space_dashboard
+    @DrawableRes val Style: Int = R.drawable.sym_style
     @DrawableRes val TextFields: Int = R.drawable.sym_text_fields
     @DrawableRes val Undo: Int = R.drawable.sym_undo
     @DrawableRes val Update: Int = R.drawable.sym_update

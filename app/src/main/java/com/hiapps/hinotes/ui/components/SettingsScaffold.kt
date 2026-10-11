@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,7 +28,11 @@ import com.hiapps.hinotes.ui.icons.Symbols
 
 /**
  * Shared frame for every settings screen: a back text-icon button and a 28sp title at the top
- * left, then scrollable content.
+ * left, held still, with the screen's own content scrolling in the space underneath them.
+ *
+ * The header does not travel: a settings list that slides its own title off the top leaves the page
+ * without a name and the back button out of reach. The content is scrolled in what is left below
+ * the title and clipped to it, so a row cannot draw over the header as it goes past.
  *
  * The back button is a 44dp M3 text icon button as the design specifies; it plays the reverse
  * of the push transition because it goes through the same [onBack] pop.
@@ -48,11 +53,9 @@ fun SettingsScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 32.dp),
+                .padding(innerPadding),
         ) {
-            // Top-left: back button, then the screen title.
+            // Top-left: back button, then the screen title. Both stay where they are.
             Box(Modifier.padding(start = 8.dp, top = 4.dp)) {
                 IconButton(
                     onClick = onBack,
@@ -81,9 +84,20 @@ fun SettingsScaffold(
             // Generous gap between the page title and the first list, per the design revision.
             Spacer(Modifier.height(SettingsTitleGap))
 
-            Box(Modifier.padding(horizontal = 16.dp)) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    content()
+            // Everything the screen has to say scrolls here, in the height left under the header
+            // and clipped to it.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clipToBounds()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 32.dp),
+            ) {
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        content()
+                    }
                 }
             }
         }

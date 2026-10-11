@@ -47,9 +47,11 @@ LOGO_ARTWORK = 24.0              # the in-app mark fills its box
 
 DENSITIES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
 
-# The icon's two colours: a pale blue tile with a deep blue pencil on it.
+# The icon's two colours: a pale blue tile with a deep blue pencil on it. The vector drawables are
+# written from the same pair, so repainting the icon here repaints every form of it at once.
 BG = (195, 215, 250, 255)    # #C3D7FA
 FG = (56, 81, 121, 255)      # #385179
+FG_FILL = "#%02X%02X%02X%02X" % (FG[3], FG[0], FG[1], FG[2])    # Android writes AARRGGBB
 
 PNG_ARTWORK = 0.50          # fraction of the legacy icon the glyph occupies
 
@@ -196,7 +198,7 @@ def main():
         adaptive,
         ADAPTIVE_VIEWPORT,
         ADAPTIVE_VIEWPORT,
-        fill="#FF385179",
+        fill=FG_FILL,
     )
 
     anydpi = os.path.join(RES, "mipmap-anydpi-v26")

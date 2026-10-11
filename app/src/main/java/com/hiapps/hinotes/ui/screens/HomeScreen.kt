@@ -26,6 +26,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -74,8 +77,9 @@ private val HeaderInset = HomeGutter + 12.dp + 3.82.dp
  * The home screen: search, the note list or grid, and the create-note action.
  *
  * Long-pressing a note enters multi-select. While a selection is active the create button is
- * joined by a delete action on its left, and the count line reports the selection rather than
- * the total.
+ * joined by a delete action on its left, the count line reports the selection rather than the
+ * total, and the row of controls above the list offers select-all, leaving the selection, and
+ * exporting exactly the notes that are selected.
  *
  * The grid is a staggered one: each card is exactly as tall as its own content and the columns
  * pack tight underneath, so a one-line note no longer leaves a hole beside a long one. The count
@@ -100,6 +104,8 @@ fun HomeScreen(
     val selectedIds by viewModel.selectedNoteIds.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
     var sortMenuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -113,6 +119,20 @@ fun HomeScreen(
     val visibleIds = remember(notes) { notes.map { it.id }.toSet() }
     LaunchedEffect(visibleIds) { viewModel.retainSelection(visibleIds) }
 
+    /**
+     * Shares the notes the selection holds.
+     *
+     * The same export the backup screen performs on the whole list - one zip of documents through
+     * the share sheet - with the selection standing in for "all". The selection is left as it is:
+     * exporting is not destructive, so there is nothing to clear up.
+     */
+    fun exportSelection() {
+        val chosen = notes.filter { it.id in selectedIds }
+        scope.launch {
+            snackbarHostState.showSnackbar(shareNotes(context, chosen, settings.markdownEnabled))
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         // Only the top and the sides keep a system inset. The page's own background is painted to
@@ -122,6 +142,7 @@ fun HomeScreen(
         contentWindowInsets = WindowInsets.systemBars.only(
             WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
         ),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             // The IME is an overlay in an edge-to-edge window, so the action buttons have to be
             // moved above it themselves - otherwise tapping the search field buries the one
@@ -254,6 +275,17 @@ fun HomeScreen(
                     )
 
                     if (selecting) {
+                        // Export sits immediately LEFT of select-all, and carries the same glyph
+                        // and wording as the backup screen's "Export notes" row: it is that same
+                        // export, applied to the notes the user picked rather than to all of them.
+                        IconButton(onClick = { exportSelection() }) {
+                            SymbolIcon(
+                                codepoint = Symbols.Download,
+                                contentDescription = stringResource(R.string.backup_export_notes),
+                                size = 24.dp,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         IconButton(
                             onClick = { viewModel.selectAllNotes(notes.map { it.id }) },
                         ) {

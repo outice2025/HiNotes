@@ -35,7 +35,7 @@ object ArchiveChecks {
             Note(title = "  padded  ", content = "  padded body  "),
         )
 
-        val bytes = NotesArchive.encode(notes)
+        val bytes = NotesArchive.encode(notes, markdown = true)
         check("archive is a zip", NotesArchive.looksLikeArchive(bytes), "size=${bytes.size}")
         check("json is not mistaken for a zip", !NotesArchive.looksLikeArchive("{}".toByteArray()))
 
@@ -74,8 +74,22 @@ object ArchiveChecks {
         check("every entry is .md", names.all { it.endsWith(".md") }, names.toString())
         check("names unique", names.toSet().size == names.size, names.toString())
 
+        // With Markdown off the same notes leave as plain text: the extension says so, and the
+        // documents still read back, so an import after a switch of the setting loses nothing.
+        val textBytes = NotesArchive.encode(notes, markdown = false)
+        val textNames = zipEntryNames(textBytes)
+        check("text export is a zip", NotesArchive.looksLikeArchive(textBytes))
+        check("every text entry is .txt", textNames.all { it.endsWith(".txt") }, textNames.toString())
+        check(
+            "text names match the markdown ones",
+            textNames.map { it.substringBeforeLast('.') } == names.map { it.substringBeforeLast('.') },
+            textNames.toString(),
+        )
+        val textBack = NotesArchive.decode(textBytes)
+        check("text archive decodes", textBack?.size == notes.size, textBack?.size.toString())
+
         // An empty note (no title, no body) is written but not read back as a note.
-        val blank = NotesArchive.decode(NotesArchive.encode(listOf(Note())))
+        val blank = NotesArchive.decode(NotesArchive.encode(listOf(Note()), markdown = true))
         check("blank note is skipped on import", blank != null && blank.isEmpty(), blank.toString())
 
         check("foreign bytes rejected", NotesArchive.decode("not a zip".toByteArray()) == null)

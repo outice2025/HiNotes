@@ -22,7 +22,7 @@ import com.hiapps.hinotes.ui.icons.Symbols
 /**
  * The settings root.
  *
- * Sections follow the design: appearance/editor/language, then backup/unlock, then about.
+ * Sections follow the design: appearance/editor/widget/language, then backup/unlock, then about.
  * "Language" opens Android's own per-app language picker on API 33+, which is the platform
  * requirement for an in-app language entry (in-app language packs were folded into that
  * system UI in Android 13).
@@ -32,6 +32,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAppearance: () -> Unit,
     onOpenEditorSettings: () -> Unit,
+    onOpenWidgetSettings: () -> Unit,
     onOpenBackup: () -> Unit,
     onOpenUnlock: () -> Unit,
     onOpenAbout: () -> Unit,
@@ -58,6 +59,15 @@ fun SettingsScreen(
                 headline = stringResource(R.string.settings_editor),
                 supporting = stringResource(R.string.settings_editor_support),
                 onClick = onOpenEditorSettings,
+                trailing = { Chevron() },
+                isFirst = false,
+                isLast = false,
+            )
+            SettingsRow(
+                icon = Symbols.Style,
+                headline = stringResource(R.string.settings_widget),
+                supporting = stringResource(R.string.settings_widget_support),
+                onClick = onOpenWidgetSettings,
                 trailing = { Chevron() },
                 isFirst = false,
                 isLast = false,

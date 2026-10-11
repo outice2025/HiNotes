@@ -97,22 +97,6 @@ object Markdown {
         return TextFieldValue(newText, TextRange(newStart, newEnd))
     }
 
-    /** Inserts [snippet] at the cursor, replacing the selection, and leaves the caret after it. */
-    fun insertAtCursor(
-        value: TextFieldValue,
-        snippet: String,
-        caretOffsetFromEnd: Int = 0,
-    ): TextFieldValue {
-        val text = value.text
-        val start = value.selection.min
-        val end = value.selection.max
-        val needsLeadingNewline = start > 0 && text[start - 1] != '\n'
-        val insertion = (if (needsLeadingNewline) "\n" else "") + snippet
-        val newText = text.replaceRange(start, end, insertion)
-        val caret = start + insertion.length - caretOffsetFromEnd
-        return TextFieldValue(newText, TextRange(caret.coerceIn(0, newText.length)))
-    }
-
     /** One rendered element of the preview. */
     sealed interface PreviewBlock {
         /** A run of prose, already carrying its inline spans. */

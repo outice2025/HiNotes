@@ -3,38 +3,118 @@
 #
 #   pwsh -File tools/verify/sweep.ps1
 #
-# The image checks need a Python 3 with numpy, Pillow and fontTools; point HINOTES_PYTHON at one,
-# or have `python` on PATH. JAVA_HOME must name a JDK 17+, and ANDROID_HOME an SDK whose
-# build-tools can inspect the APK.
+# What the sweep needs is looked up rather than demanded, so a clone can run it with little set up:
+#
+#   * Python 3 with numpy, Pillow and fontTools: HINOTES_PYTHON, else `python` on PATH (the Windows
+#     Store alias is skipped - it is a stub that opens the Store), else `py -3`.
+#   * An Android SDK: ANDROID_HOME, else ANDROID_SDK_ROOT, else the `sdk.dir` in local.properties,
+#     which is how the build itself finds it. Each candidate is checked, because a machine can
+#     carry an ANDROID_HOME left over from another install that is no SDK at all.
+#   * A JDK 17+: JAVA_HOME or HINOTES_JAVA_HOME, else a `javac` on PATH, else a JDK under one of the
+#     usual install roots (or Android Studio's own). Nothing here names a path on any one machine.
 $ErrorActionPreference = 'Continue'
 $repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$python = if ($env:HINOTES_PYTHON) { $env:HINOTES_PYTHON } else { 'python' }
-if (-not (Get-Command $python -ErrorAction SilentlyContinue)) {
-    Write-Host "python not found - set HINOTES_PYTHON to run the image checks" -ForegroundColor Red
+
+# ---------------------------------------------------------------------------- python
+$python = $env:HINOTES_PYTHON
+$pythonPrefix = @()
+function Test-PythonCandidate($candidate) {
+    $command = Get-Command $candidate -ErrorAction SilentlyContinue
+    if (-not $command) { return $false }
+    # The Store's `python.exe` is an alias that opens the Store rather than running anything.
+    return $command.Source -notlike '*\WindowsApps\*'
+}
+if (-not $python -and (Test-PythonCandidate 'python')) { $python = 'python' }
+if (-not $python -and (Get-Command 'py' -ErrorAction SilentlyContinue)) {
+    $python = 'py'
+    $pythonPrefix = @('-3')
+}
+if (-not $python) {
+    Write-Host "no Python found - set HINOTES_PYTHON to one with numpy, Pillow and fontTools" -ForegroundColor Red
     exit 1
 }
-if (-not $env:JAVA_HOME) {
-    Write-Host "JAVA_HOME is not set - point it at a JDK 17+" -ForegroundColor Red
+
+# ---------------------------------------------------------------------------- android sdk
+# An SDK without build-tools cannot run the checks below, so every candidate is looked at before it
+# is taken rather than the first non-empty one being trusted.
+function Test-SdkCandidate($candidate) {
+    if (-not $candidate) { return $false }
+    return Test-Path (Join-Path $candidate 'build-tools')
+}
+$sdk = @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT) | Where-Object { Test-SdkCandidate $_ } |
+    Select-Object -First 1
+if (-not $sdk) {
+    $properties = Join-Path $repo 'local.properties'
+    if (Test-Path $properties) {
+        $setting = Select-String -Path $properties -Pattern '^\s*sdk\.dir\s*=' | Select-Object -First 1
+        if ($setting) {
+            # A Java properties file escapes the colon in a Windows path.
+            $fromFile = ($setting.Line -replace '^\s*sdk\.dir\s*=\s*', '').Trim()
+            $fromFile = $fromFile -replace '\\:', ':' -replace '\\\\', '\'
+            if (Test-SdkCandidate $fromFile) { $sdk = $fromFile }
+        }
+    }
+}
+if (-not $sdk) {
+    Write-Host "no Android SDK found - set ANDROID_HOME, or sdk.dir in local.properties" -ForegroundColor Red
     exit 1
 }
-if (-not $env:ANDROID_HOME) {
-    Write-Host "ANDROID_HOME is not set - point it at an Android SDK" -ForegroundColor Red
+
+# ---------------------------------------------------------------------------- jdk
+$javaHome = $env:JAVA_HOME
+if (-not $javaHome) { $javaHome = $env:HINOTES_JAVA_HOME }
+if (-not $javaHome -and (Get-Command 'javac' -ErrorAction SilentlyContinue)) {
+    $javaHome = Split-Path (Split-Path (Get-Command 'javac').Source -Parent) -Parent
+}
+if (-not $javaHome) {
+    $roots = @(
+        "$env:ProgramFiles\Java", "$env:ProgramFiles\Eclipse Adoptium",
+        "$env:ProgramFiles\Microsoft", "$env:LOCALAPPDATA\Programs\Eclipse Adoptium",
+        '/usr/lib/jvm'
+    )
+    foreach ($root in $roots) {
+        if (-not (Test-Path $root)) { continue }
+        $found = Get-ChildItem $root -Directory -ErrorAction SilentlyContinue |
+            Where-Object { Test-Path (Join-Path $_.FullName 'bin\javac.exe') } |
+            Sort-Object Name -Descending | Select-Object -First 1
+        if ($found) { $javaHome = $found.FullName; break }
+    }
+}
+if (-not $javaHome) {
+    # Android Studio ships the JDK it builds with, which is a 17+ one and is not under a Java root.
+    $studios = @(
+        "$env:ProgramFiles\Android\Android Studio\jbr",
+        "$env:LOCALAPPDATA\Programs\Android Studio\jbr"
+    )
+    foreach ($studio in $studios) {
+        if (Test-Path (Join-Path $studio 'bin\javac.exe')) { $javaHome = $studio; break }
+    }
+}
+if (-not $javaHome) {
+    Write-Host "no JDK found - set JAVA_HOME to a JDK 17+" -ForegroundColor Red
     exit 1
 }
+$javaVersion = (& (Join-Path $javaHome 'bin\java.exe') -version 2>&1 | Select-Object -First 1)
+if ($javaVersion -match 'version "(\d+)' -and [int]$Matches[1] -lt 17) {
+    Write-Host "the JDK at $javaHome is Java $($Matches[1]) - set JAVA_HOME to a JDK 17+" -ForegroundColor Red
+    exit 1
+}
+$env:JAVA_HOME = $javaHome
+$env:ANDROID_HOME = $sdk
 
 Write-Host '=== checks ==='
 & "$repo\tools\verify\run.ps1" 2>&1 | Select-String -Pattern 'FAIL|passed|failed'
 
 Write-Host '=== resource audit ==='
-& $python "$repo\tools\verify\audit_resources.py" | Select-Object -Last 5
+& $python @pythonPrefix "$repo\tools\verify\audit_resources.py" | Select-Object -Last 5
 
 Write-Host '=== icon geometry ==='
-& $python "$repo\tools\verify\check_icon_geometry.py" | Select-Object -Last 3
+& $python @pythonPrefix "$repo\tools\verify\check_icon_geometry.py" | Select-Object -Last 3
 
 Write-Host '=== apk ==='
-$buildTools = Get-ChildItem (Join-Path $env:ANDROID_HOME 'build-tools') -Directory |
+$buildTools = Get-ChildItem (Join-Path $sdk 'build-tools') -Directory |
     Sort-Object Name -Descending | Select-Object -First 1
-$apk = Get-ChildItem "$repo\releases" -Recurse -Filter 'hinotes-*-release.apk' |
+$apk = Get-ChildItem "$repo\releases" -Recurse -Filter 'HiNotes-*-release.apk' |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1
 Write-Host ("file: {0}" -f $apk.FullName)
 Write-Host ("size: {0} MB" -f [math]::Round($apk.Length / 1MB, 2))

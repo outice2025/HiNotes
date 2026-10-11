@@ -57,6 +57,7 @@
     <string name="editor_props_words_hint">Title and punctuation excluded</string>
     <string name="editor_share_chooser">Share note</string>
     <string name="editor_share_failed">No app can share this note</string>
+    <string name="editor_save_failed">The note could not be saved</string>
     <string name="editor_more_actions">More actions</string>
 
     <!-- Settings root -->
@@ -65,6 +66,8 @@
     <string name="settings_appearance_support">App look &amp; theme</string>
     <string name="settings_editor">Editor</string>
     <string name="settings_editor_support">Editor style, fonts, autosave</string>
+    <string name="settings_widget">Widget</string>
+    <string name="settings_widget_support">Home screen widget</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_support">In-app language</string>
     <string name="settings_backup">Backup</string>
@@ -122,7 +125,6 @@
     <string name="backup_failed">Backup failed: %1$s</string>
     <string name="backup_no_app">no app can receive the file</string>
     <string name="backup_restore_defaults">Restore defaults</string>
-    <string name="backup_restore_defaults_support">Reset every setting</string>
     <string name="backup_restore_confirm_message">Every setting will be reset to its default value. This cannot be undone.</string>
     <string name="backup_restore_done">Settings restored to defaults</string>
     <string name="backup_empty">Nothing to export yet</string>
@@ -136,6 +138,7 @@
     <string name="unlock_set_password_title">Set password</string>
     <string name="unlock_change_password_title">Change password</string>
     <string name="unlock_remove_password_title">Remove password</string>
+    <string name="unlock_remove_confirm_message">The unlock password will be removed, and the app will stop asking for it. This cannot be undone.</string>
     <string name="unlock_current_password">Current password</string>
     <string name="unlock_new_password">New password</string>
     <string name="unlock_confirm_password">Repeat password</string>
@@ -195,4 +198,15 @@
     <string name="accent_orange">Orange</string>
     <string name="accent_yellow">Yellow</string>
     <string name="appearance_typography">Typography</string>
+
+    <!-- Home screen widget -->
+    <string name="widget_label">HiNotes widget</string>
+    <string name="widget_description">Show one note on the home screen</string>
+    <string name="widget_title">Widget</string>
+    <string name="widget_pick_title">Choose a note</string>
+    <string name="widget_pick_empty">No notes yet - create one in the app first</string>
+    <string name="widget_settings_font">Set widget font size</string>
+    <string name="widget_settings_font_support">Set the home screen widget\'s font size</string>
+    <string name="picker_font_size_widget_title">Widget font size</string>
+    <string name="picker_weight_widget_title">Widget font weight</string>
 </resources>

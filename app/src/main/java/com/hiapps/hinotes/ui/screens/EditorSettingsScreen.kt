@@ -17,9 +17,6 @@ import com.hiapps.hinotes.ui.components.SettingsSectionGap
 import com.hiapps.hinotes.ui.components.SwitchRow
 import com.hiapps.hinotes.ui.icons.Symbols
 
-/** Autosave cadence, in seconds, quoted in the autosave row's supporting text. */
-private const val AUTOSAVE_INTERVAL_SECONDS = 20
-
 /**
  * Editor settings: Markdown, autosave, and the note content typography.
  *
@@ -57,10 +54,7 @@ fun EditorSettingsScreen(
             SwitchRow(
                 icon = Symbols.Save,
                 headline = stringResource(R.string.editor_settings_autosave),
-                supporting = stringResource(
-                    R.string.editor_settings_autosave_support,
-                    AUTOSAVE_INTERVAL_SECONDS,
-                ),
+                supporting = stringResource(R.string.editor_settings_autosave_support),
                 checked = settings.autoSave,
                 onCheckedChange = { checked ->
                     viewModel.updateSettings { setAutoSave(checked) }

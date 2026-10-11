@@ -130,9 +130,9 @@ object Backup {
         return json.toString(2)
     }
 
-    /** Timestamped default file name for exports. */
+    /** Timestamped default file name for exports, named after the app. */
     fun fileName(prefix: String, extension: String = "json"): String {
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        return "hinotes-$prefix-$stamp.$extension"
+        return "HiNotes-$prefix-$stamp.$extension"
     }
 }

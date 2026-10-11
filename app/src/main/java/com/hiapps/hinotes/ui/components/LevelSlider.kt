@@ -1,6 +1,5 @@
 package com.hiapps.hinotes.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -98,25 +97,5 @@ fun <T> LevelSlider(
                 )
             }
         }
-    }
-}
-
-/**
- * The four-level scale shared by the app and note type settings.
- *
- * Used for both the size and the weight sliders so the two read as the same control.
- */
-@Composable
-fun LevelSliderRow(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        content()
     }
 }

@@ -10,10 +10,18 @@
 
     <!--
       Declared so the biometric prompt can run; a normal permission with no runtime prompt.
-      androidx.biometric declares USE_FINGERPRINT (maxSdkVersion 27) for its API 23-27 fallback
-      path in its own manifest, so that one arrives through the merge rather than from here.
     -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!--
+      androidx.biometric declares USE_FINGERPRINT in its own manifest for the API 23-27 fallback
+      path, so it reaches the merged manifest without being asked for here. The app offers a
+      biometric prompt rather than a fingerprint switch, so the declaration is removed again
+      instead of shipping as a permission the app itself never names.
+    -->
+    <uses-permission
+        android:name="android.permission.USE_FINGERPRINT"
+        tools:node="remove" />
 
     <application
         android:allowBackup="true"
@@ -49,6 +57,46 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!--
+          The home screen widget. The receiver is not exported: only the system's app widget
+          service sends it anything, and it does so by component rather than by broadcast.
+        -->
+        <receiver
+            android:name=".widget.HiNotesWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <!--
+                  The card follows the app's appearance settings, one of which follows the system:
+                  a configuration change can mean every widget needs repainting. See onReceive.
+                -->
+                <action android:name="android.intent.action.CONFIGURATION_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/hi_notes_widget_info" />
+        </receiver>
+
+        <!-- The widget's scrolling body; only the widget host may bind to it. -->
+        <service
+            android:name=".widget.HiNotesWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <!--
+          The note picker the host opens when a widget is placed. It is exported because the
+          launcher, not this app, starts it, and it is the only entry point into the app that is.
+        -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.HiNotes">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

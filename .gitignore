@@ -7,11 +7,12 @@ build/
 # Archived release APKs (build output kept outside build/)
 releases/
 
+# A build output that escaped build/; the archives above are the ones worth keeping
+*.apk
+*.aab
+
 # Android SDK location (machine-specific)
 local.properties
-
-# Design sources kept on this machine only
-HiNotes.json
 
 # Release signing material - never commit these
 keystore.properties

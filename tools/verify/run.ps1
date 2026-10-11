@@ -3,9 +3,9 @@
 # These are not unit tests inside the Gradle build: they compile a couple of pure-logic sources
 # with the Kotlin compiler Gradle already has cached, plus the Compose text classes the editor
 # depends on, and run them on the desktop JVM. That keeps the app free of a test dependency while
-# still executing - rather than reasoning about - the two pieces of logic that are easiest to get
-# subtly wrong and hardest to see on a phone: the Markdown verbs behind the toolbar buttons, and
-# the notes archive behind export/import.
+# still executing - rather than reasoning about - the logic that is easiest to get subtly wrong and
+# hardest to see on a phone: the Markdown verbs behind the toolbar buttons, the notes archive behind
+# export and import, and the handoff of a picked document behind backup and restore.
 #
 #   pwsh -File tools/verify/run.ps1
 #
@@ -95,7 +95,11 @@ function Invoke-Check($name, $checkFile, $sources, $extraCp) {
     $cp = if ($extraCp) { "$libCp;$extraCp" } else { $libCp }
     $args = @('-cp', $compilerCp, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler',
         '-no-stdlib', '-jvm-target', '17', '-classpath', $cp, '-d', $out, $checkFile) + $sources
+    # A check reads the app's own files by paths relative to the repository root (see
+    # DocumentPickChecks), so both halves of it are started from there rather than from wherever the
+    # caller happened to be standing.
     $p = Start-Process -FilePath $java -ArgumentList $args -Wait -NoNewWindow -PassThru `
+        -WorkingDirectory $repo `
         -RedirectStandardOutput "$out\compile.out" -RedirectStandardError "$out\compile.err"
     if ($p.ExitCode -ne 0) {
         Write-Host "compile failed:" -ForegroundColor Red
@@ -106,6 +110,7 @@ function Invoke-Check($name, $checkFile, $sources, $extraCp) {
 
     $runArgs = @('-cp', "$out;$cp", "com.hiapps.hinotes.$name")
     $r = Start-Process -FilePath $java -ArgumentList $runArgs -Wait -NoNewWindow -PassThru `
+        -WorkingDirectory $repo `
         -RedirectStandardOutput "$out\run.out" -RedirectStandardError "$out\run.err"
     Get-Content "$out\run.out"
     if ($r.ExitCode -ne 0) {
