@@ -105,6 +105,9 @@ $env:ANDROID_HOME = $sdk
 Write-Host '=== checks ==='
 & "$repo\tools\verify\run.ps1" 2>&1 | Select-String -Pattern 'FAIL|passed|failed'
 
+Write-Host '=== migrations ==='
+& $python @pythonPrefix "$repo\tools\verify\check_migrations.py" | Select-Object -Last 3
+
 Write-Host '=== resource audit ==='
 & $python @pythonPrefix "$repo\tools\verify\audit_resources.py" | Select-Object -Last 5
 

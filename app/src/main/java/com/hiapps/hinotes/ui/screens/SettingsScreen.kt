@@ -22,7 +22,7 @@ import com.hiapps.hinotes.ui.icons.Symbols
 /**
  * The settings root.
  *
- * Sections follow the design: appearance/editor/widget/language, then backup/unlock, then about.
+ * Sections follow the design: appearance/editor/widget/language, then backup/privacy, then about.
  * "Language" opens Android's own per-app language picker on API 33+, which is the platform
  * requirement for an in-app language entry (in-app language packs were folded into that
  * system UI in Android 13).

@@ -8,12 +8,16 @@ import java.util.UUID
  * [content] holds the raw note body. When Markdown is enabled in settings the body is written
  * as Markdown source; otherwise it is treated as plain text. Either way it is stored verbatim
  * so nothing is lost when the setting is toggled.
+ *
+ * [isLocked] and [pinned] are the note's own two flags: a locked note cannot be edited but can
+ * still be deleted, and a pinned note is listed ahead of the rest whatever the sort order is.
  */
 data class Note(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "",
     val content: String = "",
     val isLocked: Boolean = false,
+    val pinned: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {

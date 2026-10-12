@@ -65,6 +65,7 @@ object Backup {
                     put("title", note.title)
                     put("content", note.content)
                     put("locked", note.isLocked)
+                    put("pinned", note.pinned)
                     put("createdAt", note.createdAt)
                     put("updatedAt", note.updatedAt)
                 }
@@ -88,6 +89,7 @@ object Backup {
                 title = item.optString("title"),
                 content = item.optString("content"),
                 isLocked = item.optBoolean("locked", false),
+                pinned = item.optBoolean("pinned", false),
                 createdAt = item.optLong("createdAt", now),
                 updatedAt = item.optLong("updatedAt", now),
             )

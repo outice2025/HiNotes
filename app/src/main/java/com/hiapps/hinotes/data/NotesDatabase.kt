@@ -23,6 +23,7 @@ internal class NotesDatabase(context: Context) :
                 $COL_TITLE TEXT NOT NULL DEFAULT '',
                 $COL_CONTENT TEXT NOT NULL DEFAULT '',
                 $COL_LOCKED INTEGER NOT NULL DEFAULT 0,
+                $COL_PINNED INTEGER NOT NULL DEFAULT 0,
                 $COL_CREATED INTEGER NOT NULL,
                 $COL_UPDATED INTEGER NOT NULL
             )
@@ -36,6 +37,9 @@ internal class NotesDatabase(context: Context) :
         // Notes are the user's data: never drop them on upgrade.
         if (oldVersion < 2 && !hasColumn(db, COL_LOCKED)) {
             db.execSQL("ALTER TABLE $TABLE ADD COLUMN $COL_LOCKED INTEGER NOT NULL DEFAULT 0")
+        }
+        if (oldVersion < 3 && !hasColumn(db, COL_PINNED)) {
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN $COL_PINNED INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -58,6 +62,7 @@ internal class NotesDatabase(context: Context) :
             put(COL_TITLE, note.title)
             put(COL_CONTENT, note.content)
             put(COL_LOCKED, if (note.isLocked) 1 else 0)
+            put(COL_PINNED, if (note.pinned) 1 else 0)
             put(COL_CREATED, note.createdAt)
             put(COL_UPDATED, note.updatedAt)
         }
@@ -117,6 +122,7 @@ internal class NotesDatabase(context: Context) :
                     put(COL_TITLE, note.title)
                     put(COL_CONTENT, note.content)
                     put(COL_LOCKED, if (note.isLocked) 1 else 0)
+                    put(COL_PINNED, if (note.pinned) 1 else 0)
                     put(COL_CREATED, note.createdAt)
                     put(COL_UPDATED, note.updatedAt)
                 }
@@ -133,6 +139,7 @@ internal class NotesDatabase(context: Context) :
         val titleIndex = getColumnIndexOrThrow(COL_TITLE)
         val contentIndex = getColumnIndexOrThrow(COL_CONTENT)
         val lockedIndex = getColumnIndexOrThrow(COL_LOCKED)
+        val pinnedIndex = getColumnIndexOrThrow(COL_PINNED)
         val createdIndex = getColumnIndexOrThrow(COL_CREATED)
         val updatedIndex = getColumnIndexOrThrow(COL_UPDATED)
         val out = ArrayList<Note>(count)
@@ -142,6 +149,7 @@ internal class NotesDatabase(context: Context) :
                 title = getString(titleIndex),
                 content = getString(contentIndex),
                 isLocked = getInt(lockedIndex) != 0,
+                pinned = getInt(pinnedIndex) != 0,
                 createdAt = getLong(createdIndex),
                 updatedAt = getLong(updatedIndex),
             )
@@ -151,12 +159,13 @@ internal class NotesDatabase(context: Context) :
 
     companion object {
         private const val DB_NAME = "hinotes.db"
-        private const val DB_VERSION = 2
+        private const val DB_VERSION = 3
         private const val TABLE = "notes"
         private const val COL_ID = "id"
         private const val COL_TITLE = "title"
         private const val COL_CONTENT = "content"
         private const val COL_LOCKED = "locked"
+        private const val COL_PINNED = "pinned"
         private const val COL_CREATED = "created_at"
         private const val COL_UPDATED = "updated_at"
     }

@@ -109,6 +109,18 @@ class NotesRepository(context: Context) {
         _notes.value = sortNotes(database.all(), _sort.value)
     }
 
+    /**
+     * Pins or unpins [id]. A pinned note is listed ahead of every other note, in any order.
+     *
+     * Pinning is not an edit of what the note says, so the modified time is deliberately left
+     * alone: a note must not jump to the top of "last updated" merely because it was pinned.
+     */
+    suspend fun setPinned(id: String, pinned: Boolean) = withContext(Dispatchers.IO) {
+        val existing = database.byId(id) ?: return@withContext
+        database.upsert(existing.copy(pinned = pinned))
+        _notes.value = sortNotes(database.all(), _sort.value)
+    }
+
     suspend fun count(): Int = withContext(Dispatchers.IO) { database.count() }
 
     suspend fun allForExport(): List<Note> = withContext(Dispatchers.IO) { database.all() }
@@ -120,13 +132,21 @@ class NotesRepository(context: Context) {
         notes.size
     }
 
-    private fun sortNotes(list: List<Note>, sort: NoteSort): List<Note> = when (sort) {
-        NoteSort.UpdatedDesc -> list.sortedByDescending { it.updatedAt }
-        NoteSort.CreatedDesc -> list.sortedByDescending { it.createdAt }
-        // By title: written titles first in alphabetical order, untitled notes after them, where
-        // an empty title cannot pretend to be a sort key.
-        NoteSort.TitleAsc -> list.sortedWith(
-            compareBy({ it.title.isBlank() }, { it.title.trim().lowercase() }),
-        )
+    /**
+     * The order the list is shown in.
+     *
+     * Pinned notes come first whatever the order is - that is what pinning is for - and the chosen
+     * order decides how each of the two groups is sorted inside itself.
+     */
+    private fun sortNotes(list: List<Note>, sort: NoteSort): List<Note> {
+        val order = when (sort) {
+            NoteSort.UpdatedDesc -> compareByDescending<Note> { it.updatedAt }
+            NoteSort.CreatedDesc -> compareByDescending<Note> { it.createdAt }
+            // By title: written titles first in alphabetical order, untitled notes after them, where
+            // an empty title cannot pretend to be a sort key.
+            NoteSort.TitleAsc -> compareBy<Note> { it.title.isBlank() }
+                .thenBy { it.title.trim().lowercase() }
+        }
+        return list.sortedWith(compareByDescending<Note> { it.pinned }.then(order))
     }
 }

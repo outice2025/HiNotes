@@ -42,11 +42,12 @@ import com.hiapps.hinotes.ui.theme.HiNotesCorners
 private const val MIN_PASSWORD_LENGTH = 4
 
 /**
- * Unlock settings: the app password and the face-unlock switch.
+ * Privacy settings: screen capture, the app password and the face-unlock switch.
  *
- * A password is a prerequisite for biometrics - there has to be a fallback the user controls -
- * so turning the switch on without a password first explains that instead of enabling a lock the
- * user could be shut out of.
+ * The screen-capture switch comes first because it is the one setting here that needs nothing else
+ * to be true first. A password is a prerequisite for biometrics - there has to be a fallback the
+ * user controls - so turning the face switch on without a password explains that instead of
+ * enabling a lock the user could be shut out of.
  */
 @Composable
 fun UnlockScreen(
@@ -64,17 +65,28 @@ fun UnlockScreen(
     val biometricAvailable = remember { Biometrics.isAvailable(context) }
 
     SettingsScaffold(
-        title = stringResource(R.string.unlock_title),
+        title = stringResource(R.string.privacy_title),
         onBack = onBack,
     ) {
         SettingsSection {
+            SwitchRow(
+                icon = Symbols.StopScreenShare,
+                headline = stringResource(R.string.unlock_screen_capture),
+                supporting = stringResource(R.string.unlock_screen_capture_support),
+                checked = settings.screenCaptureDisabled,
+                onCheckedChange = { disabled ->
+                    viewModel.updateSettings { setScreenCaptureDisabled(disabled) }
+                },
+                isFirst = true,
+                isLast = false,
+            )
             SettingsRow(
                 icon = Symbols.Password,
                 headline = stringResource(R.string.unlock_password),
                 supporting = stringResource(R.string.unlock_password_support),
                 onClick = { passwordDialog = true },
                 trailing = { Chevron() },
-                isFirst = true,
+                isFirst = false,
                 isLast = false,
             )
             SwitchRow(
@@ -159,7 +171,7 @@ fun UnlockScreen(
 
     notice?.let { text ->
         AlertMessage(
-            title = stringResource(R.string.unlock_title),
+            title = stringResource(R.string.privacy_title),
             message = text,
             confirmLabel = stringResource(R.string.common_ok),
             onDismiss = { notice = null },

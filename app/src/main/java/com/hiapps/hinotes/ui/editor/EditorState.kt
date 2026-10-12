@@ -87,6 +87,18 @@ class EditorState(initial: TextFieldValue = TextFieldValue()) {
         value = new
     }
 
+    /**
+     * Moves the selection without editing the note.
+     *
+     * Used by find-in-note, which puts the caret on a match so the canvas scrolls to it. A search
+     * is not an edit, so it must not appear in the undo history, and the text is left exactly as it
+     * was - which is why this cannot go through [applyEdit].
+     */
+    fun select(range: TextRange) {
+        val target = range.constrainTo(value.text.length)
+        if (value.selection != target) value = value.copy(selection = target)
+    }
+
     private fun TextRange.constrainTo(length: Int): TextRange {
         val s = start.coerceIn(0, length)
         val e = end.coerceIn(0, length)

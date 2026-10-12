@@ -117,7 +117,11 @@ fun AboutScreen(
             SettingsRow(
                 icon = Symbols.Info,
                 headline = stringResource(R.string.about_version),
-                supporting = stringResource(R.string.about_version_support, BuildConfig.VERSION_NAME),
+                supporting = stringResource(
+                    R.string.about_version_support,
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.BUILD_CHANNEL,
+                ),
                 onClick = null,
             )
         }

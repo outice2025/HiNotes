@@ -16,8 +16,13 @@ val keystoreProps = Properties().apply {
     }
 }
 
-val appVersionName = "1.0.6"
-val appVersionCode = 16
+val appVersionName = "1.0.7"
+val appVersionCode = 17
+
+// Which build this is: the About screen shows it next to the version number. Every build made
+// while a version is still being tested says "Debug"; the build that is published says "Release",
+// so the switch below is flipped once, immediately before a release is built.
+val appBuildChannel = "Release"
 
 android {
     namespace = "com.hiapps.hinotes"
@@ -30,6 +35,7 @@ android {
         targetSdk = 37
         versionCode = appVersionCode
         versionName = appVersionName
+        buildConfigField("String", "BUILD_CHANNEL", "\"$appBuildChannel\"")
     }
 
     signingConfigs {

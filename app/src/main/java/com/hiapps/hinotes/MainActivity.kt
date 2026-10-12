@@ -8,17 +8,18 @@ import android.os.Bundle
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hiapps.hinotes.data.CrashLogger
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.AppViewModelFactory
 import com.hiapps.hinotes.ui.HiNotesApp
 import com.hiapps.hinotes.ui.LockGate
+import com.hiapps.hinotes.ui.applyScreenCapturePolicy
 import com.hiapps.hinotes.ui.screens.PickedDocumentRelay
 import com.hiapps.hinotes.ui.screens.REQUEST_OPEN_DOCUMENT
 import com.hiapps.hinotes.ui.theme.HiNotesTheme
@@ -26,13 +27,22 @@ import com.hiapps.hinotes.widget.HiNotesWidgetProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * Single activity host.
+ * The app's own activity: everything except the note picker the launcher opens for a widget.
  *
  * Extends [FragmentActivity] because `androidx.biometric`'s prompt requires one; it is still a
  * `ComponentActivity`, so Compose, `enableEdgeToEdge` and the ViewModel store all behave the
  * same as before.
  */
 class MainActivity : FragmentActivity() {
+
+    /**
+     * The app's state, owned by the activity rather than by the composition.
+     *
+     * Built here because one of the settings it holds is a window property: the screen-capture
+     * switch has to be applied before the first frame is drawn, and the settings are read while
+     * this view model is constructed (see [AppViewModel]).
+     */
+    private val viewModel: AppViewModel by viewModels { AppViewModelFactory(applicationContext) }
 
     /**
      * The note a widget asked to open, waiting for the navigation host to show it.
@@ -57,6 +67,9 @@ class MainActivity : FragmentActivity() {
             navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        // Screenshots and screen recording are blocked, or allowed, before anything is drawn: the
+        // stored setting is already in hand, because the view model reads it as it is built.
+        applyScreenCapturePolicy(viewModel.settings.value.screenCaptureDisabled)
         // Only a fresh launch opens a note. The extra stays on the activity's intent for as long
         // as the activity lives, so a rotation - which runs this again - must not open it twice.
         if (savedInstanceState == null) {
@@ -66,11 +79,15 @@ class MainActivity : FragmentActivity() {
         // note edited from a widget - is drawn again as soon as the app is opened.
         HiNotesWidgetProvider.refreshAll(this)
         setContent {
-            val context = LocalContext.current
-            val viewModel: AppViewModel = viewModel(factory = AppViewModelFactory(context))
             val settings by viewModel.settings.collectAsStateWithLifecycle()
             val locked by viewModel.locked.collectAsStateWithLifecycle()
             val noteToOpen by pendingNoteId.collectAsStateWithLifecycle()
+
+            // The switch is inside this app, so the window follows it while the app is open rather
+            // than only being told once at launch.
+            LaunchedEffect(settings.screenCaptureDisabled) {
+                applyScreenCapturePolicy(settings.screenCaptureDisabled)
+            }
 
             val systemDark = isSystemInDarkTheme()
             val darkTheme = settings.darkMode.isDark(systemDark)

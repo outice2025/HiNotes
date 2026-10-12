@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -26,6 +30,7 @@ import com.hiapps.hinotes.ui.screens.HomeScreen
 import com.hiapps.hinotes.ui.screens.SettingsScreen
 import com.hiapps.hinotes.ui.screens.UnlockScreen
 import com.hiapps.hinotes.ui.screens.WidgetSettingsScreen
+import kotlinx.coroutines.delay
 
 /**
  * Route names for the app's screens.
@@ -112,7 +117,30 @@ fun HiNotesApp(
     startNoteId: String? = null,
     onStartNoteShown: () -> Unit = {},
 ) {
-    val back: () -> Unit = { navController.popBackStack() }
+    /**
+     * Leaves the current page.
+     *
+     * Two presses are refused here, and both of them used to make a return look as if its
+     * animation had been skipped. The first is a press that arrives while the page is already on
+     * its way out: the back stack no longer holds it, so that pop would take the page *underneath*
+     * out of the stack instead, and the animation the user was watching would be replaced by one
+     * for a page they never asked to leave. The second is a pop with nothing under it, which has
+     * nothing to animate and would leave an empty host; the system's own back still closes the app
+     * from the first page, because that is the activity's answer rather than the graph's.
+     */
+    var leaving by remember { mutableStateOf(false) }
+    LaunchedEffect(leaving) {
+        if (leaving) {
+            delay(TRANSITION_MS.toLong())
+            leaving = false
+        }
+    }
+    val back: () -> Unit = {
+        if (!leaving && navController.previousBackStackEntry != null) {
+            leaving = true
+            navController.popBackStack()
+        }
+    }
 
     // A tapped widget asks for one note by name: the editor opens over the home screen, which
     // stays in the back stack underneath, and the request is reported as shown so a recomposition

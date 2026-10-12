@@ -68,6 +68,7 @@ data class HiNotesSettings(
     val widgetFontScale: AppFontScale = AppFontScale.Default,
     val widgetFontWeight: AppFontWeight = AppFontWeight.Default,
     val biometricFace: Boolean = false,
+    val screenCaptureDisabled: Boolean = false,
     val sortOrder: NoteSort = NoteSort.UpdatedDesc,
     val startInPreview: Boolean = false,
     val homeLayout: HomeLayout = HomeLayout.Default,
@@ -94,6 +95,7 @@ enum class SettingKey(val storageKey: String) {
     WidgetFontScale("widget_font_scale"),
     WidgetFontWeight("widget_font_weight"),
     BiometricFace("biometric_face"),
+    ScreenCaptureDisabled("screen_capture_disabled"),
     SortOrder("sort_order"),
     StartInPreview("start_in_preview"),
     HomeLayout("home_layout"),
@@ -113,6 +115,7 @@ enum class SettingKey(val storageKey: String) {
         WidgetFontScale -> settings.widgetFontScale.name
         WidgetFontWeight -> settings.widgetFontWeight.name
         BiometricFace -> settings.biometricFace.toString()
+        ScreenCaptureDisabled -> settings.screenCaptureDisabled.toString()
         SortOrder -> settings.sortOrder.key
         StartInPreview -> settings.startInPreview.toString()
         HomeLayout -> settings.homeLayout.key
@@ -138,6 +141,7 @@ class SettingsRepository(private val context: Context) {
         val widgetFontScale = stringPreferencesKey("widget_font_scale")
         val widgetFontWeight = stringPreferencesKey("widget_font_weight")
         val biometricFace = booleanPreferencesKey("biometric_face")
+        val screenCaptureDisabled = booleanPreferencesKey("screen_capture_disabled")
         val sortOrder = stringPreferencesKey("sort_order")
         val startInPreview = booleanPreferencesKey("start_in_preview")
         val homeLayout = stringPreferencesKey("home_layout")
@@ -171,6 +175,8 @@ class SettingsRepository(private val context: Context) {
                 widgetFontWeight = prefs[Keys.widgetFontWeight]?.let(AppFontWeight::fromKey)
                     ?: defaults.widgetFontWeight,
                 biometricFace = prefs[Keys.biometricFace] ?: defaults.biometricFace,
+                screenCaptureDisabled = prefs[Keys.screenCaptureDisabled]
+                    ?: defaults.screenCaptureDisabled,
                 sortOrder = prefs[Keys.sortOrder]?.let(NoteSort::fromKey) ?: defaults.sortOrder,
                 startInPreview = prefs[Keys.startInPreview] ?: defaults.startInPreview,
                 homeLayout = prefs[Keys.homeLayout]?.let(HomeLayout::fromKey)
@@ -227,6 +233,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setBiometricFace(value: Boolean) = edit { it[Keys.biometricFace] = value }
 
+    suspend fun setScreenCaptureDisabled(value: Boolean) =
+        edit { it[Keys.screenCaptureDisabled] = value }
+
     suspend fun setSortOrder(value: NoteSort) = edit { it[Keys.sortOrder] = value.key }
 
     suspend fun setStartInPreview(value: Boolean) = edit { it[Keys.startInPreview] = value }
@@ -254,6 +263,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.widgetFontScale] = settings.widgetFontScale.name
             prefs[Keys.widgetFontWeight] = settings.widgetFontWeight.name
             prefs[Keys.biometricFace] = settings.biometricFace
+            prefs[Keys.screenCaptureDisabled] = settings.screenCaptureDisabled
             prefs[Keys.sortOrder] = settings.sortOrder.key
             prefs[Keys.startInPreview] = settings.startInPreview
             prefs[Keys.homeLayout] = settings.homeLayout.key
@@ -287,6 +297,10 @@ class SettingsRepository(private val context: Context) {
             widgetFontWeight = pairs[SettingKey.WidgetFontWeight.storageKey]
                 ?.let(AppFontWeight::fromKey) ?: fallback.widgetFontWeight,
             biometricFace = bool(SettingKey.BiometricFace, fallback.biometricFace),
+            screenCaptureDisabled = bool(
+                SettingKey.ScreenCaptureDisabled,
+                fallback.screenCaptureDisabled,
+            ),
             sortOrder = pairs[SettingKey.SortOrder.storageKey]
                 ?.let(NoteSort::fromKey) ?: fallback.sortOrder,
             startInPreview = bool(SettingKey.StartInPreview, fallback.startInPreview),

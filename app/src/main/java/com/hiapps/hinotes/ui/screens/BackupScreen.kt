@@ -284,7 +284,9 @@ fun BackupScreen(
 
         SettingsSection {
             SettingsRow(
-                icon = Symbols.Close,
+                // The reset glyph rather than the close cross the row used to carry: this row puts
+                // every setting back to its default, and a cross said "cancel" instead.
+                icon = Symbols.ResetSettings,
                 headline = stringResource(R.string.backup_restore_defaults),
                 onClick = { pendingRestore = true },
             )

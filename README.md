@@ -39,10 +39,12 @@ INTERNET permission.
 - Create, edit and delete notes.
 - Search titles and bodies; sort by updated, created or title.
 - A single-column list or a two-column staggered grid on the home screen.
-- Write notes in Markdown.
+- Write notes in Markdown: headings, ordered and nested lists, task lists, quotes, tables, formulas,
+  code, emphasis, strikethrough, comments and escapes.
 - Long-press to select several notes and delete them together, or export just those.
 - Share a note as text or as a Markdown attachment.
-- Notes can be locked to keep them from being deleted.
+- A note can be locked to keep it from being edited; a locked note can still be deleted.
+- Pin a note to keep it above the rest, whatever the sort order is.
 
 **Widget**
 - A home screen widget showing one note, chosen for each widget as it is added.
@@ -51,7 +53,8 @@ INTERNET permission.
 - Its own font size and weight.
 
 **Editor**
-- Markdown source editing and find in note.
+- Markdown source editing, and find in note: enter jumps to the next match and marks it, wrapping
+  round at the end.
 - Preview a note as Markdown.
 - Autosave.
 - A properties sheet with the note's length and its created / modified times.
@@ -67,7 +70,8 @@ INTERNET permission.
 - Restore defaults.
 - Export a diagnostics report.
 
-**Unlock**
+**Privacy**
+- Screenshots, screen recording and casting can be blocked inside the app.
 - Password protection with PBKDF2-HMAC-SHA1.
 
 **Language**
@@ -124,6 +128,7 @@ renderers used to look at a glyph or a corner radius; `tools/verify/` holds the 
 ```bash
 pwsh -File tools/verify/sweep.ps1        # everything below, plus the APK's signature and hash
 pwsh -File tools/verify/run.ps1          # archive, Markdown and document-pick checks, on a JVM
+python tools/verify/check_migrations.py  # every notes-database upgrade path, against SQLite
 python tools/verify/audit_resources.py   # string, symbol and drawable references
 python tools/verify/check_icon_geometry.py
 ```
@@ -152,10 +157,11 @@ Apache License 2.0.
 - 新建、编辑、删除笔记。
 - 按标题与正文搜索；按最近修改、创建时间或标题排序。
 - 首页支持单列列表或两列瀑布流网格。
-- 支持以 Markdown 格式书写笔记。
+- 支持以 Markdown 格式书写笔记：标题、有序与嵌套列表、任务列表、引用、表格、公式、代码、强调、删除线、注释与转义。
 - 长按进入多选，可批量删除，也可只导出所选笔记。
 - 笔记可分享为文本或 Markdown 附件。
-- 可锁定笔记，防止删除。
+- 可锁定笔记：锁定后不能编辑，但仍可被选中和删除。
+- 可置顶笔记：置顶的笔记始终排在列表最前。
 
 **微件**
 - 桌面微件显示一篇笔记，添加时为每个微件单独选择笔记。
@@ -164,7 +170,7 @@ Apache License 2.0.
 - 可单独设置微件的字号与字重。
 
 **编辑器**
-- 支持 Markdown 源码编辑、笔记内查找。
+- 支持 Markdown 源码编辑；笔记内查找可按回车逐处定位并高亮，走到末尾后回到第一处。
 - 支持以 Markdown 格式预览笔记。
 - 支持自动保存笔记。
 - 属性面板显示笔记字数与创建、修改时间。
@@ -179,7 +185,8 @@ Apache License 2.0.
 - 可恢复默认设置。
 - 可导出诊断报告。
 
-**解锁**
+**隐私**
+- 可禁止应用内截图、录屏与投屏。
 - 使用 PBKDF2-HMAC-SHA1 的密码保护。
 
 **语言**
@@ -232,6 +239,7 @@ app/src/main/java/com/hiapps/hinotes/
 ```bash
 pwsh -File tools/verify/sweep.ps1        # 下列全部检查，外加 APK 的签名与哈希
 pwsh -File tools/verify/run.ps1          # 归档、Markdown 与文档选择的检查，在 JVM 上执行
+python tools/verify/check_migrations.py  # 每一条笔记数据库升级路径，用 SQLite 验证
 python tools/verify/audit_resources.py   # 字符串、图标、矢量图引用审计
 python tools/verify/check_icon_geometry.py
 ```

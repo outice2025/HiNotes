@@ -16,6 +16,10 @@ import java.util.zip.ZipOutputStream
  * shape of the document is the same either way - the note's title as an `# ` heading when it has
  * one, then the body - so an import restores titles whatever the extension says.
  *
+ * A document carries text and nothing else, so a note's own two flags are not part of an archive:
+ * a Markdown file has nowhere to keep "locked" or "pinned". The JSON notes backup in [Backup] is
+ * what carries those, and it is what a full restore is taken from.
+ *
  * Nothing here touches Android, which keeps the codec testable on its own terms: [decode] is the
  * exact inverse of [encode], and that round trip is what the export/import pair promises.
  */

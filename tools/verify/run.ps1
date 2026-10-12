@@ -77,9 +77,30 @@ $failures = 0
 # The platform classes, for the checks that touch an Android type on the way past. They are the
 # stubs, so every method body throws if it is called - the checks that use this compile against the
 # types and read constants, never call them.
+#
+# A machine can carry an ANDROID_HOME left over from another install, so a candidate is checked for
+# a platforms folder before it is trusted; `local.properties`, which is how the build itself finds
+# the SDK, is the fallback.
+function Get-AndroidSdk {
+    $candidates = @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT)
+    $properties = Join-Path $repo 'local.properties'
+    if (Test-Path $properties) {
+        $setting = Select-String -Path $properties -Pattern '^\s*sdk\.dir\s*=' |
+            Select-Object -First 1
+        if ($setting) {
+            # A Java properties file escapes the colon in a Windows path.
+            $fromFile = ($setting.Line -replace '^\s*sdk\.dir\s*=\s*', '').Trim()
+            $candidates += ($fromFile -replace '\\:', ':' -replace '\\\\', '\')
+        }
+    }
+    $candidates | Where-Object { $_ -and (Test-Path (Join-Path $_ 'platforms')) } |
+        Select-Object -First 1
+}
+
 $androidJar = $null
-if ($env:ANDROID_HOME -and (Test-Path (Join-Path $env:ANDROID_HOME 'platforms'))) {
-    $platform = Get-ChildItem (Join-Path $env:ANDROID_HOME 'platforms') -Directory |
+$sdk = Get-AndroidSdk
+if ($sdk) {
+    $platform = Get-ChildItem (Join-Path $sdk 'platforms') -Directory |
         Sort-Object Name -Descending | Select-Object -First 1
     $candidate = Join-Path $platform.FullName 'android.jar'
     if (Test-Path $candidate) { $androidJar = $candidate }

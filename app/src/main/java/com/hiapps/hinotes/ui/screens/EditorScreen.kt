@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
@@ -35,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,9 +53,18 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -191,6 +203,11 @@ fun EditorScreen(
     var confirmDeleteNote by remember { mutableStateOf(false) }
     var findOpen by remember { mutableStateOf(false) }
     var findQuery by remember { mutableStateOf("") }
+
+    // Which match the find bar is on, and whether it has located one at all: the note stays
+    // unmarked until enter is pressed, because that press is the one the bar asks for.
+    var findIndex by remember { mutableIntStateOf(0) }
+    var findJumped by remember { mutableStateOf(false) }
     var showProperties by remember { mutableStateOf(false) }
 
     val untitled = stringResource(R.string.home_untitled)
@@ -231,11 +248,22 @@ fun EditorScreen(
         previewMode = settings.startInPreview
     }
 
-    // Keep the bound note in step when the repository changes it (e.g. lock toggled).
+    // Keep the bound note in step when the repository changes it (lock or pin toggled). The whole
+    // note is the key, not just the flag that used to be the only one: a pin written to the
+    // repository has to reach this copy too, or the next save would write the stale one back.
     val boundNote by viewModel.editingNote.collectAsStateWithLifecycle()
-    LaunchedEffect(boundNote?.isLocked) {
+    LaunchedEffect(boundNote) {
         boundNote?.let { if (it.id == loadedNote?.id) loadedNote = it }
     }
+
+    /**
+     * Whether the note on screen is locked.
+     *
+     * A locked note is readable rather than writable: the editor keeps it on screen and takes away
+     * every control that would change it, while leaving the ones that only read it - find, preview,
+     * share, properties, and the menu entry that unlocks it again.
+     */
+    val locked = loadedNote?.isLocked == true
 
     /**
      * Writes the draft, and reports whether it reached the database.
@@ -323,6 +351,75 @@ fun EditorScreen(
         if (previewMode) {
             findOpen = false
             focusManager.clearFocus()
+        }
+    }
+
+    // A note that is locked - or that was locked while it was open - is read-only from that moment,
+    // so the keyboard has nothing left to type into. The find bar stays: searching a note is one of
+    // the ways of reading it.
+    LaunchedEffect(locked) {
+        if (locked) focusManager.clearFocus()
+    }
+
+    // ---------------------------------------------------------------- find in note
+
+    /**
+     * Every occurrence of the find query, in the order they appear.
+     *
+     * Kept as ranges rather than as a count: the two things the bar does with a match - put the
+     * caret on it and mark it - both need to know where it is. The search ignores case, which is
+     * what a reader expects of a note search.
+     */
+    val findMatches = remember(findQuery, editorState.value.text) {
+        if (findQuery.isBlank()) {
+            emptyList()
+        } else {
+            Regex(Regex.escape(findQuery), RegexOption.IGNORE_CASE)
+                .findAll(editorState.value.text)
+                .map { it.range }
+                .toList()
+        }
+    }
+
+    /** The match the bar is on, kept inside the list the note currently has. */
+    val currentFindIndex = if (findMatches.isEmpty()) {
+        0
+    } else {
+        findIndex.coerceIn(0, findMatches.lastIndex)
+    }
+
+    /**
+     * Locates the match at [index], wrapping round to the first one after the last.
+     *
+     * Locating is two visible things and nothing more: the caret goes onto the match, which is what
+     * the canvas follows when it scrolls it into view, and the match is painted with the scheme's
+     * highlight while it is the current one. The text is not touched, so a search never becomes an
+     * undo step.
+     */
+    fun locate(index: Int) {
+        val match = findMatches.getOrNull(index) ?: return
+        findIndex = index
+        findJumped = true
+        editorState.select(TextRange(match.first, match.last + 1))
+    }
+
+    /**
+     * The press of enter: the first match, then the next one, and after the last the first again.
+     *
+     * The wrap is what makes the key useful at the end of a note: a search that stops responding
+     * once it has reached the bottom gives no sign that it is finished rather than broken.
+     */
+    fun jumpToNextMatch() {
+        if (findMatches.isEmpty()) return
+        locate(if (findJumped) (currentFindIndex + 1) % findMatches.size else 0)
+    }
+
+    // Closing the bar puts the note back the way it was: nothing stays marked once the search it
+    // belonged to has gone.
+    LaunchedEffect(findOpen) {
+        if (!findOpen) {
+            findJumped = false
+            findIndex = 0
         }
     }
 
@@ -449,16 +546,50 @@ fun EditorScreen(
                                 }
                             },
                         )
-                        // The label follows the note's state, so the menu never offers to lock a
-                        // note that is already locked.
+                        // Pin comes before lock: it is the state a reader changes while keeping
+                        // the note, and the one the note's place in the list depends on. The icon
+                        // and the label both follow the note's own state, so the menu never offers
+                        // to pin a note that is already pinned.
                         add(
                             SplitButtonMenuItem(
-                                icon = Symbols.Lock,
+                                icon = if (loadedNote?.pinned == true) {
+                                    Symbols.KeepOff
+                                } else {
+                                    Symbols.Keep
+                                },
+                                label = stringResource(
+                                    if (loadedNote?.pinned == true) {
+                                        R.string.editor_unpin
+                                    } else {
+                                        R.string.editor_pin
+                                    },
+                                ),
+                            ) {
+                                scope.launch {
+                                    // Persist first, for the same reason locking does: a pin must
+                                    // not discard what the user has typed since the last save.
+                                    val note = loadedNote
+                                    if (note != null && persist()) {
+                                        viewModel.setNotePinned(note.id, !note.pinned)
+                                    }
+                                }
+                            },
+                        )
+                        // The label follows the note's state, so the menu never offers to lock a
+                        // note that is already locked - and the icon moves with the label, an open
+                        // padlock for the action that takes the lock off.
+                        add(
+                            SplitButtonMenuItem(
+                                icon = if (loadedNote?.isLocked == true) {
+                                    Symbols.LockOpen
+                                } else {
+                                    Symbols.Lock
+                                },
                                 label = stringResource(
                                     if (loadedNote?.isLocked == true) {
-                                        R.string.unlock_make_public
+                                        R.string.editor_unlock
                                     } else {
-                                        R.string.unlock_make_private
+                                        R.string.editor_lock
                                     },
                                 ),
                             ) {
@@ -478,9 +609,6 @@ fun EditorScreen(
                                 label = stringResource(R.string.editor_delete),
                                 onClick = { confirmDeleteNote = true },
                                 destructive = true,
-                                // A locked note keeps its lock until it is unlocked from this
-                                // same menu, and a locked note cannot be deleted.
-                                enabled = loadedNote?.isLocked != true,
                             ),
                         )
                     },
@@ -513,7 +641,9 @@ fun EditorScreen(
                 value = title,
                 onValueChange = { title = it },
                 singleLine = true,
-                readOnly = previewMode,
+                // Read-only in preview mode, because the preview promises that the note cannot be
+                // changed, and on a locked note, because the lock promises the same thing.
+                readOnly = previewMode || locked,
                 textStyle = titleStyle,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
@@ -597,6 +727,11 @@ fun EditorScreen(
                                         color = MaterialTheme.colorScheme.outlineVariant,
                                     )
 
+                                    is Markdown.PreviewBlock.Table -> PreviewTable(
+                                        block = block,
+                                        style = bodyStyle,
+                                    )
+
                                     is Markdown.PreviewBlock.Task -> PreviewTaskRow(
                                         block = block,
                                         style = bodyStyle,
@@ -622,6 +757,28 @@ fun EditorScreen(
                     }
                 } else {
                     val bodyScroll = rememberScrollState()
+
+                    // The note as the field should draw it: the same characters with the current
+                    // find match painted. Built once per change of text or match and reused for
+                    // every frame in between, because the field draws through it each frame.
+                    val findHighlight = MaterialTheme.colorScheme.primaryContainer
+                    val markedBody = remember(
+                        editorState.value.text,
+                        findMatches,
+                        currentFindIndex,
+                        findJumped,
+                        findHighlight,
+                    ) {
+                        if (findJumped) {
+                            highlightedText(
+                                text = editorState.value.text,
+                                range = findMatches.getOrNull(currentFindIndex),
+                                color = findHighlight,
+                            )
+                        } else {
+                            AnnotatedString(editorState.value.text)
+                        }
+                    }
                     var bodyLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
                     val followedHandle = remember { mutableStateOf(editorState.value.selection) }
                     val followMargin = with(LocalDensity.current) {
@@ -663,6 +820,8 @@ fun EditorScreen(
                     BasicTextField(
                         value = editorState.value,
                         onValueChange = editorState::onUserInput,
+                        readOnly = locked,
+                        visualTransformation = remember(markedBody) { MarkedText(markedBody) },
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp)
@@ -700,30 +859,36 @@ fun EditorScreen(
                         Column(Modifier.padding(8.dp)) {
                             OutlinedTextField(
                                 value = findQuery,
-                                onValueChange = { findQuery = it },
+                                onValueChange = { query ->
+                                    findQuery = query
+                                    // A new query is a new search: the match to be on is the first
+                                    // one, and nothing is located until enter is pressed again.
+                                    findIndex = 0
+                                    findJumped = false
+                                },
                                 placeholder = {
                                     Text(stringResource(R.string.editor_find_placeholder))
                                 },
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.fillMaxWidth(),
+                                // Enter is the whole interaction: it locates a match, and each
+                                // press after that locates the next one.
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(
+                                    onSearch = { jumpToNextMatch() },
+                                ),
                             )
-                            val matchCount = remember(findQuery, editorState.value.text) {
-                                if (findQuery.isBlank()) {
-                                    0
-                                } else {
-                                    Regex(Regex.escape(findQuery), RegexOption.IGNORE_CASE)
-                                        .findAll(editorState.value.text)
-                                        .count()
-                                }
-                            }
                             Text(
-                                text = if (findQuery.isBlank()) {
-                                    stringResource(R.string.editor_find)
-                                } else if (matchCount == 0) {
-                                    stringResource(R.string.editor_find_no_match)
-                                } else {
-                                    stringResource(R.string.editor_find_matches, 1, matchCount)
+                                text = when {
+                                    findQuery.isBlank() -> stringResource(R.string.editor_find)
+                                    findMatches.isEmpty() ->
+                                        stringResource(R.string.editor_find_no_match)
+                                    else -> stringResource(
+                                        R.string.editor_find_matches,
+                                        currentFindIndex + 1,
+                                        findMatches.size,
+                                    )
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -734,9 +899,12 @@ fun EditorScreen(
                 }
 
                 // Connected formatting toolbar, drawn over the lower edge of the canvas.
+                //
                 // It is an editing control, so preview mode takes it away entirely: there is
                 // nothing in a preview for it to act on, and leaving it up would suggest the
-                // note can still be changed.
+                // note can still be changed. A locked note keeps only the button that is not an
+                // edit - find, which is first - for the same reason: undo, redo and the formatting
+                // verbs all act on text the lock says cannot be changed.
                 if (!previewMode) {
                     ConnectedIconButtonGroup(
                         buttons = listOf(
@@ -789,7 +957,7 @@ fun EditorScreen(
                                     Markdown.toggleLinePrefix(editorState.value, "- "),
                                 )
                             },
-                        ),
+                        ).let { buttons -> if (locked) buttons.take(1) else buttons },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(12.dp),
@@ -903,5 +1071,95 @@ private fun PreviewTaskRow(
         }
         Spacer(Modifier.width(4.dp))
         Text(text = block.text, style = style, modifier = Modifier.weight(1f))
+    }
+}
+
+/**
+ * A note drawn with one range painted.
+ *
+ * A text field cannot be styled from the outside, but it can be handed a transformation of what it
+ * draws - and this one changes nothing about the text: the same characters at the same offsets
+ * ([OffsetMapping.Identity]), so the caret, the selection and every gesture stay where they were.
+ * The marked text is built by the caller and reused, because a transformation runs on every frame
+ * the field draws and copying a long note on each of them would be work for nothing.
+ */
+private class MarkedText(private val marked: AnnotatedString) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText =
+        TransformedText(marked, OffsetMapping.Identity)
+}
+
+/** [text] with [range] painted in [color]; [text] itself when there is no range to paint. */
+private fun highlightedText(text: String, range: IntRange?, color: Color): AnnotatedString {
+    if (range == null || range.first >= text.length) return AnnotatedString(text)
+    val end = (range.last + 1).coerceAtMost(text.length)
+    return buildAnnotatedString {
+        append(text)
+        addStyle(SpanStyle(background = color), range.first, end)
+    }
+}
+
+/**
+ * One pipe table in the preview.
+ *
+ * Every column gets an equal share of the note's width: the source says how a cell's text is
+ * aligned inside its column, but not how wide any column should be, and on a phone the honest
+ * answer is "as wide as everything else". A rule under the header and between the lines is what
+ * makes a run of cells read as a table rather than as a paragraph with pipes in it.
+ */
+@Composable
+private fun PreviewTable(
+    block: Markdown.PreviewBlock.Table,
+    style: TextStyle,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        PreviewTableRow(
+            cells = block.header,
+            alignments = block.alignments,
+            style = style,
+            header = true,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        block.rows.forEachIndexed { index, cells ->
+            PreviewTableRow(
+                cells = cells,
+                alignments = block.alignments,
+                style = style,
+                header = false,
+            )
+            if (index != block.rows.lastIndex) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+        }
+    }
+}
+
+/** One line of a table: a [Text] per cell, weighted equally and aligned as the source asked. */
+@Composable
+private fun PreviewTableRow(
+    cells: List<AnnotatedString>,
+    alignments: List<Markdown.ColumnAlignment>,
+    style: TextStyle,
+    header: Boolean,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        cells.forEachIndexed { index, cell ->
+            Text(
+                text = cell,
+                style = if (header) style.copy(fontWeight = FontWeight.SemiBold) else style,
+                textAlign = when (alignments.getOrNull(index)) {
+                    Markdown.ColumnAlignment.Center -> TextAlign.Center
+                    Markdown.ColumnAlignment.End -> TextAlign.End
+                    else -> TextAlign.Start
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp),
+            )
+        }
     }
 }

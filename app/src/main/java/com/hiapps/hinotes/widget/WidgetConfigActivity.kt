@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -16,11 +17,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.AppViewModelFactory
 import com.hiapps.hinotes.ui.LockGate
+import com.hiapps.hinotes.ui.applyScreenCapturePolicy
 import com.hiapps.hinotes.ui.components.NoteCard
 import com.hiapps.hinotes.ui.components.SettingsScaffold
 import com.hiapps.hinotes.ui.theme.HiNotesTheme
@@ -41,6 +42,8 @@ import com.hiapps.hinotes.ui.theme.HiNotesTheme
  */
 class WidgetConfigActivity : FragmentActivity() {
 
+    private val viewModel: AppViewModel by viewModels { AppViewModelFactory(applicationContext) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -55,8 +58,11 @@ class WidgetConfigActivity : FragmentActivity() {
             return
         }
 
+        // This screen shows note titles and their opening lines, so it is behind the same
+        // screen-capture setting the rest of the app is, applied before it draws anything.
+        applyScreenCapturePolicy(viewModel.settings.value.screenCaptureDisabled)
+
         setContent {
-            val viewModel: AppViewModel = viewModel(factory = AppViewModelFactory(this))
             val settings by viewModel.settings.collectAsStateWithLifecycle()
             val locked by viewModel.locked.collectAsStateWithLifecycle()
 
@@ -110,6 +116,7 @@ private fun NotePicker(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val untitled = stringResource(R.string.home_untitled)
     val lockedLabel = stringResource(R.string.home_locked_badge)
+    val pinnedLabel = stringResource(R.string.home_pinned_badge)
 
     SettingsScaffold(
         title = stringResource(R.string.widget_pick_title),
@@ -129,6 +136,8 @@ private fun NotePicker(
                     markdownEnabled = settings.markdownEnabled,
                     locked = note.isLocked,
                     lockedLabel = lockedLabel,
+                    pinned = note.pinned,
+                    pinnedLabel = pinnedLabel,
                     onClick = { onPick(note.id) },
                     modifier = Modifier.padding(bottom = 8.dp),
                 )

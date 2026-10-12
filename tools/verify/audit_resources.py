@@ -105,6 +105,9 @@ stale_terms = [
     # Removed with the fingerprint switch and the update check.
     "unlock_fingerprint", "biometric_fingerprint", "BiometricFingerprint", "UpdateChecker",
     "about_update_",
+    # Renamed when the unlock screen became the privacy screen and the editor's menu labels lost
+    # the noun they used to carry.
+    "unlock_make_private", "unlock_make_public",
 ]
 for term in stale_terms:
     hits = []

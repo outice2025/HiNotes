@@ -1,6 +1,11 @@
 package com.hiapps.hinotes.ui.editor
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextDecoration
 
 /**
  * Standalone checks for the editor's Markdown verbs, run on a desktop JVM.
@@ -226,6 +231,257 @@ object MarkdownChecks {
         check("heading text kept", heading == "Title", "'$heading'")
         val fence = Markdown.render("```\ncode\n```").text
         check("code fence hidden, body kept", fence.contains("code") && !fence.contains("```"), "'$fence'")
+
+        println("Markdown escapes")
+        val escapedItalic = Markdown.render("\\*not italic\\*").text
+        check("an escaped marker is literal", escapedItalic == "*not italic*", "'$escapedItalic'")
+        // Every character a backslash may protect, on one line; only the backslash needs writing
+        // twice. Anything outside this set keeps its backslash, which is what leaves paths alone.
+        val punctuation = "\\*\\_\\`\\#\\[\\]\\(\\)\\~\\$\\|\\-\\.\\!\\<\\>\\\\"
+        val literal = Markdown.render(punctuation).text
+        check("every punctuation escape resolves", literal == "*_`#[]()~$|-.!<>\\", "'$literal'")
+        val path = Markdown.render("C:\\Users").text
+        check("a backslash before a letter is kept", path == "C:\\Users", "'$path'")
+        // A line-leading escape keeps the marker a character instead of opening a block.
+        val escapedHeading = Markdown.render("\\# not a heading").text
+        check("an escaped hash is not a heading", escapedHeading == "# not a heading", "'$escapedHeading'")
+        val escapedBullet = Markdown.render("\\- not a bullet").text
+        check("an escaped dash is not a list item", escapedBullet == "- not a bullet", "'$escapedBullet'")
+        check(
+            "an escaped dash opens no task",
+            Markdown.previewBlocks("\\- [ ] not a task").none { it is Markdown.PreviewBlock.Task },
+        )
+        check(
+            "an escaped rule is not a rule",
+            Markdown.previewBlocks("\\---").none { it is Markdown.PreviewBlock.Divider },
+        )
+        val escapedNumber = Markdown.render("1\\. not a list").text
+        check("an escaped number is not a list", escapedNumber == "1. not a list", "'$escapedNumber'")
+
+        println("Markdown comments")
+        val inlineComment = Markdown.render("a<!-- note -->b").text
+        check("a comment is not drawn", inlineComment == "ab", "'$inlineComment'")
+        val wholeLine = Markdown.render("a\n<!-- note -->\nb").text
+        check("a comment-only line leaves no gap", wholeLine == "a\nb", "'$wholeLine'")
+        val spanned = Markdown.render("a\n<!--\nhidden\n-->\nb").text
+        check("a comment spanning lines leaves none either", spanned == "a\nb", "'$spanned'")
+        check(
+            "a comment hides the markup inside it",
+            !Markdown.render("<!-- **bold** -->").text.contains("bold"),
+        )
+        check("a comment-only note has no blocks", Markdown.previewBlocks("<!-- note -->").isEmpty())
+        val commented = Markdown.previewBlocks("a\n<!--\nhidden\n-->\nb")
+        check(
+            "the preview drops comments too",
+            commented.size == 1 &&
+                (commented[0] as Markdown.PreviewBlock.Prose).text.text == "a\nb",
+            "$commented",
+        )
+        // The line a task reports is what a tap writes back to, so a comment above it must not
+        // shorten the note the way a removed line would.
+        val afterComment = Markdown.previewBlocks("<!-- note -->\n- [ ] one")
+        check(
+            "a comment does not shift a task's line",
+            afterComment.size == 1 && (afterComment[0] as Markdown.PreviewBlock.Task).line == 1,
+            "$afterComment",
+        )
+        val commentInFence = Markdown.render("```\n<!-- x -->\n```").text
+        check("a comment in a fence is code", commentInFence.contains("<!-- x -->"), "'$commentInFence'")
+
+        println("Markdown lists")
+        val nested = Markdown.render("- a\n  - b\n    - c\n      - d").text
+        check(
+            "each level draws its own bullet",
+            nested == "•  a\n    ◦  b\n        ▪  c\n            ▪  d",
+            "'$nested'",
+        )
+        val tabbed = Markdown.render("- a\n\t- b").text
+        check("a tab is one level", tabbed == "•  a\n    ◦  b", "'$tabbed'")
+        check(
+            "an ordered marker is kept as written",
+            Markdown.render("3. three\n4) four").text == "3. three\n4) four",
+            "'${Markdown.render("3. three\n4) four").text}'",
+        )
+        check(
+            "a nested number keeps its own number",
+            Markdown.render("1. one\n  1. sub\n2. two").text == "1. one\n    1. sub\n2. two",
+            "'${Markdown.render("1. one\n  1. sub\n2. two").text}'",
+        )
+        check(
+            "an ordered item under a bullet stays nested",
+            Markdown.render("- a\n  1. b").text == "•  a\n    1. b",
+            "'${Markdown.render("- a\n  1. b").text}'",
+        )
+
+        println("Markdown tables")
+        val table = Markdown.previewBlocks("| Name | Qty |\n|:-----|----:|\n| **apple** | 3 |")
+        check(
+            "a pipe table is its own block",
+            table.size == 1 && table[0] is Markdown.PreviewBlock.Table,
+            "$table",
+        )
+        val grid = table[0] as Markdown.PreviewBlock.Table
+        check(
+            "the header keeps both cells",
+            grid.header.map { it.text } == listOf("Name", "Qty"),
+            "${grid.header.map { it.text }}",
+        )
+        check(
+            "the body row keeps both cells",
+            grid.rows.single().map { it.text } == listOf("apple", "3"),
+            "${grid.rows.single().map { it.text }}",
+        )
+        check(
+            "a cell keeps its inline markup",
+            grid.rows.single()[0].spanStyles.any { it.item.fontWeight == FontWeight.Bold },
+            "${grid.rows.single()[0].spanStyles}",
+        )
+        check(
+            "the colons carry the alignment",
+            grid.alignments == listOf(Markdown.ColumnAlignment.Start, Markdown.ColumnAlignment.End),
+            "${grid.alignments}",
+        )
+        check(
+            "a centred column is centred",
+            (Markdown.previewBlocks("a | b\n:-:|---")[0] as Markdown.PreviewBlock.Table).alignments ==
+                listOf(Markdown.ColumnAlignment.Center, Markdown.ColumnAlignment.Start),
+        )
+        check(
+            "a short row still fills every column",
+            (Markdown.previewBlocks("| a | b |\n|---|---|\n| 1 |")[0] as Markdown.PreviewBlock.Table)
+                .rows.single().size == 2,
+        )
+        check(
+            "an escaped pipe stays inside its cell",
+            (Markdown.previewBlocks("| a | b |\n|---|---|\n| x \\| y | z |")[0]
+                as Markdown.PreviewBlock.Table).rows.single().map { it.text } == listOf("x | y", "z"),
+        )
+        check(
+            "strike works inside a cell",
+            (Markdown.previewBlocks("| a |\n|---|\n| ~~gone~~ |")[0] as Markdown.PreviewBlock.Table)
+                .rows.single()[0].spanStyles.any { it.item.textDecoration == TextDecoration.LineThrough },
+        )
+        // Malformed tables are the plain text they look like, rather than a grid guessed at.
+        check(
+            "a header with no delimiter row is prose",
+            Markdown.previewBlocks("| a | b |").none { it is Markdown.PreviewBlock.Table },
+        )
+        check(
+            "a delimiter row of the wrong width is not a table",
+            Markdown.previewBlocks("| a | b |\n|---|\n| 1 | 2 |")
+                .none { it is Markdown.PreviewBlock.Table },
+        )
+        check(
+            "a delimiter row of words is not a table",
+            Markdown.previewBlocks("| a |\n| oops |").none { it is Markdown.PreviewBlock.Table },
+        )
+        check(
+            "a table inside a fence stays code",
+            Markdown.previewBlocks("```\n| a |\n|---|\n```").none { it is Markdown.PreviewBlock.Table },
+        )
+        // The text-mode form, for the cards and the widget: monospace rows that line up.
+        val textTable = Markdown.render("| Name | Qty |\n|:-----|----:|\n| apple | 3 |").text
+        check(
+            "text mode lines the columns up",
+            textTable == "Name  │ Qty\n──────┼────\napple │   3",
+            "'$textTable'",
+        )
+        check("text mode rules the header off", textTable.contains("─┼─"), "'$textTable'")
+        val centred = Markdown.render("| a |\n|:-:|\n| bbb |").text
+        check("text mode honours the alignment colons", centred == " a \n───\nbbb", "'$centred'")
+        // A Chinese character is two columns wide in a monospace font, so the two-character header
+        // sets the column at four and this one-character cell is padded as the two it occupies.
+        val wide = Markdown.render("| 名称 | a |\n|---|---|\n| 中 | b |").text.lines()
+        check("a full-width glyph takes two columns", wide[2] == "中   │ b", "'${wide[2]}'")
+
+        println("Markdown math")
+        val inlineMath = Markdown.render("let \$x\$ be").text
+        check("an inline formula loses its dollars", inlineMath == "let x be", "'$inlineMath'")
+        val formula = Markdown.render("\$x^2\$")
+        check(
+            "a formula is monospace on a translucent grey",
+            formula.spanStyles.any {
+                it.item.fontFamily == FontFamily.Monospace &&
+                    it.item.background == Color(0x33808080)
+            },
+            "${formula.spanStyles}",
+        )
+        val oneLine = Markdown.render("\$\$x + y\$\$").text
+        check("the one-line block form drops its fences", oneLine == "x + y", "'$oneLine'")
+        val block = Markdown.render("before\n\$\$\na = b\n\$\$\nafter").text
+        check("a formula block sits on its own line", block == "before\n\na = b\n\nafter", "'$block'")
+        val prices = Markdown.render("costs \$5 and \$10").text
+        check("a price range is not a formula", prices == "costs \$5 and \$10", "'$prices'")
+
+        println("Markdown strikethrough")
+        val struck = Markdown.render("~~gone~~").text
+        check("strike still works", struck == "gone", "'$struck'")
+        val escapedStrike = Markdown.render("\\~\\~literal\\~\\~ and ~~gone~~").text
+        check(
+            "strike still works beside an escape",
+            escapedStrike == "~~literal~~ and gone",
+            "'$escapedStrike'",
+        )
+
+        // An escaped delimiter inside a span belongs to the span's text, so the span neither breaks
+        // early nor swallows the marker as markup.
+        println("Markdown escapes inside a span")
+        val boldStar = Markdown.render("**a \\* b**")
+        check(
+            "an escaped star inside bold is literal",
+            boldStar.text == "a * b" &&
+                boldStar.spanStyles.any { it.item.fontWeight == FontWeight.Bold },
+            "'${boldStar.text}' ${boldStar.spanStyles}",
+        )
+        val italicStar = Markdown.render("*a \\* b*")
+        check(
+            "an escaped star inside italics is literal",
+            italicStar.text == "a * b" &&
+                italicStar.spanStyles.any { it.item.fontStyle == FontStyle.Italic },
+            "'${italicStar.text}' ${italicStar.spanStyles}",
+        )
+        val struckTilde = Markdown.render("~~a \\~ b~~")
+        check(
+            "an escaped tilde inside strike is literal",
+            struckTilde.text == "a ~ b" &&
+                struckTilde.spanStyles.any { it.item.textDecoration == TextDecoration.LineThrough },
+            "'${struckTilde.text}' ${struckTilde.spanStyles}",
+        )
+        val codeTick = Markdown.render("`a \\` b`")
+        check(
+            "an escaped backtick inside code is literal",
+            codeTick.text == "a ` b" &&
+                codeTick.spanStyles.any { it.item.fontFamily == FontFamily.Monospace },
+            "'${codeTick.text}' ${codeTick.spanStyles}",
+        )
+        val mathDollar = Markdown.render("\$a \\\$ b\$")
+        check(
+            "an escaped dollar inside a formula is literal",
+            mathDollar.text == "a \$ b" &&
+                mathDollar.spanStyles.any { it.item.background == Color(0x33808080) },
+            "'${mathDollar.text}' ${mathDollar.spanStyles}",
+        )
+        val earlyClose = Markdown.render("**a \\** b**")
+        check(
+            "an escaped marker does not close a span early",
+            earlyClose.text == "a ** b" &&
+                earlyClose.spanStyles.any { it.item.fontWeight == FontWeight.Bold },
+            "'${earlyClose.text}'",
+        )
+        val tailEscape = Markdown.render("**a \\***")
+        check(
+            "an escape at the end of a span stays inside it",
+            tailEscape.text == "a *" &&
+                tailEscape.spanStyles.any { it.item.fontWeight == FontWeight.Bold },
+            "'${tailEscape.text}'",
+        )
+        val plainInline = Markdown.render("plain **b** tail")
+        check(
+            "the plain inline path still works",
+            plainInline.text == "plain b tail" &&
+                plainInline.spanStyles.any { it.item.fontWeight == FontWeight.Bold },
+            "'${plainInline.text}'",
+        )
 
         report()
     }

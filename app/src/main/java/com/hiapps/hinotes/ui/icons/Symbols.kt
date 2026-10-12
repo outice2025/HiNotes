@@ -32,14 +32,18 @@ object Symbols {
     @DrawableRes val FormatSize: Int = R.drawable.sym_format_size
     @DrawableRes val GridView: Int = R.drawable.sym_grid_view
     @DrawableRes val Info: Int = R.drawable.sym_info
+    @DrawableRes val Keep: Int = R.drawable.sym_keep
+    @DrawableRes val KeepOff: Int = R.drawable.sym_keep_off
     @DrawableRes val KeyboardArrowDown: Int = R.drawable.sym_keyboard_arrow_down
     @DrawableRes val Language: Int = R.drawable.sym_language
     @DrawableRes val List: Int = R.drawable.sym_list
     @DrawableRes val Lock: Int = R.drawable.sym_lock
+    @DrawableRes val LockOpen: Int = R.drawable.sym_lock_open
     @DrawableRes val OpenInNew: Int = R.drawable.sym_open_in_new
     @DrawableRes val Palette: Int = R.drawable.sym_palette
     @DrawableRes val Password: Int = R.drawable.sym_password
     @DrawableRes val Redo: Int = R.drawable.sym_redo
+    @DrawableRes val ResetSettings: Int = R.drawable.sym_reset_settings
     @DrawableRes val Save: Int = R.drawable.sym_save
     @DrawableRes val Search: Int = R.drawable.sym_search
     @DrawableRes val SelectAll: Int = R.drawable.sym_select_all
@@ -48,6 +52,7 @@ object Symbols {
     @DrawableRes val Share: Int = R.drawable.sym_share
     @DrawableRes val Sort: Int = R.drawable.sym_sort
     @DrawableRes val SpaceDashboard: Int = R.drawable.sym_space_dashboard
+    @DrawableRes val StopScreenShare: Int = R.drawable.sym_stop_screen_share
     @DrawableRes val Style: Int = R.drawable.sym_style
     @DrawableRes val TextFields: Int = R.drawable.sym_text_fields
     @DrawableRes val Undo: Int = R.drawable.sym_undo

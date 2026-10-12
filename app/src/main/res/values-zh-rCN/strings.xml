@@ -12,7 +12,11 @@
     <string name="home_layout_list">列表排版</string>
     <string name="home_delete_selected">删除（%1$d）</string>
     <string name="home_delete_selected_message">将永久删除 %1$d 条笔记，此操作无法撤销。</string>
-    <string name="editor_delete">删除笔记</string>
+    <string name="editor_delete">删除</string>
+    <string name="editor_lock">锁定</string>
+    <string name="editor_unlock">解锁</string>
+    <string name="editor_pin">置顶</string>
+    <string name="editor_unpin">取消置顶</string>
     <string name="home_empty">无笔记</string>
     <string name="home_empty_search">没有匹配的笔记</string>
     <string name="home_empty_hint">点击「创建笔记」写下第一条笔记</string>
@@ -28,6 +32,7 @@
     <string name="home_delete_confirm">删除</string>
     <string name="home_untitled">无标题</string>
     <string name="home_locked_badge">已锁定</string>
+    <string name="home_pinned_badge">已置顶</string>
 
     <!-- 编辑器 -->
     <string name="editor_title_label">标题</string>
@@ -72,8 +77,8 @@
     <string name="settings_language_support">应用内语言</string>
     <string name="settings_backup">备份</string>
     <string name="settings_backup_support">导出设置、笔记</string>
-    <string name="settings_unlock">解锁</string>
-    <string name="settings_unlock_support">解锁密码、人脸解锁</string>
+    <string name="settings_unlock">隐私</string>
+    <string name="settings_unlock_support">屏幕截取、解锁密码、生物识别</string>
     <string name="settings_about">关于</string>
     <string name="settings_about_support">版本、开发者、许可证</string>
 
@@ -152,14 +157,15 @@
     <string name="unlock_enter_support">解锁 HiNotes 以继续</string>
     <string name="unlock_action">解锁</string>
     <string name="unlock_use_biometric">使用生物识别</string>
-    <string name="unlock_make_private">锁定笔记</string>
-    <string name="unlock_make_public">取消笔记锁定</string>
+    <string name="unlock_screen_capture">禁用屏幕截取</string>
+    <string name="unlock_screen_capture_support">禁用应用内屏幕截取</string>
+    <string name="privacy_title">隐私</string>
 
     <!-- 关于 -->
     <string name="about_title">关于</string>
     <string name="about_tagline">简单易用的 100% FOSS 笔记应用</string>
     <string name="about_version">版本号</string>
-    <string name="about_version_support">%1$s release</string>
+    <string name="about_version_support">%1$s %2$s</string>
     <string name="about_check_updates">检查更新</string>
     <string name="about_check_updates_support">打开 releases 页面</string>
     <string name="about_repository">仓库地址</string>

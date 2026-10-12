@@ -12,7 +12,11 @@
     <string name="home_layout_list">List layout</string>
     <string name="home_delete_selected">Delete (%1$d)</string>
     <string name="home_delete_selected_message">%1$d notes will be permanently deleted. This cannot be undone.</string>
-    <string name="editor_delete">Delete note</string>
+    <string name="editor_delete">Delete</string>
+    <string name="editor_lock">Lock</string>
+    <string name="editor_unlock">Unlock</string>
+    <string name="editor_pin">Pin</string>
+    <string name="editor_unpin">Unpin</string>
     <string name="home_empty">No notes</string>
     <string name="home_empty_search">No matching notes</string>
     <string name="home_empty_hint">Tap “Create note” to write your first note</string>
@@ -28,6 +32,7 @@
     <string name="home_delete_confirm">Delete</string>
     <string name="home_untitled">Untitled</string>
     <string name="home_locked_badge">Locked</string>
+    <string name="home_pinned_badge">Pinned</string>
 
     <!-- Editor -->
     <string name="editor_title_label">Title</string>
@@ -72,8 +77,8 @@
     <string name="settings_language_support">In-app language</string>
     <string name="settings_backup">Backup</string>
     <string name="settings_backup_support">Export settings &amp; notes</string>
-    <string name="settings_unlock">Unlock</string>
-    <string name="settings_unlock_support">Unlock password, face unlock</string>
+    <string name="settings_unlock">Privacy</string>
+    <string name="settings_unlock_support">Screen capture, unlock password, biometrics</string>
     <string name="settings_about">About</string>
     <string name="settings_about_support">Version, developer, licenses</string>
 
@@ -152,14 +157,15 @@
     <string name="unlock_enter_support">Unlock HiNotes to continue</string>
     <string name="unlock_action">Unlock</string>
     <string name="unlock_use_biometric">Use biometrics</string>
-    <string name="unlock_make_private">Lock note</string>
-    <string name="unlock_make_public">Remove note lock</string>
+    <string name="unlock_screen_capture">Block screen capture</string>
+    <string name="unlock_screen_capture_support">Block screenshots and recording inside the app</string>
+    <string name="privacy_title">Privacy</string>
 
     <!-- About -->
     <string name="about_title">About</string>
-    <string name="about_tagline">A simple, easy-to-use 100% FOSS note-taking app</string>
+    <string name="about_tagline">A simple, easy-to-use 100% FOSS note app</string>
     <string name="about_version">Version</string>
-    <string name="about_version_support">%1$s release</string>
+    <string name="about_version_support">%1$s %2$s</string>
     <string name="about_check_updates">Check for updates</string>
     <string name="about_check_updates_support">Open the releases page</string>
     <string name="about_repository">Repository</string>

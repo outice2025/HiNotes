@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
@@ -111,6 +110,7 @@ fun HomeScreen(
 
     val untitled = stringResource(R.string.home_untitled)
     val lockedLabel = stringResource(R.string.home_locked_badge)
+    val pinnedLabel = stringResource(R.string.home_pinned_badge)
     val hasQuery = query.isNotBlank()
     val selecting = selectedIds.isNotEmpty()
     val gridLayout = settings.homeLayout == HomeLayout.Grid
@@ -148,15 +148,16 @@ fun HomeScreen(
             // moved above it themselves - otherwise tapping the search field buries the one
             // control the empty screen is telling the user to press. The same inset keeps them
             // clear of the gesture handle when no keyboard is up.
-            Row(
+            Column(
                 modifier = Modifier.windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
                 ),
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.End,
             ) {
                 if (selecting) {
-                    // Delete sits to the LEFT of "Create note". The Scaffold's FAB slot is at
-                    // the end of the screen, so this order places delete first.
+                    // Delete sits above "Create note", at the end of the screen - out of the way
+                    // of the thumb's path to the button the app exists for, and still one press
+                    // from the selection it acts on.
                     //
                     // A bare trash icon rather than a labelled button: the selected count is on
                     // the header line directly above, so the button only has to say which action
@@ -185,14 +186,14 @@ fun HomeScreen(
                             MaterialTheme.colorScheme.onErrorContainer
                         },
                     )
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.height(12.dp))
                 }
                 ExtendedFab(
                     // The standard outlined pencil.
                     icon = Symbols.Edit,
                     label = stringResource(R.string.home_create_note),
                     onClick = onCreateNote,
-                    // The emphasis is inverted against the delete button beside it: this one is
+                    // The emphasis is inverted against the delete button above it: this one is
                     // the saturated action, carrying the primary colour as its background with
                     // onPrimary as its content, in both themes.
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -392,6 +393,8 @@ fun HomeScreen(
                             markdownEnabled = settings.markdownEnabled,
                             locked = note.isLocked,
                             lockedLabel = lockedLabel,
+                            pinned = note.pinned,
+                            pinnedLabel = pinnedLabel,
                             selecting = selecting,
                             selected = note.id in selectedIds,
                             compact = gridLayout,

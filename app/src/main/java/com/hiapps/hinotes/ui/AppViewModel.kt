@@ -162,6 +162,19 @@ class AppViewModel(context: Context) : ViewModel() {
         HiNotesWidgetProvider.refreshNote(appContext, id)
     }
 
+    /**
+     * Pins or unpins [id].
+     *
+     * No widget is redrawn: a card shows the note's text, not where the note sits in the list.
+     */
+    suspend fun setNotePinned(id: String, pinned: Boolean) {
+        notesRepository.setPinned(id, pinned)
+        if (_editingNote.value?.id == id) {
+            _editingNote.value = notesRepository.note(id)
+        }
+        recomputeVisible()
+    }
+
     fun setQuery(value: String) {
         _query.value = value
         notesRepository.setQuery(value)
@@ -178,25 +191,20 @@ class AppViewModel(context: Context) : ViewModel() {
     // --------------------------------------------------------------- selection
 
     /**
-     * Whether the note with [id] is locked.
+     * Adds or removes [id]; used by long-press and by a tap while a selection exists.
      *
-     * A locked note keeps its lock until it is unlocked in the editor, so it is never part of a
-     * selection and can therefore never be deleted from the list.
+     * A locked note is selected like any other: its lock keeps it from being edited, and a
+     * selection is how it is deleted.
      */
-    private fun isLocked(id: String): Boolean =
-        _notes.value.firstOrNull { it.id == id }?.isLocked == true
-
-    /** Adds or removes [id]; used by long-press and by a tap while a selection exists. */
     fun toggleSelection(id: String) {
-        if (isLocked(id)) return
         _selectedNoteIds.value = _selectedNoteIds.value.let { current ->
             if (id in current) current - id else current + id
         }
     }
 
-    /** Selects every unlocked note in [ids]. */
+    /** Selects every note in [ids], locked ones included. */
     fun selectAllNotes(ids: List<String>) {
-        _selectedNoteIds.value = ids.filterNot(::isLocked).toSet()
+        _selectedNoteIds.value = ids.toSet()
     }
 
     fun clearSelection() {
@@ -214,9 +222,9 @@ class AppViewModel(context: Context) : ViewModel() {
         if (retained != current) _selectedNoteIds.value = retained
     }
 
-    /** Deletes every selected note and leaves multi-select. Locked notes are never among them. */
+    /** Deletes every selected note and leaves multi-select. */
     suspend fun deleteSelectedNotes() {
-        val ids = _selectedNoteIds.value.filterNot(::isLocked)
+        val ids = _selectedNoteIds.value.toList()
         if (ids.isEmpty()) return
         ids.forEach { notesRepository.deleteNote(it) }
         if (_editingNote.value?.id in ids) _editingNote.value = null
