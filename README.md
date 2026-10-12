@@ -7,7 +7,7 @@
 <div align="center">
     <h1>HiNotes</h1>
     <p>简单易用的 100% FOSS 笔记应用</p>
-    <p>A simple, easy-to-use 100% FOSS note-taking app</p>
+    <p>A simple, easy-to-use 100% FOSS note app</p>
     <p><a href="#user-content-english">English</a> · <a href="#user-content-简体中文">简体中文</a></p>
 </div>
 
