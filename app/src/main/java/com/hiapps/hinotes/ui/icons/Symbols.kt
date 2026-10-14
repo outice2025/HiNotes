@@ -46,6 +46,7 @@ object Symbols {
     @DrawableRes val ResetSettings: Int = R.drawable.sym_reset_settings
     @DrawableRes val Save: Int = R.drawable.sym_save
     @DrawableRes val Search: Int = R.drawable.sym_search
+    @DrawableRes val Security: Int = R.drawable.sym_security
     @DrawableRes val SelectAll: Int = R.drawable.sym_select_all
     @DrawableRes val Sell: Int = R.drawable.sym_sell
     @DrawableRes val Settings: Int = R.drawable.sym_settings

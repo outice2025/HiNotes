@@ -67,6 +67,8 @@ $libJars = @(
     (Unpack-Aar 'androidx.compose.runtime' 'runtime-android' 'runtime.aar'),
     (Unpack-Aar 'androidx.compose.runtime' 'runtime-saveable-android' 'runtime-saveable.aar'),
     (Unpack-Aar 'androidx.compose.runtime' 'runtime-annotation-android' 'runtime-annotation.aar'),
+    # The theme check compares a scheme's roles, so it needs the artifact that defines them.
+    (Unpack-Aar 'androidx.compose.material3' 'material3-android' 'material3.aar'),
     (Find-Jar 'androidx.annotation' 'annotation-jvm' 'annotation-jvm-*.jar')
 ) | Where-Object { $_ }
 $libCp = (($libJars + $stdlib) -join ';')
@@ -146,6 +148,11 @@ Invoke-Check 'data.ArchiveChecks' (Join-Path $PSScriptRoot 'ArchiveChecks.kt') @
 
 Invoke-Check 'ui.editor.MarkdownChecks' (Join-Path $PSScriptRoot 'MarkdownChecks.kt') @(
     "$src\ui\editor\Markdown.kt"
+)
+
+Invoke-Check 'ui.theme.ThemeChecks' (Join-Path $PSScriptRoot 'ThemeChecks.kt') @(
+    "$src\ui\theme\ColorMatch.kt", "$src\ui\theme\ColorTokens.kt",
+    "$src\ui\theme\ColorSchemes.kt", "$src\ui\theme\AccentPalettes.kt"
 )
 
 Invoke-Check 'ui.screens.DocumentPickChecks' (Join-Path $PSScriptRoot 'DocumentPickChecks.kt') @(

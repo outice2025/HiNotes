@@ -101,7 +101,8 @@ object Backup {
 
     /**
      * Builds a diagnostics report. It deliberately contains no note text: only counts,
-     * environment facts and the active settings, which is what a bug report needs.
+     * environment facts, the active settings, and the most recent crash when the app has recorded
+     * one - which is what a bug report needs.
      */
     fun buildLogReport(
         context: Context,
@@ -128,6 +129,10 @@ object Backup {
                 SettingKey.entries.forEach { key -> put(key.storageKey, key.read(settings)) }
             })
             put("lockConfigured", LockStore(context).isConfigured)
+            // The stack trace of the last crash, when there is one. It is the one thing a report
+            // cannot be reconstructed from afterwards, and it stays where it was written - in this
+            // app's own cache directory - until the user chooses to share the report it is in.
+            CrashLogger.latest(context)?.let { put("lastCrash", it) }
         }
         return json.toString(2)
     }

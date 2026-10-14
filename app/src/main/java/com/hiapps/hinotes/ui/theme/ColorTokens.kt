@@ -18,6 +18,16 @@ internal object ColorTokens {
     /** Fully opaque scrim black, as specified by Material 3. */
     val Scrim = Color(0xFF000000)
 
+    /**
+     * The red the destructive action on the home screen is matched against.
+     *
+     * It is the reference the delete button was specified from, and it happens to be the design
+     * palette's own `error` role. The button is not painted with this value: the colour is handed
+     * to [nearestPairTo], which returns the pair of roles the active scheme answers with - so a
+     * generated accent, and a wallpaper-derived palette, keep their own red.
+     */
+    val DestructiveReference = Color(0xFFB3261E)
+
     internal object Light {
         val Primary = Color(0xFF4A4459)
         val OnPrimary = Color(0xFFFFFFFF)

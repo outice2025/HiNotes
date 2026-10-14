@@ -199,8 +199,6 @@ fun NoteCard(
     markdownEnabled: Boolean,
     locked: Boolean,
     lockedLabel: String,
-    pinned: Boolean,
-    pinnedLabel: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
@@ -265,18 +263,6 @@ fun NoteCard(
                         contentDescription = lockedLabel,
                         size = 16.dp,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                // The pin is drawn in the primary colour rather than the muted one the lock uses:
-                // a pinned note is at the top of the list by the user's own choice, so the badge is
-                // worth seeing at a glance, while the lock is a state nobody needs pointing out.
-                if (pinned) {
-                    Spacer(Modifier.width(6.dp))
-                    SymbolIcon(
-                        codepoint = Symbols.Keep,
-                        contentDescription = pinnedLabel,
-                        size = 16.dp,
-                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }

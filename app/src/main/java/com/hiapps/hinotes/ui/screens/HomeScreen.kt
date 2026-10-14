@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemScope
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.HomeLayout
+import com.hiapps.hinotes.data.Note
 import com.hiapps.hinotes.data.NoteSort
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.components.ConfirmDialog
@@ -53,7 +57,9 @@ import com.hiapps.hinotes.ui.components.HomeSearchBar
 import com.hiapps.hinotes.ui.components.NoteCard
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
+import com.hiapps.hinotes.ui.theme.ColorTokens
 import com.hiapps.hinotes.ui.theme.LocalDarkTheme
+import com.hiapps.hinotes.ui.theme.nearestPairTo
 import kotlinx.coroutines.launch
 
 /** The screen's outer gutter, shared by the search field and the note list. */
@@ -73,12 +79,25 @@ private val HomeGutter = 16.dp
 private val HeaderInset = HomeGutter + 12.dp + 3.82.dp
 
 /**
+ * The key of the rule drawn between the pinned notes and the rest.
+ *
+ * The grid's other keys are note ids, so the line needs one of its own: keyed by its position it
+ * would be the slot a newly pinned note animates into, and the note and the line would swap places
+ * on the way past.
+ */
+private const val PinnedRuleKey = "home-pinned-rule"
+
+/**
  * The home screen: search, the note list or grid, and the create-note action.
  *
- * Long-pressing a note enters multi-select. While a selection is active the create button is
- * joined by a delete action on its left, the count line reports the selection rather than the
- * total, and the row of controls above the list offers select-all, leaving the selection, and
- * exporting exactly the notes that are selected.
+ * Long-pressing a note enters multi-select. While a selection is active the create button gives way
+ * to the delete action - the same button in the same corner, saying what it does - the count line
+ * reports the selection rather than the total, and the row of controls above the list offers
+ * select-all, leaving the selection, and exporting exactly the notes that are selected.
+ *
+ * Pinned notes are shown as their own run above the rest, separated by a rule rather than by a
+ * heading: the pin is the user's own ordering, and a note that is simply first in the list says so
+ * without being labelled.
  *
  * The grid is a staggered one: each card is exactly as tall as its own content and the columns
  * pack tight underneath, so a one-line note no longer leaves a hole beside a long one. The count
@@ -110,10 +129,14 @@ fun HomeScreen(
 
     val untitled = stringResource(R.string.home_untitled)
     val lockedLabel = stringResource(R.string.home_locked_badge)
-    val pinnedLabel = stringResource(R.string.home_pinned_badge)
     val hasQuery = query.isNotBlank()
     val selecting = selectedIds.isNotEmpty()
     val gridLayout = settings.homeLayout == HomeLayout.Grid
+
+    // The list split where the rule goes: the repository already orders pinned notes first, so
+    // these two runs are that same order cut in half rather than a second sort.
+    val pinnedNotes = remember(notes) { notes.filter { it.pinned } }
+    val otherNotes = remember(notes) { notes.filterNot { it.pinned } }
 
     // A selection must not outlive the notes it refers to.
     val visibleIds = remember(notes) { notes.map { it.id }.toSet() }
@@ -144,58 +167,43 @@ fun HomeScreen(
         ),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            // The IME is an overlay in an edge-to-edge window, so the action buttons have to be
-            // moved above it themselves - otherwise tapping the search field buries the one
-            // control the empty screen is telling the user to press. The same inset keeps them
-            // clear of the gesture handle when no keyboard is up.
-            Column(
-                modifier = Modifier.windowInsetsPadding(
-                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
-                ),
-                horizontalAlignment = Alignment.End,
-            ) {
-                if (selecting) {
-                    // Delete sits above "Create note", at the end of the screen - out of the way
-                    // of the thumb's path to the button the app exists for, and still one press
-                    // from the selection it acts on.
-                    //
-                    // A bare trash icon rather than a labelled button: the selected count is on
-                    // the header line directly above, so the button only has to say which action
-                    // it performs.
-                    //
-                    // The error container and its content swap places with the theme - a pale red
-                    // button carrying a dark red glyph in light mode, the reverse in dark mode -
-                    // which lands on the same visual weight either way without losing contrast.
-                    val dark = LocalDarkTheme.current
-                    ExtendedFab(
-                        icon = Symbols.Delete,
-                        label = null,
-                        contentDescription = stringResource(
-                            R.string.home_delete_selected,
-                            selectedIds.size,
-                        ),
-                        onClick = { confirmDelete = true },
-                        containerColor = if (dark) {
-                            MaterialTheme.colorScheme.onErrorContainer
-                        } else {
-                            MaterialTheme.colorScheme.errorContainer
-                        },
-                        contentColor = if (dark) {
-                            MaterialTheme.colorScheme.errorContainer
-                        } else {
-                            MaterialTheme.colorScheme.onErrorContainer
-                        },
-                    )
-                    Spacer(Modifier.height(12.dp))
+            // The IME is an overlay in an edge-to-edge window, so the action button has to be
+            // moved above it itself - otherwise tapping the search field buries the one control
+            // the empty screen is telling the user to press. The same inset keeps it clear of the
+            // gesture handle when no keyboard is up.
+            val bottomInset = Modifier.windowInsetsPadding(
+                WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
+            )
+            if (selecting) {
+                // Delete takes the create button's place rather than sitting beside it: one button
+                // in that corner, at the same size, in the same spot, and labelled - so nothing
+                // moves under the thumb when a long-press turns the page into a selection.
+                //
+                // The light scheme paints it in the pair of roles nearest the destructive red the
+                // button was specified with - see [nearestPairTo], which reads the scheme rather
+                // than naming a role, so a generated accent and a wallpaper-derived palette bring
+                // their own red. The dark scheme keeps the pair it has always had: a pale button
+                // carrying a dark red glyph, the same weight without the saturated fill.
+                val scheme = MaterialTheme.colorScheme
+                val destructive = remember(scheme) {
+                    scheme.nearestPairTo(ColorTokens.DestructiveReference)
                 }
+                val dark = LocalDarkTheme.current
+                ExtendedFab(
+                    icon = Symbols.Delete,
+                    label = stringResource(R.string.home_delete_notes),
+                    onClick = { confirmDelete = true },
+                    modifier = bottomInset,
+                    containerColor = if (dark) scheme.onErrorContainer else destructive.container,
+                    contentColor = if (dark) scheme.errorContainer else destructive.content,
+                )
+            } else {
                 ExtendedFab(
                     // The standard outlined pencil.
                     icon = Symbols.Edit,
                     label = stringResource(R.string.home_create_note),
                     onClick = onCreateNote,
-                    // The emphasis is inverted against the delete button above it: this one is
-                    // the saturated action, carrying the primary colour as its background with
-                    // onPrimary as its content, in both themes.
+                    modifier = bottomInset,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 )
@@ -386,15 +394,15 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalItemSpacing = 8.dp,
                 ) {
-                    items(notes, key = { it.id }) { note ->
+                    // One note's card, described once and used by both runs below: the pinned notes
+                    // and the rest differ in where they sit, not in how they are drawn.
+                    val noteCard: @Composable LazyStaggeredGridItemScope.(Note) -> Unit = { note ->
                         NoteCard(
                             title = note.displayTitle(untitled),
                             content = note.content,
                             markdownEnabled = settings.markdownEnabled,
                             locked = note.isLocked,
                             lockedLabel = lockedLabel,
-                            pinned = note.pinned,
-                            pinnedLabel = pinnedLabel,
                             selecting = selecting,
                             selected = note.id in selectedIds,
                             compact = gridLayout,
@@ -409,6 +417,22 @@ fun HomeScreen(
                             modifier = Modifier.animateItem(),
                         )
                     }
+
+                    items(pinnedNotes, key = { it.id }) { note -> noteCard(note) }
+
+                    // The rule between the two runs, and only when there are two runs to separate:
+                    // it takes the full width of a row, so it is drawn across both columns of the
+                    // grid layout, and the grid's own side padding is what keeps it clear of the
+                    // screen edges - the line stops where the cards do.
+                    if (pinnedNotes.isNotEmpty() && otherNotes.isNotEmpty()) {
+                        item(key = PinnedRuleKey, span = StaggeredGridItemSpan.FullLine) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+                        }
+                    }
+
+                    items(otherNotes, key = { it.id }) { note -> noteCard(note) }
                 }
             }
         }

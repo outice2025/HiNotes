@@ -106,6 +106,29 @@ private const val SAVE_AS_YOU_TYPE_MS = 1_200L
 /** How close to the canvas edge a dragged selection keeps the handle it is following. */
 private val SelectionFollowMargin = 8.dp
 
+/** How far the formatting toolbar is inset from the canvas' lower edge, on every side. */
+private val ToolbarInset = 12.dp
+
+/**
+ * How far above that edge the note's text stops.
+ *
+ * The toolbar floats over the canvas rather than taking a row of its own, so the writing area has to
+ * be kept off it. It ends one toolbar plus one [ToolbarInset] on each side of it above the canvas'
+ * lower edge, which leaves the same 12dp between the text and the toolbar as between the toolbar and
+ * the bottom of the note - and the toolbar then reads as sitting in the space left for it instead of
+ * as a bar the text runs into.
+ */
+private val BodyBottomInset = ExpressiveButtonSize.Compact.height + ToolbarInset * 2
+
+/**
+ * How far a disabled control's content is dimmed.
+ *
+ * 38% of `onSurface` is the alpha Material 3 gives a disabled icon, and the one the editor's own
+ * toolbar already uses for a disabled button ([ConnectedIconButtonGroup]), so the header's
+ * greyed-out switch matches the controls below it.
+ */
+private const val DisabledAlpha = 0.38f
+
 /** Height of the filled title box, from the design. */
 private val TITLE_HEIGHT = 68.dp
 
@@ -259,11 +282,22 @@ fun EditorScreen(
     /**
      * Whether the note on screen is locked.
      *
-     * A locked note is readable rather than writable: the editor keeps it on screen and takes away
-     * every control that would change it, while leaving the ones that only read it - find, preview,
-     * share, properties, and the menu entry that unlocks it again.
+     * A locked note is readable rather than writable: it is shown the way a preview of it is shown,
+     * the formatting toolbar goes with the text field, and the edit/preview switch is drawn greyed
+     * out rather than removed - while everything that only reads the note stays: share, properties,
+     * and the menu entry that unlocks it again.
      */
     val locked = loadedNote?.isLocked == true
+
+    /**
+     * Whether the note is drawn as a rendered page rather than as a text field.
+     *
+     * The preview asks for that, and so does the lock. A locked note has nothing left to write
+     * into, so it is shown the way the preview shows it - rendered, with no cursor and no text
+     * input behind it - which is also why the switch in the header is drawn greyed out rather than
+     * changing anything: the mode it would switch to is the one the lock has taken away.
+     */
+    val showingPreview = previewMode || locked
 
     /**
      * Writes the draft, and reports whether it reached the database.
@@ -345,20 +379,14 @@ fun EditorScreen(
         }
     }
 
-    // Entering preview withdraws every editing affordance, so the keyboard goes with them: a
-    // text field that is merely read-only would still hold focus and keep the IME up.
-    LaunchedEffect(previewMode) {
-        if (previewMode) {
+    // Entering preview - by the switch or by the lock - withdraws every editing affordance, so the
+    // keyboard goes with them: a text field that is merely read-only would still hold focus and
+    // keep the IME up. The find bar goes too, because the toolbar that opens it is not drawn.
+    LaunchedEffect(showingPreview) {
+        if (showingPreview) {
             findOpen = false
             focusManager.clearFocus()
         }
-    }
-
-    // A note that is locked - or that was locked while it was open - is read-only from that moment,
-    // so the keyboard has nothing left to type into. The find bar stays: searching a note is one of
-    // the ways of reading it.
-    LaunchedEffect(locked) {
-        if (locked) focusManager.clearFocus()
     }
 
     // ---------------------------------------------------------------- find in note
@@ -464,19 +492,28 @@ fun EditorScreen(
                 // ever be pressed one way, leaving the overflow menu to do the actual coming back.
                 // Up here it is present in both modes, which is what makes it a switch. The glyph
                 // shows the mode the tap leads to.
+                //
+                // A locked note is the one case where the switch is drawn but cannot be used: the
+                // lock says the note cannot be written, so the button that offers to write in it
+                // goes grey rather than disappearing - the header keeps its shape, and the state
+                // that took the control away stays visible.
                 Spacer(Modifier.width(4.dp))
                 IconButton(
                     onClick = { previewMode = !previewMode },
                     modifier = Modifier.size(44.dp),
                     shape = RoundedCornerShape(percent = 50),
+                    enabled = !locked,
                     colors = IconButtonDefaults.iconButtonColors(
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = DisabledAlpha,
+                        ),
                     ),
                 ) {
                     SymbolIcon(
-                        codepoint = if (previewMode) Symbols.Edit else Symbols.SpaceDashboard,
+                        codepoint = if (showingPreview) Symbols.Edit else Symbols.SpaceDashboard,
                         contentDescription = stringResource(
-                            if (previewMode) {
+                            if (showingPreview) {
                                 R.string.editor_mode_edit
                             } else {
                                 R.string.editor_mode_preview
@@ -641,9 +678,9 @@ fun EditorScreen(
                 value = title,
                 onValueChange = { title = it },
                 singleLine = true,
-                // Read-only in preview mode, because the preview promises that the note cannot be
-                // changed, and on a locked note, because the lock promises the same thing.
-                readOnly = previewMode || locked,
+                // Read-only in either way of reading the note, because both promise that what is on
+                // screen cannot be changed by typing into it.
+                readOnly = showingPreview,
                 textStyle = titleStyle,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
@@ -693,7 +730,7 @@ fun EditorScreen(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
 
-                if (previewMode) {
+                if (showingPreview) {
                     // The note is split into prose and task lines so a checkbox in the preview is
                     // a real Material 3 checkbox that writes back into the note, rather than the
                     // ☐ glyph the renderer draws. With Markdown off the body is plain text and
@@ -735,6 +772,10 @@ fun EditorScreen(
                                     is Markdown.PreviewBlock.Task -> PreviewTaskRow(
                                         block = block,
                                         style = bodyStyle,
+                                        // Ticking a box is an edit, and a locked note is not
+                                        // editable: the box still shows the state the text records,
+                                        // it just cannot be turned into a change.
+                                        enabled = !locked,
                                         onToggle = { checked ->
                                             val text = editorState.value.text
                                             // A discrete edit, so it is one undo step - and the
@@ -820,11 +861,15 @@ fun EditorScreen(
                     BasicTextField(
                         value = editorState.value,
                         onValueChange = editorState::onUserInput,
-                        readOnly = locked,
                         visualTransformation = remember(markedBody) { MarkedText(markedBody) },
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp)
+                            .padding(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 16.dp,
+                                bottom = BodyBottomInset,
+                            )
                             .verticalScroll(bodyScroll),
                         textStyle = bodyStyle,
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -900,12 +945,12 @@ fun EditorScreen(
 
                 // Connected formatting toolbar, drawn over the lower edge of the canvas.
                 //
-                // It is an editing control, so preview mode takes it away entirely: there is
-                // nothing in a preview for it to act on, and leaving it up would suggest the
-                // note can still be changed. A locked note keeps only the button that is not an
-                // edit - find, which is first - for the same reason: undo, redo and the formatting
-                // verbs all act on text the lock says cannot be changed.
-                if (!previewMode) {
+                // It is an editing control, so a note shown as a page does not get one: there is
+                // nothing in a rendered note for it to act on, and leaving it up would suggest the
+                // note can still be changed. That covers both ways of reading - the preview and the
+                // lock - and the lock without exception: every button on it, find included, belongs
+                // to working on the note rather than to reading it.
+                if (!showingPreview) {
                     ConnectedIconButtonGroup(
                         buttons = listOf(
                             ConnectedIconButton(
@@ -957,10 +1002,10 @@ fun EditorScreen(
                                     Markdown.toggleLinePrefix(editorState.value, "- "),
                                 )
                             },
-                        ).let { buttons -> if (locked) buttons.take(1) else buttons },
+                        ),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(12.dp),
+                            .padding(ToolbarInset),
                         size = ExpressiveButtonSize.Compact,
                         // The same container as the note behind it, so the buttons read as
                         // controls lying on the page rather than as a second surface with an
@@ -1051,12 +1096,16 @@ private val PreviewCheckboxTarget = 36.dp
  * by the renderer's ☐ glyph, and tapping it edits the note. Merging the row's semantics keeps a
  * screen reader announcing the item's text together with its state instead of reading a bare
  * "checkbox" with no idea what it belongs to.
+ *
+ * @param enabled false on a locked note, where ticking the box would be an edit: it keeps the
+ *   preview's look and reports its state, but it does not offer to change it.
  */
 @Composable
 private fun PreviewTaskRow(
     block: Markdown.PreviewBlock.Task,
     style: TextStyle,
     onToggle: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier
@@ -1067,7 +1116,13 @@ private fun PreviewTaskRow(
         CompositionLocalProvider(
             LocalMinimumInteractiveComponentSize provides PreviewCheckboxTarget,
         ) {
-            Checkbox(checked = block.checked, onCheckedChange = onToggle)
+            Checkbox(
+                checked = block.checked,
+                // A null callback is what makes the box report its state without offering to change
+                // it; the box keeps the preview's own look, which is the point of rendering a locked
+                // note the way a preview is rendered.
+                onCheckedChange = if (enabled) onToggle else null,
+            )
         }
         Spacer(Modifier.width(4.dp))
         Text(text = block.text, style = style, modifier = Modifier.weight(1f))

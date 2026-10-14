@@ -179,10 +179,15 @@ class HiNotesWidgetProvider : AppWidgetProvider() {
 
             if (note == null) {
                 // Nothing is bound, the note it was bound to is gone, or the app has an unlock
-                // password: the card is drawn in the scheme's colour and holds nothing at all. It
-                // carries no tap either, so there is nothing to open and nothing to read.
+                // password: the card is drawn in the scheme's colour and holds nothing at all.
                 views.setViewVisibility(R.id.widget_title, View.GONE)
                 views.setViewVisibility(android.R.id.list, View.GONE)
+                // The tap is taken off the card rather than only left unset. The card was drawn a
+                // moment ago with a tap on it, so the drawing that follows a deletion says the tap
+                // is gone instead of leaving that to be inferred from an action that is not there.
+                // A press on an empty card therefore opens nothing, which leaves the user on the
+                // home screen they pressed it from rather than in the note that has just gone.
+                views.setOnClickPendingIntent(R.id.widget_card, null)
                 return views
             }
 

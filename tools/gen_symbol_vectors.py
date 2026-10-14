@@ -60,6 +60,7 @@ ICONS = {
     "BrightnessMedium": "brightness_medium", "Book2": "book_2", "Style": "style",
     "ResetSettings": "reset_settings", "StopScreenShare": "stop_screen_share",
     "Keep": "keep", "KeepOff": "keep_off", "LockOpen": "lock_open",
+    "Security": "security",
 }
 
 # Glyphs the app wants in their filled style, drawn from the variable font's FILL axis at 1.

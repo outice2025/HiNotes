@@ -45,16 +45,17 @@ private const val REPOSITORY_URL = "https://github.com/outice2025/HiNotes"
 private const val RELEASES_URL = "$REPOSITORY_URL/releases"
 
 /**
- * About: the app mark, name, tagline, version, and the updates / repository / logs actions.
+ * About: the app mark, name, tagline, what this build is, and the updates / repository / logs
+ * actions.
  *
- * All three rows do real work: the updates row opens the project's releases page in a browser,
- * the repository row opens the project page, and the logs row writes a diagnostics file and hands
- * it to the share sheet. None of them are placeholders.
+ * All three action rows do real work: the updates row opens the project's releases page in a
+ * browser, the repository row opens the project page, and the logs row writes a diagnostics file
+ * and hands it to the share sheet. None of them are placeholders.
  *
  * "Check for updates" is a link rather than a version comparison against a release feed, which
  * means the app now makes no network request of its own at all and needs no INTERNET permission.
- * The licence is stated rather than shown: the row names it, and the file itself is in the
- * repository the row above opens.
+ * The licence is stated rather than shown: it shares the group the version opens, names itself in
+ * the row, and the file itself is in the repository the row above opens.
  */
 @Composable
 fun AboutScreen(
@@ -113,6 +114,9 @@ fun AboutScreen(
 
         SettingsSectionGap()
 
+        // The licence sits directly under the version, in the same group and with nothing between
+        // them: both state what this build is, and the seam that joins them is the same 3dp one
+        // that joins any two neighbouring rows.
         SettingsSection {
             SettingsRow(
                 icon = Symbols.Info,
@@ -123,6 +127,17 @@ fun AboutScreen(
                     BuildConfig.BUILD_CHANNEL,
                 ),
                 onClick = null,
+                isFirst = true,
+                isLast = false,
+            )
+            // A statement rather than an action: no tap, no chevron and no dialog. The licence
+            // itself is the repository's LICENSE file, which the repository row above leads to.
+            SettingsRow(
+                icon = Symbols.Book2,
+                headline = stringResource(R.string.about_licenses),
+                supporting = "Apache-2.0",
+                isFirst = false,
+                isLast = true,
             )
         }
 
@@ -171,18 +186,6 @@ fun AboutScreen(
                 trailing = { Chevron() },
                 isFirst = false,
                 isLast = true,
-            )
-        }
-
-        SettingsSectionGap()
-
-        // A statement rather than an action: no tap, no chevron and no dialog. The licence itself is
-        // the repository's LICENSE file, which the repository row above leads to.
-        SettingsSection {
-            SettingsRow(
-                icon = Symbols.Book2,
-                headline = stringResource(R.string.about_licenses),
-                supporting = "Apache-2.0",
             )
         }
     }

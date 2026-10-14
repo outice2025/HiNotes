@@ -10,7 +10,7 @@
     <string name="home_exit_selection">退出多选</string>
     <string name="home_layout_grid">网格排版</string>
     <string name="home_layout_list">列表排版</string>
-    <string name="home_delete_selected">删除（%1$d）</string>
+    <string name="home_delete_notes">删除笔记</string>
     <string name="home_delete_selected_message">将永久删除 %1$d 条笔记，此操作无法撤销。</string>
     <string name="editor_delete">删除</string>
     <string name="editor_lock">锁定</string>
@@ -32,7 +32,6 @@
     <string name="home_delete_confirm">删除</string>
     <string name="home_untitled">无标题</string>
     <string name="home_locked_badge">已锁定</string>
-    <string name="home_pinned_badge">已置顶</string>
 
     <!-- 编辑器 -->
     <string name="editor_title_label">标题</string>

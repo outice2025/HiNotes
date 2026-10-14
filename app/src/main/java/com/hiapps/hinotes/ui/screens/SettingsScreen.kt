@@ -106,7 +106,7 @@ fun SettingsScreen(
                 isLast = false,
             )
             SettingsRow(
-                icon = Symbols.Password,
+                icon = Symbols.Security,
                 headline = stringResource(R.string.settings_unlock),
                 supporting = stringResource(R.string.settings_unlock_support),
                 onClick = onOpenUnlock,

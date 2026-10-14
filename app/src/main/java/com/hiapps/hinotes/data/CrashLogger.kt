@@ -64,7 +64,13 @@ object CrashLogger {
         Log.e(TAG, "uncaught exception recorded to ${file.name}", throwable)
     }
 
-    /** Most recent crash report, if any, for inclusion in an exported log bundle. */
+    /**
+     * Most recent crash report, if any, for inclusion in an exported log bundle.
+     *
+     * Read by [Backup.buildLogReport], which is the export the About screen shares: the trace is
+     * the part of a bug report that cannot be reconstructed afterwards, so it travels with the
+     * report rather than being left behind in the cache.
+     */
     fun latest(context: Context): String? {
         val dir = File(context.cacheDir, DIR)
         val newest = dir.listFiles()?.maxByOrNull { it.lastModified() } ?: return null

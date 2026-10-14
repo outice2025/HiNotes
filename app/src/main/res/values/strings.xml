@@ -10,7 +10,7 @@
     <string name="home_exit_selection">Exit selection</string>
     <string name="home_layout_grid">Grid layout</string>
     <string name="home_layout_list">List layout</string>
-    <string name="home_delete_selected">Delete (%1$d)</string>
+    <string name="home_delete_notes">Delete notes</string>
     <string name="home_delete_selected_message">%1$d notes will be permanently deleted. This cannot be undone.</string>
     <string name="editor_delete">Delete</string>
     <string name="editor_lock">Lock</string>
@@ -32,7 +32,6 @@
     <string name="home_delete_confirm">Delete</string>
     <string name="home_untitled">Untitled</string>
     <string name="home_locked_badge">Locked</string>
-    <string name="home_pinned_badge">Pinned</string>
 
     <!-- Editor -->
     <string name="editor_title_label">Title</string>

@@ -116,7 +116,6 @@ private fun NotePicker(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val untitled = stringResource(R.string.home_untitled)
     val lockedLabel = stringResource(R.string.home_locked_badge)
-    val pinnedLabel = stringResource(R.string.home_pinned_badge)
 
     SettingsScaffold(
         title = stringResource(R.string.widget_pick_title),
@@ -136,8 +135,6 @@ private fun NotePicker(
                     markdownEnabled = settings.markdownEnabled,
                     locked = note.isLocked,
                     lockedLabel = lockedLabel,
-                    pinned = note.pinned,
-                    pinnedLabel = pinnedLabel,
                     onClick = { onPick(note.id) },
                     modifier = Modifier.padding(bottom = 8.dp),
                 )

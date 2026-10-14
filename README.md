@@ -43,14 +43,17 @@ INTERNET permission.
   code, emphasis, strikethrough, comments and escapes.
 - Long-press to select several notes and delete them together, or export just those.
 - Share a note as text or as a Markdown attachment.
-- A note can be locked to keep it from being edited; a locked note can still be deleted.
-- Pin a note to keep it above the rest, whatever the sort order is.
+- A note can be locked to keep it from being edited: it is then shown the way a preview is shown,
+  the formatting toolbar is dropped and the mode switch is greyed out, while the note can still be
+  selected and deleted.
+- Pin a note to keep it in a run of its own above the rest, above a rule, whatever the sort order is.
 
 **Widget**
 - A home screen widget showing one note, chosen for each widget as it is added.
 - The title stays put and the note scrolls underneath it, without a scrollbar.
 - Drawn in the app's colour scheme, and follows the Markdown switch.
 - Its own font size and weight.
+- A card whose note has been deleted is drawn empty, and a press on it does nothing.
 
 **Editor**
 - Markdown source editing, and find in note: enter jumps to the next match and marks it, wrapping
@@ -127,7 +130,7 @@ renderers used to look at a glyph or a corner radius; `tools/verify/` holds the 
 
 ```bash
 pwsh -File tools/verify/sweep.ps1        # everything below, plus the APK's signature and hash
-pwsh -File tools/verify/run.ps1          # archive, Markdown and document-pick checks, on a JVM
+pwsh -File tools/verify/run.ps1          # archive, Markdown, theme and document-pick checks, on a JVM
 python tools/verify/check_migrations.py  # every notes-database upgrade path, against SQLite
 python tools/verify/audit_resources.py   # string, symbol and drawable references
 python tools/verify/check_icon_geometry.py
@@ -160,14 +163,15 @@ Apache License 2.0.
 - 支持以 Markdown 格式书写笔记：标题、有序与嵌套列表、任务列表、引用、表格、公式、代码、强调、删除线、注释与转义。
 - 长按进入多选，可批量删除，也可只导出所选笔记。
 - 笔记可分享为文本或 Markdown 附件。
-- 可锁定笔记：锁定后不能编辑，但仍可被选中和删除。
-- 可置顶笔记：置顶的笔记始终排在列表最前。
+- 可锁定笔记：锁定后以浏览模式显示、收起格式工具栏、编辑/浏览按钮变灰，笔记仍可被选中和删除。
+- 可置顶笔记：置顶的笔记单独排在最前，与其余笔记之间以一条分割线相隔。
 
 **微件**
 - 桌面微件显示一篇笔记，添加时为每个微件单独选择笔记。
 - 标题固定，正文在下方滚动，不显示滚动条。
 - 配色跟随应用配色方案，并跟随 Markdown 开关。
 - 可单独设置微件的字号与字重。
+- 微件所显示的笔记被删除后，卡片显示为空，点击它不会有任何动作。
 
 **编辑器**
 - 支持 Markdown 源码编辑；笔记内查找可按回车逐处定位并高亮，走到末尾后回到第一处。
@@ -238,7 +242,7 @@ app/src/main/java/com/hiapps/hinotes/
 
 ```bash
 pwsh -File tools/verify/sweep.ps1        # 下列全部检查，外加 APK 的签名与哈希
-pwsh -File tools/verify/run.ps1          # 归档、Markdown 与文档选择的检查，在 JVM 上执行
+pwsh -File tools/verify/run.ps1          # 归档、Markdown、主题与文档选择的检查，在 JVM 上执行
 python tools/verify/check_migrations.py  # 每一条笔记数据库升级路径，用 SQLite 验证
 python tools/verify/audit_resources.py   # 字符串、图标、矢量图引用审计
 python tools/verify/check_icon_geometry.py

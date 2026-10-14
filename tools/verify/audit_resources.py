@@ -120,6 +120,23 @@ for term in stale_terms:
     if hits:
         problems.append(f"stale reference to {term!r} in {sorted(set(hits))}")
 
+# String keys that were removed, checked as whole keys rather than as substrings: a removed key can
+# be the prefix of one that is still in use - `home_delete_selected` next to the live
+# `home_delete_selected_message` - and a substring search reports the string that is still there.
+# Replaced when the delete action moved into the create button's place and took a label with it, and
+# when the pinned notes became a run above a rule instead of a badge on the card.
+stale_string_keys = ["home_delete_selected", "home_pinned_badge"]
+for key in stale_string_keys:
+    hits = [
+        path.name for path, text in kotlin_sources()
+        if re.search(rf"R\.string\.{key}\b", text)
+    ]
+    for extra in (EN, ZH):
+        if re.search(rf'<string name="{key}"', extra.read_text(encoding="utf-8")):
+            hits.append(extra.name)
+    if hits:
+        problems.append(f"stale string key {key!r} in {sorted(set(hits))}")
+
 # ---------------------------------------------------------------- report
 print(f"strings: {len(en)} declared, {len(referenced)} referenced, {len(unused)} unused")
 if unused:

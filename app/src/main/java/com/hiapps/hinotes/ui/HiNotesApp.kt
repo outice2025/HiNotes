@@ -146,9 +146,16 @@ fun HiNotesApp(
     // stays in the back stack underneath, and the request is reported as shown so a recomposition
     // or a rotation does not open it a second time. Tapping the same widget again while its note
     // is already open brings that page forward rather than stacking a second copy of it.
+    //
+    // The note is looked up before it is opened, because the two halves of a tap are a moment
+    // apart: a widget whose note has just been deleted can still be carrying a tap for it, and
+    // opening that request would fill the editor with a blank note that was never asked for. A
+    // request for a note that is gone opens nothing and is spent like any other.
     LaunchedEffect(startNoteId) {
         val noteId = startNoteId ?: return@LaunchedEffect
-        navController.navigate(Routes.editor(noteId)) { launchSingleTop = true }
+        if (viewModel.notesRepository.note(noteId) != null) {
+            navController.navigate(Routes.editor(noteId)) { launchSingleTop = true }
+        }
         onStartNoteShown()
     }
 

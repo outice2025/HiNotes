@@ -3,6 +3,10 @@
 #
 #   pwsh -File tools/verify/sweep.ps1
 #
+# Every section's exit code is collected rather than printed and forgotten: the sweep ends non-zero
+# when any of them failed, and names them again at the end. The output is still worth reading in
+# full - each section says what it checked, and a section that fails says why.
+#
 # What the sweep needs is looked up rather than demanded, so a clone can run it with little set up:
 #
 #   * Python 3 with numpy, Pillow and fontTools: HINOTES_PYTHON, else `python` on PATH (the Windows
@@ -102,28 +106,57 @@ if ($javaVersion -match 'version "(\d+)' -and [int]$Matches[1] -lt 17) {
 $env:JAVA_HOME = $javaHome
 $env:ANDROID_HOME = $sdk
 
+# Failures are collected by name so the run can end with the list rather than with whatever the
+# last section happened to print. A section whose command returned non-zero is a failed sweep: a
+# check that fails has to fail the command that ran it, or a broken build can be signed off by a
+# script that exited 0.
+$failed = @()
+function Record-Section($name, $code) {
+    if ($code -ne 0) { $script:failed += $name }
+}
+
 Write-Host '=== checks ==='
 & "$repo\tools\verify\run.ps1" 2>&1 | Select-String -Pattern 'FAIL|passed|failed'
+Record-Section 'JVM checks' $LASTEXITCODE
 
 Write-Host '=== migrations ==='
 & $python @pythonPrefix "$repo\tools\verify\check_migrations.py" | Select-Object -Last 3
+Record-Section 'database migrations' $LASTEXITCODE
 
 Write-Host '=== resource audit ==='
 & $python @pythonPrefix "$repo\tools\verify\audit_resources.py" | Select-Object -Last 5
+Record-Section 'resource audit' $LASTEXITCODE
 
 Write-Host '=== icon geometry ==='
 & $python @pythonPrefix "$repo\tools\verify\check_icon_geometry.py" | Select-Object -Last 3
+Record-Section 'icon geometry' $LASTEXITCODE
 
 Write-Host '=== apk ==='
 $buildTools = Get-ChildItem (Join-Path $sdk 'build-tools') -Directory |
     Sort-Object Name -Descending | Select-Object -First 1
-$apk = Get-ChildItem "$repo\releases" -Recurse -Filter 'HiNotes-*-release.apk' |
+$apk = Get-ChildItem "$repo\releases" -Recurse -Filter 'HiNotes-*-release.apk' -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1
-Write-Host ("file: {0}" -f $apk.FullName)
-Write-Host ("size: {0} MB" -f [math]::Round($apk.Length / 1MB, 2))
-Write-Host ("sha256: {0}" -f (Get-FileHash $apk.FullName -Algorithm SHA256).Hash)
+if (-not $apk) {
+    Write-Host 'no archived release APK found - build one with :app:assembleRelease' -ForegroundColor Red
+    Record-Section 'apk' 1
+} else {
+    Write-Host ("file: {0}" -f $apk.FullName)
+    Write-Host ("size: {0} MB" -f [math]::Round($apk.Length / 1MB, 2))
+    Write-Host ("sha256: {0}" -f (Get-FileHash $apk.FullName -Algorithm SHA256).Hash)
 
-& "$($buildTools.FullName)\aapt2.exe" dump badging $apk.FullName 2>&1 |
-    Select-String -Pattern "^package|^minSdkVersion|^targetSdkVersion|uses-permission|launchable-activity"
-& "$($buildTools.FullName)\apksigner.bat" verify --verbose $apk.FullName 2>&1 |
-    Select-String -Pattern 'v2 scheme|v3 scheme'
+    & "$($buildTools.FullName)\aapt2.exe" dump badging $apk.FullName 2>&1 |
+        Select-String -Pattern "^package|^minSdkVersion|^targetSdkVersion|uses-permission|launchable-activity"
+    Record-Section 'apk manifest' $LASTEXITCODE
+
+    & "$($buildTools.FullName)\apksigner.bat" verify --verbose $apk.FullName 2>&1 |
+        Select-String -Pattern 'v2 scheme|v3 scheme'
+    Record-Section 'apk signature' $LASTEXITCODE
+}
+
+Write-Host ""
+if ($failed.Count -eq 0) {
+    Write-Host 'sweep: every section passed' -ForegroundColor Green
+    exit 0
+}
+Write-Host ("sweep: {0} section(s) failed - {1}" -f $failed.Count, ($failed -join ', ')) -ForegroundColor Red
+exit 1
