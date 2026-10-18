@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.hiapps.hinotes.R
 import com.hiapps.hinotes.ui.theme.AccentPalette
 import com.hiapps.hinotes.ui.theme.AppFontScale
 import com.hiapps.hinotes.ui.theme.AppFontWeight
@@ -48,6 +49,31 @@ enum class DarkModePreference(val key: String) {
 }
 
 /**
+ * The language the app draws itself in.
+ *
+ * Chosen inside the app rather than through Android's per-app language screen, so the choice sits
+ * with the rest of the settings, is written to a settings backup like any other, and takes effect
+ * at once. [System] leaves the device's own language alone, which is what a fresh install does.
+ *
+ * @param tag the BCP-47 tag the platform is given, or null for "follow the device".
+ * @param labelRes the language's name in its own script, so the list reads the same either way.
+ */
+enum class AppLanguage(val key: String, val tag: String?, val labelRes: Int) {
+    System("system", null, R.string.appearance_follow_system),
+    SimplifiedChinese("zh-CN", "zh-CN", R.string.language_chinese),
+    English("en", "en", R.string.language_english),
+    ;
+
+    companion object {
+        /** The out-of-the-box value: whatever the device is set to. */
+        val Default = System
+
+        fun fromKey(key: String?): AppLanguage =
+            entries.firstOrNull { it.key == key } ?: Default
+    }
+}
+
+/**
  * Everything the user can configure, in one immutable snapshot.
  *
  * Defaults here are the app's out-of-the-box behaviour: wallpaper-derived dynamic colour is on
@@ -67,11 +93,13 @@ data class HiNotesSettings(
     val noteFontWeight: AppFontWeight = AppFontWeight.Regular,
     val widgetFontScale: AppFontScale = AppFontScale.Default,
     val widgetFontWeight: AppFontWeight = AppFontWeight.Default,
+    val widgetShowTitle: Boolean = true,
     val biometricFace: Boolean = false,
     val screenCaptureDisabled: Boolean = false,
     val sortOrder: NoteSort = NoteSort.UpdatedDesc,
     val startInPreview: Boolean = false,
     val homeLayout: HomeLayout = HomeLayout.Default,
+    val language: AppLanguage = AppLanguage.Default,
 ) {
     /** Number of settings that differ from their default, used to report import results. */
     fun nonDefaultCount(): Int {
@@ -94,11 +122,13 @@ enum class SettingKey(val storageKey: String) {
     NoteFontWeight("note_font_weight"),
     WidgetFontScale("widget_font_scale"),
     WidgetFontWeight("widget_font_weight"),
+    WidgetShowTitle("widget_show_title"),
     BiometricFace("biometric_face"),
     ScreenCaptureDisabled("screen_capture_disabled"),
     SortOrder("sort_order"),
     StartInPreview("start_in_preview"),
     HomeLayout("home_layout"),
+    Language("language"),
     ;
 
     fun read(settings: HiNotesSettings): String = when (this) {
@@ -114,11 +144,13 @@ enum class SettingKey(val storageKey: String) {
         NoteFontWeight -> settings.noteFontWeight.name
         WidgetFontScale -> settings.widgetFontScale.name
         WidgetFontWeight -> settings.widgetFontWeight.name
+        WidgetShowTitle -> settings.widgetShowTitle.toString()
         BiometricFace -> settings.biometricFace.toString()
         ScreenCaptureDisabled -> settings.screenCaptureDisabled.toString()
         SortOrder -> settings.sortOrder.key
         StartInPreview -> settings.startInPreview.toString()
         HomeLayout -> settings.homeLayout.key
+        Language -> settings.language.key
     }
 }
 
@@ -140,11 +172,13 @@ class SettingsRepository(private val context: Context) {
         val noteFontWeight = stringPreferencesKey("note_font_weight")
         val widgetFontScale = stringPreferencesKey("widget_font_scale")
         val widgetFontWeight = stringPreferencesKey("widget_font_weight")
+        val widgetShowTitle = booleanPreferencesKey("widget_show_title")
         val biometricFace = booleanPreferencesKey("biometric_face")
         val screenCaptureDisabled = booleanPreferencesKey("screen_capture_disabled")
         val sortOrder = stringPreferencesKey("sort_order")
         val startInPreview = booleanPreferencesKey("start_in_preview")
         val homeLayout = stringPreferencesKey("home_layout")
+        val language = stringPreferencesKey("language")
     }
 
     val settings: Flow<HiNotesSettings> = context.settingsStore.data
@@ -174,6 +208,7 @@ class SettingsRepository(private val context: Context) {
                     ?: defaults.widgetFontScale,
                 widgetFontWeight = prefs[Keys.widgetFontWeight]?.let(AppFontWeight::fromKey)
                     ?: defaults.widgetFontWeight,
+                widgetShowTitle = prefs[Keys.widgetShowTitle] ?: defaults.widgetShowTitle,
                 biometricFace = prefs[Keys.biometricFace] ?: defaults.biometricFace,
                 screenCaptureDisabled = prefs[Keys.screenCaptureDisabled]
                     ?: defaults.screenCaptureDisabled,
@@ -181,6 +216,7 @@ class SettingsRepository(private val context: Context) {
                 startInPreview = prefs[Keys.startInPreview] ?: defaults.startInPreview,
                 homeLayout = prefs[Keys.homeLayout]?.let(HomeLayout::fromKey)
                     ?: defaults.homeLayout,
+                language = AppLanguage.fromKey(prefs[Keys.language]),
             )
         }
 
@@ -231,6 +267,8 @@ class SettingsRepository(private val context: Context) {
     suspend fun setWidgetFontWeight(value: AppFontWeight) =
         edit { it[Keys.widgetFontWeight] = value.name }
 
+    suspend fun setWidgetShowTitle(value: Boolean) = edit { it[Keys.widgetShowTitle] = value }
+
     suspend fun setBiometricFace(value: Boolean) = edit { it[Keys.biometricFace] = value }
 
     suspend fun setScreenCaptureDisabled(value: Boolean) =
@@ -241,6 +279,8 @@ class SettingsRepository(private val context: Context) {
     suspend fun setStartInPreview(value: Boolean) = edit { it[Keys.startInPreview] = value }
 
     suspend fun setHomeLayout(value: HomeLayout) = edit { it[Keys.homeLayout] = value.key }
+
+    suspend fun setLanguage(value: AppLanguage) = edit { it[Keys.language] = value.key }
 
     suspend fun restoreDefaults() {
         context.settingsStore.edit { it.clear() }
@@ -262,11 +302,13 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.noteFontWeight] = settings.noteFontWeight.name
             prefs[Keys.widgetFontScale] = settings.widgetFontScale.name
             prefs[Keys.widgetFontWeight] = settings.widgetFontWeight.name
+            prefs[Keys.widgetShowTitle] = settings.widgetShowTitle
             prefs[Keys.biometricFace] = settings.biometricFace
             prefs[Keys.screenCaptureDisabled] = settings.screenCaptureDisabled
             prefs[Keys.sortOrder] = settings.sortOrder.key
             prefs[Keys.startInPreview] = settings.startInPreview
             prefs[Keys.homeLayout] = settings.homeLayout.key
+            prefs[Keys.language] = settings.language.key
         }
     }
 
@@ -296,6 +338,7 @@ class SettingsRepository(private val context: Context) {
                 ?.let(AppFontScale::fromKey) ?: fallback.widgetFontScale,
             widgetFontWeight = pairs[SettingKey.WidgetFontWeight.storageKey]
                 ?.let(AppFontWeight::fromKey) ?: fallback.widgetFontWeight,
+            widgetShowTitle = bool(SettingKey.WidgetShowTitle, fallback.widgetShowTitle),
             biometricFace = bool(SettingKey.BiometricFace, fallback.biometricFace),
             screenCaptureDisabled = bool(
                 SettingKey.ScreenCaptureDisabled,
@@ -306,6 +349,8 @@ class SettingsRepository(private val context: Context) {
             startInPreview = bool(SettingKey.StartInPreview, fallback.startInPreview),
             homeLayout = pairs[SettingKey.HomeLayout.storageKey]
                 ?.let(HomeLayout::fromKey) ?: fallback.homeLayout,
+            language = pairs[SettingKey.Language.storageKey]
+                ?.let(AppLanguage::fromKey) ?: fallback.language,
         )
     }
 

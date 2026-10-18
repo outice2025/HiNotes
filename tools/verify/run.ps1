@@ -67,6 +67,9 @@ $libJars = @(
     (Unpack-Aar 'androidx.compose.runtime' 'runtime-android' 'runtime.aar'),
     (Unpack-Aar 'androidx.compose.runtime' 'runtime-saveable-android' 'runtime-saveable.aar'),
     (Unpack-Aar 'androidx.compose.runtime' 'runtime-annotation-android' 'runtime-annotation.aar'),
+    # The renderer leaves a task's box as inline content, so the foundation artifact that defines
+    # that API has to be on the checks' classpath along with the text it is written into.
+    (Unpack-Aar 'androidx.compose.foundation' 'foundation-android' 'foundation.aar'),
     # The theme check compares a scheme's roles, so it needs the artifact that defines them.
     (Unpack-Aar 'androidx.compose.material3' 'material3-android' 'material3.aar'),
     (Find-Jar 'androidx.annotation' 'annotation-jvm' 'annotation-jvm-*.jar')
@@ -143,21 +146,38 @@ function Invoke-Check($name, $checkFile, $sources, $extraCp) {
 }
 
 Invoke-Check 'data.ArchiveChecks' (Join-Path $PSScriptRoot 'ArchiveChecks.kt') @(
-    "$src\data\NotesArchive.kt", "$src\data\Note.kt"
-)
+    "$src\data\NotesArchive.kt", "$src\data\Note.kt",
+    # The archive carries the pictures a note refers to, so this check reads the addresses out of a
+    # note's text with the same code the export does - and that source names the platform's picture
+    # types on the way past, which is why the stubs above come with it.
+    "$src\data\NoteImages.kt"
+) $androidJar
 
 Invoke-Check 'ui.editor.MarkdownChecks' (Join-Path $PSScriptRoot 'MarkdownChecks.kt') @(
     "$src\ui\editor\Markdown.kt"
 )
 
+# Cutting a note's rendered text into the items a widget's list is built from is the one part of a
+# widget's drawing that touches nothing but characters, so it is run here in the package it lives in.
+# The platform's spanned text is what a chunk is cut out of when the body carries a picture, so that
+# source names the platform's own types on the way past and the stubs above come with it.
+Invoke-Check 'widget.WidgetTextChecks' (Join-Path $PSScriptRoot 'WidgetTextChecks.kt') @(
+    "$src\widget\WidgetChunks.kt", "$src\ui\editor\Markdown.kt"
+) $androidJar
+
 Invoke-Check 'ui.theme.ThemeChecks' (Join-Path $PSScriptRoot 'ThemeChecks.kt') @(
     "$src\ui\theme\ColorMatch.kt", "$src\ui\theme\ColorTokens.kt",
-    "$src\ui\theme\ColorSchemes.kt", "$src\ui\theme\AccentPalettes.kt"
+    "$src\ui\theme\ColorSchemes.kt", "$src\ui\theme\AccentPalettes.kt",
+    # A widget's surface is chosen from a scheme the app has adjusted, so the check reads both the
+    # adjustment and the choice.
+    "$src\ui\theme\DarkSurfaces.kt", "$src\widget\WidgetSurface.kt"
 )
 
 Invoke-Check 'ui.screens.DocumentPickChecks' (Join-Path $PSScriptRoot 'DocumentPickChecks.kt') @(
     "$src\ui\screens\DocumentPick.kt"
 ) $androidJar
+
+Invoke-Check 'ui.screens.EditorChecks' (Join-Path $PSScriptRoot 'EditorChecks.kt') @() $androidJar
 
 Write-Host ""
 if ($failures -eq 0) {

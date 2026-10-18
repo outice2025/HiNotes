@@ -47,7 +47,7 @@ ICONS = {
     "Close": "close", "Delete": "delete", "Sort": "sort",
     "GridView": "grid_view", "ViewList": "view_list", "SelectAll": "select_all",
     "ArrowBack": "arrow_back", "Check": "check", "SpaceDashboard": "space_dashboard",
-    "Info": "info", "Share": "share", "KeyboardArrowDown": "keyboard_arrow_down",
+    "Info": "info", "Share": "share", "MoreVert": "more_vert",
     "Undo": "undo", "Redo": "redo", "FormatBold": "format_bold",
     "FormatItalic": "format_italic", "CheckBoxOutlineBlank": "check_box_outline_blank",
     "List": "list", "Palette": "palette", "Language": "language",
@@ -60,7 +60,7 @@ ICONS = {
     "BrightnessMedium": "brightness_medium", "Book2": "book_2", "Style": "style",
     "ResetSettings": "reset_settings", "StopScreenShare": "stop_screen_share",
     "Keep": "keep", "KeepOff": "keep_off", "LockOpen": "lock_open",
-    "Security": "security",
+    "Security": "security", "Title": "title", "AddPhotoAlternate": "add_photo_alternate",
 }
 
 # Glyphs the app wants in their filled style, drawn from the variable font's FILL axis at 1.

@@ -13,15 +13,17 @@ import com.hiapps.hinotes.ui.components.FontSettingsDialog
 import com.hiapps.hinotes.ui.components.SettingsRow
 import com.hiapps.hinotes.ui.components.SettingsScaffold
 import com.hiapps.hinotes.ui.components.SettingsSection
+import com.hiapps.hinotes.ui.components.SwitchRow
 import com.hiapps.hinotes.ui.icons.Symbols
 
 /**
- * Widget settings: the type the home screen card is drawn in.
+ * Widget settings: whether the card shows the note's title, and the type it is drawn in.
  *
  * A widget is painted by the launcher rather than by this app, so its type is a setting of its own
  * rather than a copy of the note type - the card is read at a glance, at arm's length, on whatever
  * wallpaper is behind it. The picker is the same one the app's own typography and the note type
- * use, so the three read alike.
+ * use, so the three read alike. The title switch is first because it decides how much of the card
+ * the note itself gets: with the title hidden the body starts at the card's top edge.
  */
 @Composable
 fun WidgetSettingsScreen(
@@ -36,12 +38,25 @@ fun WidgetSettingsScreen(
         onBack = onBack,
     ) {
         SettingsSection {
+            SwitchRow(
+                icon = Symbols.Title,
+                headline = stringResource(R.string.widget_settings_show_title),
+                supporting = stringResource(R.string.widget_settings_show_title_support),
+                checked = settings.widgetShowTitle,
+                onCheckedChange = { show ->
+                    viewModel.updateSettings { setWidgetShowTitle(show) }
+                },
+                isFirst = true,
+                isLast = false,
+            )
             SettingsRow(
                 icon = Symbols.FormatSize,
                 headline = stringResource(R.string.widget_settings_font),
                 supporting = stringResource(R.string.widget_settings_font_support),
                 onClick = { showFont = true },
                 trailing = { Chevron() },
+                isFirst = false,
+                isLast = true,
             )
         }
     }

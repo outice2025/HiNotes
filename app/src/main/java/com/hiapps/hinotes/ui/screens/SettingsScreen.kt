@@ -1,18 +1,16 @@
 package com.hiapps.hinotes.ui.screens
 
-import android.content.Intent
-import android.os.Build
-import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiapps.hinotes.R
-import com.hiapps.hinotes.ui.components.AlertMessage
+import com.hiapps.hinotes.ui.AppViewModel
+import com.hiapps.hinotes.ui.components.LanguageDialog
 import com.hiapps.hinotes.ui.components.SettingsRow
 import com.hiapps.hinotes.ui.components.SettingsScaffold
 import com.hiapps.hinotes.ui.components.SettingsSection
@@ -23,12 +21,13 @@ import com.hiapps.hinotes.ui.icons.Symbols
  * The settings root.
  *
  * Sections follow the design: appearance/editor/widget/language, then backup/privacy, then about.
- * "Language" opens Android's own per-app language picker on API 33+, which is the platform
- * requirement for an in-app language entry (in-app language packs were folded into that
- * system UI in Android 13).
+ * "Language" picks from the languages the app is written in without leaving it, the way the accent
+ * colour is picked: the choice is one of the app's own settings, so it is made beside the rest of
+ * them rather than in a system screen.
  */
 @Composable
 fun SettingsScreen(
+    viewModel: AppViewModel,
     onBack: () -> Unit,
     onOpenAppearance: () -> Unit,
     onOpenEditorSettings: () -> Unit,
@@ -37,8 +36,8 @@ fun SettingsScreen(
     onOpenUnlock: () -> Unit,
     onOpenAbout: () -> Unit,
 ) {
-    val context = LocalContext.current
-    var showLanguageFallback by remember { mutableStateOf(false) }
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    var showLanguage by remember { mutableStateOf(false) }
 
     SettingsScaffold(
         title = stringResource(R.string.settings_title),
@@ -76,17 +75,7 @@ fun SettingsScreen(
                 icon = Symbols.Language,
                 headline = stringResource(R.string.settings_language),
                 supporting = stringResource(R.string.settings_language_support),
-                onClick = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        // Android 13+ per-app language settings.
-                        context.startActivity(
-                            Intent(Settings.ACTION_APP_LOCALE_SETTINGS)
-                                .setData(android.net.Uri.fromParts("package", context.packageName, null))
-                        )
-                    } else {
-                        showLanguageFallback = true
-                    }
-                },
+                onClick = { showLanguage = true },
                 trailing = { Chevron() },
                 isFirst = false,
                 isLast = true,
@@ -129,12 +118,16 @@ fun SettingsScreen(
         }
     }
 
-    if (showLanguageFallback) {
-        AlertMessage(
-            title = stringResource(R.string.settings_language),
-            message = stringResource(R.string.settings_language_support),
-            confirmLabel = stringResource(R.string.common_ok),
-            onDismiss = { showLanguageFallback = false },
+    if (showLanguage) {
+        // The dialog closes on the tap that picks a language: the change is applied at once and
+        // the screen behind it is rebuilt in the new language, so there is nothing left to confirm.
+        LanguageDialog(
+            selected = settings.language,
+            onSelect = { language ->
+                viewModel.updateSettings { setLanguage(language) }
+                showLanguage = false
+            },
+            onDismiss = { showLanguage = false },
         )
     }
 }

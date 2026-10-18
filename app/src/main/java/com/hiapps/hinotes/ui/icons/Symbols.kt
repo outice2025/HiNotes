@@ -10,6 +10,7 @@ import com.hiapps.hinotes.R
  * also produced the app icon; do not edit by hand.
  */
 object Symbols {
+    @DrawableRes val AddPhotoAlternate: Int = R.drawable.sym_add_photo_alternate
     @DrawableRes val Archive: Int = R.drawable.sym_archive
     @DrawableRes val ArrowBack: Int = R.drawable.sym_arrow_back
     @DrawableRes val Book2: Int = R.drawable.sym_book_2
@@ -34,11 +35,11 @@ object Symbols {
     @DrawableRes val Info: Int = R.drawable.sym_info
     @DrawableRes val Keep: Int = R.drawable.sym_keep
     @DrawableRes val KeepOff: Int = R.drawable.sym_keep_off
-    @DrawableRes val KeyboardArrowDown: Int = R.drawable.sym_keyboard_arrow_down
     @DrawableRes val Language: Int = R.drawable.sym_language
     @DrawableRes val List: Int = R.drawable.sym_list
     @DrawableRes val Lock: Int = R.drawable.sym_lock
     @DrawableRes val LockOpen: Int = R.drawable.sym_lock_open
+    @DrawableRes val MoreVert: Int = R.drawable.sym_more_vert
     @DrawableRes val OpenInNew: Int = R.drawable.sym_open_in_new
     @DrawableRes val Palette: Int = R.drawable.sym_palette
     @DrawableRes val Password: Int = R.drawable.sym_password
@@ -56,6 +57,7 @@ object Symbols {
     @DrawableRes val StopScreenShare: Int = R.drawable.sym_stop_screen_share
     @DrawableRes val Style: Int = R.drawable.sym_style
     @DrawableRes val TextFields: Int = R.drawable.sym_text_fields
+    @DrawableRes val Title: Int = R.drawable.sym_title
     @DrawableRes val Undo: Int = R.drawable.sym_undo
     @DrawableRes val Update: Int = R.drawable.sym_update
     @DrawableRes val Upload: Int = R.drawable.sym_upload

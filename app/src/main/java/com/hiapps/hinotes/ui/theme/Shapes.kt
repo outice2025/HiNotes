@@ -27,15 +27,9 @@ object HiNotesCorners {
     /** Home action buttons (create note, delete): 56dp tall with a 20dp radius. */
     val ExtendedFab = 20.dp
 
-    /** Editor header controls: 44dp tall with a 16dp radius. */
-    val SplitControl = 16.dp
-
     /** Cards and image placeholders. */
     val Card = 20.dp
 
     /** Dialogs. */
     val Dialog = 28.dp
-
-    /** Seam between the two segments of a split button. */
-    val SplitSeam = 2.dp
 }

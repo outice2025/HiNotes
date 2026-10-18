@@ -7,12 +7,42 @@
   own leading, so a paragraph reads at the same rhythm on the home screen as it does in the editor.
   The size and colour below are only what the launcher draws before the first item arrives - the
   runtime values are what is shown.
+
+  A chunk is a row rather than a bare text view because a task line draws its box *beside* its text,
+  the way the editor's checklist does, and a box drawn inside the text cannot be tapped on its own.
+  The box is hidden for a chunk that is prose, so an ordinary paragraph starts at the card's own
+  inset; the gap between the two is the box's own end margin, which goes with it when it is hidden.
+
+  A task's box is as tall as the body's own type, and a row of them set at the line height alone
+  would put the boxes of two neighbouring lines against each other - which is what the user saw. The
+  gap above and below is added at runtime to a task's text view, in `HiNotesWidgetService`, so it
+  separates two task lines without moving the prose around them.
 -->
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_chunk"
-    style="@style/WidgetBody.Light"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_item"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:lineSpacingMultiplier="1.4"
-    android:textColor="#FF000000"
-    android:textSize="14sp" />
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/widget_box"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/widget_chunk"
+        style="@style/WidgetBody.Light"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:lineSpacingExtra="4dp"
+        android:lineSpacingMultiplier="1.4"
+        android:textColor="#FF000000"
+        android:textSize="14sp" />
+
+</LinearLayout>

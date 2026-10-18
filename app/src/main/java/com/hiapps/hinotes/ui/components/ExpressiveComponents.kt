@@ -1,14 +1,10 @@
 package com.hiapps.hinotes.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,9 +14,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+// The delegated state of the menu's open flag reads as a plain property: these are what make the
+// `by` do its work.
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,22 +25,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
-import com.hiapps.hinotes.ui.theme.HiNotesCorners
-import com.hiapps.hinotes.ui.theme.LocalMotionScheme
 
 /**
- * One entry in a [SplitButton]'s menu.
+ * One entry in the editor's "more" menu.
  *
  * @param destructive paints the entry in the error colour, the way Material 3 marks an action
  *   that removes something.
  * @param enabled whether the action is available now; a disabled entry is dimmed and takes no tap.
  */
-data class SplitButtonMenuItem(
+data class EditorMenuItem(
     val icon: Int,
     val label: String,
     val destructive: Boolean = false,
@@ -52,81 +45,45 @@ data class SplitButtonMenuItem(
 )
 
 /**
- * M3 Expressive split button: a primary action plus a menu, sharing one silhouette.
+ * The two actions at the note's right edge: save, and the menu of everything else.
  *
- * The two segments are 16dp-rounded squares separated by a 2dp seam, which is what makes them
- * read as one control split in two rather than as two buttons that happen to sit together. The
- * primary segment is square (44dp, the same height as the back button beside it); the menu
- * segment is narrower because all it carries is the chevron.
+ * They were one split control, and the menu half could only be found by pressing the half that was
+ * not - so they are two buttons now, drawn exactly like the find button beside them: a 44dp circle,
+ * no container, one content colour. The save half is left out entirely while the app saves by
+ * itself, because a button that repeats what leaving the note already does is a button that asks to
+ * be pressed for nothing.
  *
- * Colours follow the icon buttons in the same row - a `surfaceContainerHigh` container, with the
- * primary action tinted `primary` - so the save action stays the emphasised one without
- * introducing a second visual language into the editor's header.
+ * @param showSave whether the save button is drawn at all; the menu is always there.
  */
 @Composable
-fun SplitButton(
-    primaryIcon: Int,
-    primaryContentDescription: String?,
-    onPrimaryClick: () -> Unit,
-    menuItems: List<SplitButtonMenuItem>,
-    menuContentDescription: String?,
+fun EditorActionButtons(
+    saveContentDescription: String,
+    onSave: () -> Unit,
+    showSave: Boolean,
+    moreContentDescription: String,
+    menuItems: List<EditorMenuItem>,
     modifier: Modifier = Modifier,
-    height: Dp = 44.dp,
-    corner: Dp = HiNotesCorners.SplitControl,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    primaryContentColor: Color = MaterialTheme.colorScheme.primary,
-    menuContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val motion = LocalMotionScheme.current
-
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        animationSpec = motion.fastEffects,
-        label = "splitButtonArrow",
-    )
 
     Row(
-        modifier = modifier.height(height),
+        modifier = modifier.height(EditorActionSize),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            onClick = onPrimaryClick,
-            modifier = Modifier.size(height),
-            shape = RoundedCornerShape(corner),
-            color = containerColor,
-            contentColor = primaryContentColor,
-        ) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                SymbolIcon(
-                    codepoint = primaryIcon,
-                    contentDescription = primaryContentDescription,
-                    size = SplitIconSize,
-                )
-            }
+        if (showSave) {
+            EditorActionButton(
+                icon = Symbols.Check,
+                contentDescription = saveContentDescription,
+                onClick = onSave,
+            )
         }
 
-        Spacer(Modifier.width(HiNotesCorners.SplitSeam))
-
         Box {
-            Surface(
+            EditorActionButton(
+                icon = Symbols.MoreVert,
+                contentDescription = moreContentDescription,
                 onClick = { expanded = true },
-                modifier = Modifier
-                    .width(SplitMenuWidth)
-                    .height(height),
-                shape = RoundedCornerShape(corner),
-                color = containerColor,
-                contentColor = menuContentColor,
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    SymbolIcon(
-                        codepoint = Symbols.KeyboardArrowDown,
-                        contentDescription = menuContentDescription,
-                        size = SplitIconSize,
-                        modifier = Modifier.graphicsLayer { rotationZ = arrowRotation },
-                    )
-                }
-            }
+            )
 
             DropdownMenu(
                 expanded = expanded,
@@ -142,7 +99,9 @@ fun SplitButton(
                         else -> MaterialTheme.colorScheme.onSurface
                     }
                     DropdownMenuItem(
-                        text = { Text(item.label, style = MaterialTheme.typography.bodyLarge, color = tint) },
+                        text = {
+                            Text(item.label, style = MaterialTheme.typography.bodyLarge, color = tint)
+                        },
                         onClick = {
                             expanded = false
                             item.onClick()
@@ -163,11 +122,27 @@ fun SplitButton(
     }
 }
 
-/** Glyph size inside a split button segment. */
-private val SplitIconSize = 24.dp
+/** One action of the editor's header: a 44dp circle with no container of its own. */
+@Composable
+private fun EditorActionButton(
+    icon: Int,
+    contentDescription: String?,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(EditorActionSize),
+        shape = RoundedCornerShape(percent = 50),
+        colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+    ) {
+        SymbolIcon(codepoint = icon, contentDescription = contentDescription, size = 24.dp)
+    }
+}
 
-/** Width of the menu segment: a comfortable target for the chevron, narrower than the primary. */
-private val SplitMenuWidth = 34.dp
+/** The size of one action in the editor's header, which is the back button's own height. */
+private val EditorActionSize = 44.dp
 
 /**
  * M3 Expressive connected button group: adjacent icon buttons share 8dp inner corners while the

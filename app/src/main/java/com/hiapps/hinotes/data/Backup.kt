@@ -103,38 +103,48 @@ object Backup {
      * Builds a diagnostics report. It deliberately contains no note text: only counts,
      * environment facts, the active settings, and the most recent crash when the app has recorded
      * one - which is what a bug report needs.
+     *
+     * The report is plain text rather than the JSON it used to be. A reader - the person filing the
+     * bug, and the person fixing it - has to be able to read it on a phone or paste it into a
+     * message, and a nested object of braces and quotes is neither: one fact per line, grouped under
+     * a heading, is what it can be read as. The values are printed exactly as they are stored, so a
+     * setting that is wrong in the report is wrong in the app.
      */
     fun buildLogReport(
         context: Context,
         settings: HiNotesSettings,
         noteCount: Int,
-    ): String {
+    ): String = buildString {
         val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
-        val json = JSONObject().apply {
-            put("app", APP)
-            put("kind", "hinotes.logs")
-            put("appVersion", BuildConfig.VERSION_NAME)
-            put("versionCode", BuildConfig.VERSION_CODE)
-            put("generatedAt", stamp)
-            put("noteCount", noteCount)
-            put("device", JSONObject().apply {
-                put("manufacturer", Build.MANUFACTURER)
-                put("model", Build.MODEL)
-                put("androidRelease", Build.VERSION.RELEASE)
-                put("sdkInt", Build.VERSION.SDK_INT)
-                put("supportedAbis", Build.SUPPORTED_ABIS.joinToString(", "))
-            })
-            put("locale", Locale.getDefault().toString())
-            put("settings", JSONObject().apply {
-                SettingKey.entries.forEach { key -> put(key.storageKey, key.read(settings)) }
-            })
-            put("lockConfigured", LockStore(context).isConfigured)
-            // The stack trace of the last crash, when there is one. It is the one thing a report
-            // cannot be reconstructed from afterwards, and it stays where it was written - in this
-            // app's own cache directory - until the user chooses to share the report it is in.
-            CrashLogger.latest(context)?.let { put("lastCrash", it) }
+        appendLine("HiNotes diagnostics")
+        appendLine()
+        appendLine("[app]")
+        appendLine("version = ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        appendLine("generated = $stamp")
+        appendLine("locale = ${Locale.getDefault()}")
+        appendLine("notes = $noteCount")
+        appendLine()
+        appendLine("[device]")
+        appendLine("manufacturer = ${Build.MANUFACTURER}")
+        appendLine("model = ${Build.MODEL}")
+        appendLine("android = ${Build.VERSION.RELEASE} (sdk ${Build.VERSION.SDK_INT})")
+        appendLine("abis = ${Build.SUPPORTED_ABIS.joinToString(", ")}")
+        appendLine()
+        appendLine("[lock]")
+        appendLine("configured = ${LockStore(context).isConfigured}")
+        appendLine()
+        appendLine("[settings]")
+        SettingKey.entries.forEach { key ->
+            appendLine("${key.storageKey} = ${key.read(settings)}")
         }
-        return json.toString(2)
+        // The stack trace of the last crash, when there is one. It is the one thing a report cannot
+        // be reconstructed from afterwards, and it stays where it was written - in this app's own
+        // cache directory - until the user chooses to share the report it is in.
+        CrashLogger.latest(context)?.let { crash ->
+            appendLine()
+            appendLine("[lastCrash]")
+            appendLine(crash.trimEnd())
+        }
     }
 
     /** Timestamped default file name for exports, named after the app. */

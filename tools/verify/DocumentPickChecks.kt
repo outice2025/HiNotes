@@ -86,8 +86,19 @@ object DocumentPickChecks {
         val screen = code("app/src/main/java/com/hiapps/hinotes/ui/screens/BackupScreen.kt")
 
         check(
-            "the activity checks the code the picker was started with",
-            activity.contains("requestCode != REQUEST_OPEN_DOCUMENT"),
+            "the activity routes the code the picker was started with",
+            activity.contains("REQUEST_OPEN_DOCUMENT ->") &&
+                activity.contains("PickedDocumentRelay.publish("),
+        )
+        check(
+            "the picture picker's result reaches its own relay",
+            activity.contains("pickedImage(data)") && activity.contains("PickedImageRelay.publish("),
+            "the editor's picture pick arrives through the same handover",
+        )
+        check(
+            "a picture picker that answers without a picture is reported",
+            activity.contains("PickedImageRelay.refuse()"),
+            "a tap that silently did nothing is the fault this guards",
         )
         check("the activity accepts only a successful result", activity.contains("Activity.RESULT_OK"))
         check("the activity overrides onActivityResult", activity.contains("override fun onActivityResult("))
@@ -161,51 +172,66 @@ object DocumentPickChecks {
     }
 
     /**
-     * Every heading link in the README.
+     * Every link the two READMEs make, and every anchor they point at.
      *
-     * GitHub does not render the heading itself with an id. It renders `<h2>` bare and follows it
+     * GitHub does not render a heading itself with an id. It renders `<h2>` bare and follows it
      * with `<a id="user-content-<slug>">`, which is also the id its own permalink anchors point at
      * - checked against the live page, where `id="user-content-english"` exists and `id="english"`
-     * does not. A link written against the bare heading text therefore names an element that is
-     * not in the document, which is what the language switch did. Each fragment here has to
-     * resolve to the prefixed id the platform actually emits.
+     * does not. A link written against the bare heading text therefore names an element that is not
+     * in the document, which is what a language switch written as an in-page fragment once did.
+     *
+     * The READMEs are one document per language now - `README.md` is the English one and is what the
+     * repository shows, and `README.zh-CN.md` is the Chinese one - so the switch between them is a
+     * file link rather than a fragment, and each file has to point at the other by name.
      */
     private fun readme() {
         println("README anchors")
 
-        val file = File("README.md")
-        check("README.md is readable", file.isFile)
-        if (!file.isFile) return
-        val text = file.readText()
+        val english = File("README.md")
+        val chinese = File("README.zh-CN.md")
+        check("README.md is readable", english.isFile)
+        check("README.zh-CN.md is readable", chinese.isFile)
+        if (!english.isFile || !chinese.isFile) return
 
-        val renderedIds = HashSet<String>()
-        for (line in text.lines()) {
-            val heading = Regex("^#{1,6}\\s+(.+?)\\s*$").find(line)?.groupValues?.get(1) ?: continue
-            val slug = heading.lowercase()
-                .replace(Regex("[^\\p{L}\\p{N}\\s-]"), "")
-                .trim()
-                .replace(Regex("\\s+"), "-")
-            renderedIds.add("user-content-$slug")
-        }
-        // An explicit anchor in the file renders under its own id, so it counts as well.
-        for (match in Regex("<a\\s+id=\"([^\"]+)\"").findAll(text)) {
-            renderedIds.add(match.groupValues[1])
-        }
+        val englishText = english.readText()
+        val chineseText = chinese.readText()
+
         check(
-            "both language headings are reachable",
-            renderedIds.contains("user-content-english") &&
-                renderedIds.contains("user-content-简体中文"),
+            "the English page links to the Chinese one",
+            englishText.contains("(README.zh-CN.md)"),
+            "the repository shows README.md, so that is where the switch has to be",
+        )
+        check(
+            "the Chinese page links back to the English one",
+            chineseText.contains("(README.md)"),
         )
 
-        val broken = ArrayList<String>()
-        for (match in Regex("href=\"#([^\"]+)\"").findAll(text)) {
-            val target = match.groupValues[1]
-            if (!renderedIds.contains(target)) broken.add("#$target")
+        for (text in listOf(englishText, chineseText)) {
+            val renderedIds = HashSet<String>()
+            for (line in text.lines()) {
+                val heading = Regex("^#{1,6}\\s+(.+?)\\s*$").find(line)?.groupValues?.get(1)
+                    ?: continue
+                val slug = heading.lowercase()
+                    .replace(Regex("[^\\p{L}\\p{N}\\s-]"), "")
+                    .trim()
+                    .replace(Regex("\\s+"), "-")
+                renderedIds.add("user-content-$slug")
+            }
+            // An explicit anchor in the file renders under its own id, so it counts as well.
+            for (match in Regex("<a\\s+id=\"([^\"]+)\"").findAll(text)) {
+                renderedIds.add(match.groupValues[1])
+            }
+
+            val broken = ArrayList<String>()
+            for (match in Regex("href=\"#([^\"]+)\"").findAll(text)) {
+                val target = match.groupValues[1]
+                if (!renderedIds.contains(target)) broken.add("#$target")
+            }
+            check(
+                "every heading link resolves to an id the page renders",
+                broken.isEmpty(),
+                broken.joinToString(", "),
+            )
         }
-        check(
-            "every heading link resolves to an id the page renders",
-            broken.isEmpty(),
-            broken.joinToString(", "),
-        )
     }
 }

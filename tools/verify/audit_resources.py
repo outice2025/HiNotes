@@ -59,8 +59,12 @@ if only_zh:
     problems.append(f"declared in Chinese but not English: {only_zh}")
 
 # Chinese entries left in English are almost always an oversight. These are deliberate: the app's
-# name is a brand, a repository URL is a URL, and the version line keeps the word "released".
+# name is a brand, a repository URL is a URL, the version line keeps the word "released", the font
+# size stops are numbers, and a language is named in its own script so the list can be read whichever
+# one is on screen.
 ALLOWED_UNTRANSLATED = {"app_name", "about_repository_support", "about_version_support"}
+ALLOWED_UNTRANSLATED |= {f"level_scale_{step:02d}" for step in range(8, 16)}
+ALLOWED_UNTRANSLATED |= {"language_english", "language_chinese"}
 untranslated = [
     k for k, v in zh.items()
     if k not in ALLOWED_UNTRANSLATED and not re.search(r"[\u4e00-\u9fff]", v)
@@ -123,9 +127,17 @@ for term in stale_terms:
 # String keys that were removed, checked as whole keys rather than as substrings: a removed key can
 # be the prefix of one that is still in use - `home_delete_selected` next to the live
 # `home_delete_selected_message` - and a substring search reports the string that is still there.
-# Replaced when the delete action moved into the create button's place and took a label with it, and
-# when the pinned notes became a run above a rule instead of a badge on the card.
-stale_string_keys = ["home_delete_selected", "home_pinned_badge"]
+# Replaced when the delete action moved into the create button's place and took a label with it, when
+# the pinned notes became a run above a rule instead of a badge on the card, and when the font size
+# levels became eight numbered stops shared by one dialog rather than three named stops per screen.
+stale_string_keys = [
+    "home_delete_selected",
+    "home_pinned_badge",
+    "level_small",
+    "level_medium",
+    "level_large",
+    "picker_font_size_note_title",
+]
 for key in stale_string_keys:
     hits = [
         path.name for path, text in kotlin_sources()

@@ -1,7 +1,13 @@
 package com.hiapps.hinotes.ui.screens
 
+import android.graphics.Bitmap
+import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,11 +26,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -34,7 +38,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,8 +48,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -70,6 +80,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.Note
+import com.hiapps.hinotes.data.NoteImages
 import com.hiapps.hinotes.data.countNoteCharacters
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.NEW_NOTE_ID
@@ -77,10 +88,12 @@ import com.hiapps.hinotes.ui.components.ConfirmDialog
 import com.hiapps.hinotes.ui.components.ConfirmStyle
 import com.hiapps.hinotes.ui.components.ConnectedIconButton
 import com.hiapps.hinotes.ui.components.ConnectedIconButtonGroup
+import com.hiapps.hinotes.ui.components.EditorActionButtons
+import com.hiapps.hinotes.ui.components.EditorMenuItem
 import com.hiapps.hinotes.ui.components.ExpressiveButtonSize
+import com.hiapps.hinotes.ui.components.MarkdownTaskRow
+import com.hiapps.hinotes.ui.components.MarkdownText
 import com.hiapps.hinotes.ui.components.PropertiesSheet
-import com.hiapps.hinotes.ui.components.SplitButton
-import com.hiapps.hinotes.ui.components.SplitButtonMenuItem
 import com.hiapps.hinotes.ui.editor.EditorState
 import com.hiapps.hinotes.ui.editor.Markdown
 import com.hiapps.hinotes.ui.icons.SymbolIcon
@@ -88,11 +101,16 @@ import com.hiapps.hinotes.ui.icons.Symbols
 import com.hiapps.hinotes.ui.theme.HiNotesCorners
 import com.hiapps.hinotes.ui.theme.LocalDarkTheme
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** How long typing must pause before an edit becomes its own undo step. */
 private const val UNDO_COALESCE_MS = 400L
+
+/** Names this screen in the log when something the app cannot prevent goes wrong. */
+private const val TAG = "HiNotesEditor"
 
 /**
  * How long save-as-you-type waits after the last keystroke before it writes.
@@ -223,7 +241,6 @@ fun EditorScreen(
     var loadedNote by remember(noteId) { mutableStateOf(incoming) }
     var previewMode by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
-    var confirmDeleteNote by remember { mutableStateOf(false) }
     var findOpen by remember { mutableStateOf(false) }
     var findQuery by remember { mutableStateOf("") }
 
@@ -451,6 +468,99 @@ fun EditorScreen(
         }
     }
 
+    // ------------------------------------------------------------- insert a picture
+
+    /**
+     * Copies a picture into the note.
+     *
+     * The copy into the app's own storage is a file, sometimes a large one, so it happens off the
+     * main thread; the note is edited once the address that copy lives at is in hand. A picture
+     * that could not be read or written says so, because a button that appears to do nothing is
+     * worse than one that says it failed.
+     */
+    suspend fun importPicture(uri: Uri) {
+        val url = withContext(Dispatchers.IO) { NoteImages.import(context, uri) }
+        if (url == null) {
+            Log.e(TAG, "the picked picture could not be copied into the note")
+            snackbarHostState.showSnackbar(context.getString(R.string.editor_image_failed))
+        } else {
+            Log.i(TAG, "picture copied to $url")
+            editorState.applyEdit(Markdown.insertImage(editorState.value, url))
+            // Stored at once rather than at the end of the auto-save pause: a picture the user has
+            // just imported is the one thing on screen they could not type again, and a screen that
+            // is rebuilt inside that pause would lose it.
+            persist()
+            // The page turns to the note as a reader sees it, which is the only place a picture is
+            // drawn: the writing area is the note's Markdown source, so a picture imported there
+            // would otherwise arrive as the address it is written with and look like nothing
+            // happened. Readers who want to keep writing switch back with the mode button.
+            previewMode = true
+        }
+    }
+
+    /**
+     * Asks the user for a picture.
+     *
+     * The pick is started with `Activity.startActivityForResult` and a request code this app
+     * chooses, for the reason [PickedImageRelay] gives: the activity-result registry hands a launch
+     * a request code wider than 16 bits, and this app's activity is a `FragmentActivity` - the lock
+     * screen's prompt requires one - which refuses such a code outright. That refusal is what made
+     * the picture button look dead: no picker opened, and nothing was reported.
+     *
+     * Each picker is tried in turn and every attempt is logged with what it was asked for, because a
+     * device that answers for none of them is a report this app cannot guess at from the outside. A
+     * tap that none of them can answer says it failed rather than doing nothing; see
+     * [pickImageIntents].
+     */
+    fun pickImage() {
+        val activity = context.findActivity()
+        if (activity != null) {
+            for (intent in pickImageIntents()) {
+                try {
+                    Log.i(TAG, "asking for a picture with ${intent.action}")
+                    activity.startActivityForResult(intent, REQUEST_PICK_IMAGE)
+                    return
+                } catch (t: Throwable) {
+                    Log.e(TAG, "could not open the picture picker for ${intent.action}", t)
+                }
+            }
+            Log.e(TAG, "no installed app answered for a picture")
+        } else {
+            Log.e(TAG, "there is no activity to ask for a picture")
+        }
+        scope.launch {
+            snackbarHostState.showSnackbar(context.getString(R.string.editor_image_failed))
+        }
+    }
+
+    /**
+     * Takes the picture the picker returned, if one came back.
+     *
+     * The picker is started with the activity, so its answer arrives there and is handed over
+     * through this relay. A picker that answered without a picture is reported as a failed try,
+     * because it is the one case that would otherwise leave the tap unanswered.
+     */
+    val pickedImage by PickedImageRelay.answer
+    LaunchedEffect(pickedImage) {
+        val answer = pickedImage ?: return@LaunchedEffect
+        // Taken before the copy starts: the relay holds one value, and a second pick must not be
+        // lost because the first was still being copied when it arrived.
+        PickedImageRelay.consume()
+        // The work runs on the screen's own scope, not inside this effect. Clearing the relay is a
+        // recomposition of this very `pickedImage`, which is this effect's key - so anything that
+        // suspends in here would be cancelled by the clear, half way through copying the picture,
+        // and neither the insertion nor the failure would ever happen. That is exactly what made an
+        // imported picture disappear without a word.
+        scope.launch {
+            when (answer) {
+                PickedImage.Refused -> snackbarHostState.showSnackbar(
+                    context.getString(R.string.editor_image_failed),
+                )
+                is PickedImage.Imported -> importPicture(answer.uri)
+            }
+        }
+    }
+
     // ------------------------------------------------------------------- rendering
 
     Scaffold(
@@ -499,7 +609,9 @@ fun EditorScreen(
                 // that took the control away stays visible.
                 Spacer(Modifier.width(4.dp))
                 IconButton(
-                    onClick = { previewMode = !previewMode },
+                    onClick = {
+                        previewMode = !previewMode
+                    },
                     modifier = Modifier.size(44.dp),
                     shape = RoundedCornerShape(percent = 50),
                     enabled = !locked,
@@ -526,12 +638,40 @@ fun EditorScreen(
                 // Pushes the actions to the right edge.
                 Spacer(Modifier.weight(1f))
 
-                // Save, plus the menu of secondary actions, as one split control: the same 44dp
-                // height and the same 16dp corners as before, split in two by a 2dp seam.
-                SplitButton(
-                    primaryIcon = Symbols.Check,
-                    primaryContentDescription = stringResource(R.string.editor_save),
-                    onPrimaryClick = {
+                // Find in note, immediately left of Save.
+                //
+                // It used to be the first button of the formatting toolbar, which made searching a
+                // note something the toolbar had to be on screen for - and the toolbar is an
+                // editing control that is not drawn for a note being read. Up here it belongs to
+                // the note itself, next to the other things that act on it. It stays out of the
+                // preview for the same reason it always was: a rendered page has no text field to
+                // mark a match in.
+                if (!showingPreview) {
+                    IconButton(
+                        onClick = { findOpen = !findOpen },
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(percent = 50),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    ) {
+                        SymbolIcon(
+                            codepoint = Symbols.Search,
+                            contentDescription = stringResource(R.string.editor_find),
+                            size = 24.dp,
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                }
+
+                // Save and the menu of everything else, as two buttons of the same size and shape
+                // as the find button beside them. The save half is left out while the note saves
+                // itself: with auto-save on, leaving the note is the save, and a button that repeats
+                // it is a button that asks to be pressed for nothing.
+                EditorActionButtons(
+                    saveContentDescription = stringResource(R.string.editor_save),
+                    showSave = !settings.autoSave,
+                    onSave = {
                         // Save and leave. No snackbar on this path: `showSnackbar` suspends until
                         // the message has been on screen for its full duration, so announcing
                         // "saved" here held the editor open for four seconds after the tap. The
@@ -553,13 +693,13 @@ fun EditorScreen(
                     },
                     menuItems = buildList {
                         add(
-                            SplitButtonMenuItem(
+                            EditorMenuItem(
                                 icon = Symbols.Info,
                                 label = stringResource(R.string.editor_properties),
                             ) { showProperties = true },
                         )
                         add(
-                            SplitButtonMenuItem(
+                            EditorMenuItem(
                                 icon = Symbols.Share,
                                 label = stringResource(R.string.editor_share),
                             ) {
@@ -588,7 +728,7 @@ fun EditorScreen(
                         // and the label both follow the note's own state, so the menu never offers
                         // to pin a note that is already pinned.
                         add(
-                            SplitButtonMenuItem(
+                            EditorMenuItem(
                                 icon = if (loadedNote?.pinned == true) {
                                     Symbols.KeepOff
                                 } else {
@@ -616,7 +756,7 @@ fun EditorScreen(
                         // note that is already locked - and the icon moves with the label, an open
                         // padlock for the action that takes the lock off.
                         add(
-                            SplitButtonMenuItem(
+                            EditorMenuItem(
                                 icon = if (loadedNote?.isLocked == true) {
                                     Symbols.LockOpen
                                 } else {
@@ -641,21 +781,40 @@ fun EditorScreen(
                             },
                         )
                         add(
-                            SplitButtonMenuItem(
+                            EditorMenuItem(
                                 icon = Symbols.Delete,
                                 label = stringResource(R.string.editor_delete),
-                                onClick = { confirmDeleteNote = true },
+                                onClick = {
+                                    // Gone at once, with the window the note list offers to bring it
+                                    // back. A question here would be the third answer the user has
+                                    // already given for one deletion - the note was opened, the menu
+                                    // was opened, the entry was pressed - and a window can be taken
+                                    // back where a question can only be answered once.
+                                    //
+                                    // What is on screen is stored first, so a note brought back is
+                                    // the one that was being read rather than its last save.
+                                    val note = loadedNote
+                                    scope.launch {
+                                        // A blank draft is discarded rather than held: the store
+                                        // drops it on the save, so there would be nothing to bring
+                                        // back and an offer that could not keep its word.
+                                        val stored = note?.let {
+                                            viewModel.saveNote(
+                                                it.copy(
+                                                    title = title,
+                                                    content = editorState.value.text,
+                                                ),
+                                            )
+                                        }
+                                        if (stored != null) viewModel.stageDelete(listOf(stored))
+                                        onBack()
+                                    }
+                                },
                                 destructive = true,
                             ),
                         )
                     },
-                    menuContentDescription = stringResource(R.string.editor_more_actions),
-                    // Dressed like the exit button on the other side of the row: no container,
-                    // and one content colour for both segments - including the save tick, which
-                    // used to be the only primary-tinted control in the header.
-                    containerColor = Color.Transparent,
-                    primaryContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    menuContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    moreContentDescription = stringResource(R.string.editor_more_actions),
                 )
             }
 
@@ -674,37 +833,66 @@ fun EditorScreen(
                 fontSize = (17f * settings.noteFontScale.multiplier).sp,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            BasicTextField(
-                value = title,
-                onValueChange = { title = it },
-                singleLine = true,
-                // Read-only in either way of reading the note, because both promise that what is on
-                // screen cannot be changed by typing into it.
-                readOnly = showingPreview,
-                textStyle = titleStyle,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(TITLE_HEIGHT)
-                    .background(color = editorContainer(), shape = TitleShape)
-                    .padding(horizontal = 16.dp),
-                decorationBox = { inner ->
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        if (title.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.editor_title_label),
-                                style = titleStyle.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
-                            )
+            // The title box, with the find bar laid over it while a search is open. The bar belongs
+            // to the note's own header rather than to the page: a search box drawn over the text it
+            // is searching hides the matches it has just found, while the title is not part of what
+            // the search looks through.
+            Box {
+                BasicTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    singleLine = true,
+                    // Read-only in either way of reading the note, because both promise that what is
+                    // on screen cannot be changed by typing into it.
+                    readOnly = showingPreview,
+                    textStyle = titleStyle,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(TITLE_HEIGHT)
+                        .background(color = editorContainer(), shape = TitleShape)
+                        .padding(horizontal = 16.dp),
+                    decorationBox = { inner ->
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            if (title.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.editor_title_label),
+                                    style = titleStyle.copy(
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    ),
+                                )
+                            }
+                            inner()
                         }
-                        inner()
-                    }
-                },
-            )
+                    },
+                )
+
+                if (findOpen) {
+                    FindBar(
+                        query = findQuery,
+                        onQueryChange = { query ->
+                            findQuery = query
+                            // A new query is a new search: the match to be on is the first one,
+                            // and nothing is located until enter is pressed again.
+                            findIndex = 0
+                            findJumped = false
+                        },
+                        status = when {
+                            findQuery.isBlank() -> stringResource(R.string.editor_find)
+                            findMatches.isEmpty() -> stringResource(R.string.editor_find_no_match)
+                            else -> stringResource(
+                                R.string.editor_find_matches,
+                                currentFindIndex + 1,
+                                findMatches.size,
+                            )
+                        },
+                        onSearch = { jumpToNextMatch() },
+                    )
+                }
+            }
 
             // The 3dp seam between the two boxes, the same one that separates two settings rows.
             Spacer(Modifier.height(HiNotesCorners.GroupGap))
@@ -735,9 +923,10 @@ fun EditorScreen(
                     // a real Material 3 checkbox that writes back into the note, rather than the
                     // ☐ glyph the renderer draws. With Markdown off the body is plain text and
                     // `[ ]` is only ever text, so it is left alone.
-                    val blocks = remember(editorState.value.text, settings.markdownEnabled) {
+                    val linkColor = MaterialTheme.colorScheme.primary
+                    val blocks = remember(editorState.value.text, settings.markdownEnabled, linkColor) {
                         if (settings.markdownEnabled) {
-                            Markdown.previewBlocks(editorState.value.text)
+                            Markdown.previewBlocks(editorState.value.text, linkColor)
                         } else {
                             listOf(
                                 Markdown.PreviewBlock.Prose(AnnotatedString(editorState.value.text)),
@@ -754,7 +943,16 @@ fun EditorScreen(
                             blocks.forEach { block ->
                                 when (block) {
                                     is Markdown.PreviewBlock.Prose ->
-                                        Text(text = block.text, style = bodyStyle)
+                                        MarkdownText(text = block.text, style = bodyStyle)
+
+                                    // A picture is drawn where its line is: the address the note
+                                    // holds for it is not what a reader came for.
+                                    is Markdown.PreviewBlock.Image -> PreviewImage(
+                                        url = block.url,
+                                        description = block.alt,
+                                        style = bodyStyle,
+                                        modifier = Modifier.padding(vertical = 4.dp),
+                                    )
 
                                     // A rule is a drawn line rather than a run of dashes: it spans
                                     // the note's own width at any font size, and it cannot wrap the
@@ -769,8 +967,9 @@ fun EditorScreen(
                                         style = bodyStyle,
                                     )
 
-                                    is Markdown.PreviewBlock.Task -> PreviewTaskRow(
-                                        block = block,
+                                    is Markdown.PreviewBlock.Task -> MarkdownTaskRow(
+                                        checked = block.checked,
+                                        text = block.text,
                                         style = bodyStyle,
                                         // Ticking a box is an edit, and a locked note is not
                                         // editable: the box still shows the state the text records,
@@ -890,73 +1089,18 @@ fun EditorScreen(
                     )
                 }
 
-                // Find-in-note bar, shown above the toolbar while searching.
-                if (findOpen) {
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        tonalElevation = 3.dp,
-                    ) {
-                        Column(Modifier.padding(8.dp)) {
-                            OutlinedTextField(
-                                value = findQuery,
-                                onValueChange = { query ->
-                                    findQuery = query
-                                    // A new query is a new search: the match to be on is the first
-                                    // one, and nothing is located until enter is pressed again.
-                                    findIndex = 0
-                                    findJumped = false
-                                },
-                                placeholder = {
-                                    Text(stringResource(R.string.editor_find_placeholder))
-                                },
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                                // Enter is the whole interaction: it locates a match, and each
-                                // press after that locates the next one.
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(
-                                    onSearch = { jumpToNextMatch() },
-                                ),
-                            )
-                            Text(
-                                text = when {
-                                    findQuery.isBlank() -> stringResource(R.string.editor_find)
-                                    findMatches.isEmpty() ->
-                                        stringResource(R.string.editor_find_no_match)
-                                    else -> stringResource(
-                                        R.string.editor_find_matches,
-                                        currentFindIndex + 1,
-                                        findMatches.size,
-                                    )
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp, top = 4.dp),
-                            )
-                        }
-                    }
-                }
-
                 // Connected formatting toolbar, drawn over the lower edge of the canvas.
                 //
                 // It is an editing control, so a note shown as a page does not get one: there is
                 // nothing in a rendered note for it to act on, and leaving it up would suggest the
                 // note can still be changed. That covers both ways of reading - the preview and the
-                // lock - and the lock without exception: every button on it, find included, belongs
-                // to working on the note rather than to reading it.
+                // lock without exception: every button on it belongs to working on the note rather
+                // than to reading it. In the edit mode it is simply there: the writing area keeps a
+                // toolbar's worth of room free at its lower edge, so the bar sits in the space left
+                // for it from the moment the note is opened to be written in.
                 if (!showingPreview) {
                     ConnectedIconButtonGroup(
                         buttons = listOf(
-                            ConnectedIconButton(
-                                icon = Symbols.Search,
-                                contentDescription = stringResource(R.string.editor_find),
-                            ) { findOpen = !findOpen },
                             ConnectedIconButton(
                                 icon = Symbols.Undo,
                                 contentDescription = stringResource(R.string.editor_undo),
@@ -1002,6 +1146,13 @@ fun EditorScreen(
                                     Markdown.toggleLinePrefix(editorState.value, "- "),
                                 )
                             },
+                            // Last, and the only button that brings something in from outside:
+                            // the formatting buttons change what is already written, this one
+                            // adds to it.
+                            ConnectedIconButton(
+                                icon = Symbols.AddPhotoAlternate,
+                                contentDescription = stringResource(R.string.editor_insert_image),
+                            ) { pickImage() },
                         ),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -1057,75 +1208,132 @@ fun EditorScreen(
             onDismiss = { showProperties = false },
         )
     }
+}
 
-    if (confirmDeleteNote) {
-        ConfirmDialog(
-            title = stringResource(R.string.home_delete_title),
-            message = stringResource(
-                R.string.home_delete_message,
-                title.ifBlank { stringResource(R.string.home_untitled) },
-            ),
-            confirmLabel = stringResource(R.string.home_delete_confirm),
-            dismissLabel = stringResource(R.string.common_cancel),
-            onConfirm = {
-                confirmDeleteNote = false
-                val id = loadedNote?.id
-                scope.launch {
-                    if (id != null) viewModel.deleteNote(id)
-                    onBack()
-                }
+/**
+ * The find-in-note bar, laid over the note's title box.
+ *
+ * It shares the title box's own footprint - its height, its shape and its rounded lower corners -
+ * so the search reads as taking over that field for as long as it is open rather than as a second
+ * surface arriving above the page. The box underneath promises a tap it no longer has, so the bar
+ * takes the taps that land on it; the title is not being searched and does not need to be reached
+ * while it is covered.
+ *
+ * @param status which match the search is on, or why there is none.
+ * @param onSearch what pressing enter does: locate a match, and after that the next one.
+ */
+@Composable
+private fun FindBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    status: String,
+    onSearch: () -> Unit,
+) {
+    // The bar covers the title field, so it takes the typing as soon as it opens: a keystroke that
+    // landed in the field underneath would change a title the reader cannot even see.
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(TITLE_HEIGHT)
+            .pointerInput(Unit) {
+                // The field below is not visible and not the one being typed into, so a tap here
+                // must not reach it.
+                awaitEachGesture { awaitFirstDown().consume() }
             },
-            onDismiss = { confirmDeleteNote = false },
-        )
+        shape = TitleShape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 3.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = { Text(stringResource(R.string.editor_find_placeholder)) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester),
+                // Enter is the whole interaction: it locates a match, and each press after that
+                // locates the next one.
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            )
+            Text(
+                text = status,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
     }
 }
 
 /**
- * Touch target for a checkbox inside a note.
+ * A picture in the preview.
  *
- * The Material 3 default is 48dp, which is right for a settings switch and heavy for a line of a
- * note: a checklist of ten items would be 480dp of scrolling. 36dp keeps the target comfortably
- * above the 24dp a finger needs while letting the preview still read as prose.
- */
-private val PreviewCheckboxTarget = 36.dp
-
-/**
- * One task-list line in the preview: a real [Checkbox] beside the item's text.
+ * The picture is decoded at the width it is drawn at rather than at the size it was taken at: a
+ * phone's camera is several thousand pixels across, the note's canvas a few hundred, and decoding
+ * the file whole to draw it small is how a note with a few pictures runs a phone out of memory. It
+ * is decoded off the main thread for the same reason - reading and scaling a large file is not
+ * something to do in the frame it is first drawn in.
  *
- * The checkbox is the control the note itself asked for, so it is drawn by Material 3 rather than
- * by the renderer's ☐ glyph, and tapping it edits the note. Merging the row's semantics keeps a
- * screen reader announcing the item's text together with its state instead of reading a bare
- * "checkbox" with no idea what it belongs to.
+ * A picture that cannot be read - one whose file has gone, or an address this app cannot open - is
+ * shown as the address itself, which is what the note holds and what a reader can still act on.
  *
- * @param enabled false on a locked note, where ticking the box would be an edit: it keeps the
- *   preview's look and reports its state, but it does not offer to change it.
+ * @param description what the note says the picture shows, read out in place of it.
  */
 @Composable
-private fun PreviewTaskRow(
-    block: Markdown.PreviewBlock.Task,
+private fun PreviewImage(
+    url: String,
+    description: String,
     style: TextStyle,
-    onToggle: (Boolean) -> Unit,
-    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CompositionLocalProvider(
-            LocalMinimumInteractiveComponentSize provides PreviewCheckboxTarget,
-        ) {
-            Checkbox(
-                checked = block.checked,
-                // A null callback is what makes the box report its state without offering to change
-                // it; the box keeps the preview's own look, which is the point of rendering a locked
-                // note the way a preview is rendered.
-                onCheckedChange = if (enabled) onToggle else null,
-            )
+    val context = LocalContext.current
+    val maxWidth = with(LocalDensity.current) {
+        LocalConfiguration.current.screenWidthDp.dp.roundToPx()
+    }
+    // Three states rather than two, because a picture that is still being read is not one that could
+    // not be read: the address is the answer to a picture that is missing, and showing it for the
+    // frame a decode takes would flash it over every picture in the note.
+    var picture by remember(url) { mutableStateOf<Bitmap?>(null) }
+    var missing by remember(url) { mutableStateOf(false) }
+    LaunchedEffect(url, maxWidth) {
+        val decoded = withContext(Dispatchers.IO) { NoteImages.decode(context, url, maxWidth) }
+        if (decoded == null) {
+            // A picture the app cannot draw is the difference between "the import worked" and "the
+            // note shows an address": silence here is what made the two indistinguishable before.
+            Log.w(TAG, "a picture in the note could not be read: $url")
         }
-        Spacer(Modifier.width(4.dp))
-        Text(text = block.text, style = style, modifier = Modifier.weight(1f))
+        picture = decoded
+        missing = decoded == null
+    }
+
+    val drawn = picture
+    when {
+        drawn != null -> Image(
+            bitmap = drawn.asImageBitmap(),
+            contentDescription = description.ifBlank { null },
+            contentScale = ContentScale.FillWidth,
+            modifier = modifier.fillMaxWidth(),
+        )
+
+        missing -> Text(
+            text = url,
+            style = style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier,
+        )
     }
 }
 
@@ -1188,7 +1396,7 @@ private fun PreviewTable(
     }
 }
 
-/** One line of a table: a [Text] per cell, weighted equally and aligned as the source asked. */
+/** One line of a table: a [MarkdownText] per cell, weighted equally and aligned as the source asked. */
 @Composable
 private fun PreviewTableRow(
     cells: List<AnnotatedString>,
@@ -1203,7 +1411,7 @@ private fun PreviewTableRow(
         verticalAlignment = Alignment.Top,
     ) {
         cells.forEachIndexed { index, cell ->
-            Text(
+            MarkdownText(
                 text = cell,
                 style = if (header) style.copy(fontWeight = FontWeight.SemiBold) else style,
                 textAlign = when (alignments.getOrNull(index)) {

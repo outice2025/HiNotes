@@ -3,11 +3,18 @@ package com.hiapps.hinotes.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.IconButton
@@ -45,10 +52,26 @@ fun SettingsScaffold(
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
+    // How far the page reaches past the navigation bar, so its last row can be scrolled clear of
+    // the gesture handle. The bar itself is transparent and the window draws behind it, which is
+    // what the home screen already does: a page that reserved the bar's height instead showed a
+    // flat band under its own content, which reads as a bar of a different colour.
+    val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         modifier = modifier,
-        snackbarHost = snackbarHost,
+        // The message sits above the navigation bar rather than in it. The page itself reaches past
+        // that bar, but a message is a thing to read and to tap, and one drawn inside the gesture
+        // area is one the system's own bar is drawn over.
+        snackbarHost = {
+            Box(Modifier.navigationBarsPadding()) { snackbarHost() }
+        },
+        // Only the top and the sides keep a system inset. The page is painted to the bottom of the
+        // window, so what shows through the navigation bar is this page's own surface.
+        contentWindowInsets = WindowInsets.systemBars.only(
+            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+        ),
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -92,7 +115,7 @@ fun SettingsScaffold(
                     .weight(1f)
                     .clipToBounds()
                     .verticalScroll(rememberScrollState())
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 32.dp + navigationBarInset),
             ) {
                 Box(Modifier.padding(horizontal = 16.dp)) {
                     Column(modifier = Modifier.fillMaxWidth()) {

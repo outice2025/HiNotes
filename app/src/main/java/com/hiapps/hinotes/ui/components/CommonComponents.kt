@@ -26,9 +26,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
@@ -75,6 +77,19 @@ private val CardPadding = 16.dp
 private val CardPaddingCompact = 12.dp
 private val CardTitleTopGap = 4.dp
 private val CardTitleBottomGap = 8.dp
+
+/**
+ * How far a card's content sits from the card's own left edge, in one of the two layouts.
+ *
+ * The title is the first thing inside the card, so this is the distance its first character starts
+ * at. The home screen's run headings stand in the same grid slot as the cards they head, so they
+ * take this inset as well; card and heading read it from here rather than each writing the number
+ * down, which is what keeps a heading and the titles below it on the same line.
+ *
+ * @param compact the two-column grid, whose narrower cards inset their content by less.
+ */
+internal fun cardSideInset(compact: Boolean): Dp =
+    if (compact) CardPaddingCompact else CardPadding
 
 /** The next weight up from [weight], so a title never matches the text it heads. */
 private fun heavierThan(weight: FontWeight): FontWeight = when (weight) {
@@ -191,6 +206,8 @@ fun AppLogoPlaceholder(
  *
  * @param content the note body, rendered as Markdown when [markdownEnabled].
  * @param compact a denser layout for the grid arrangement, where cards are half as wide.
+ * @param onToggleTask called with the source line of a task in the body and the state it should be
+ *   written as; null for a note that cannot be written, whose boxes are drawn without a tap.
  */
 @Composable
 fun NoteCard(
@@ -206,9 +223,10 @@ fun NoteCard(
     selected: Boolean = false,
     compact: Boolean = false,
     bodyMaxLines: Int = if (compact) 6 else 3,
+    onToggleTask: ((Int, Boolean) -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(HiNotesCorners.Card)
-    val side = if (compact) CardPaddingCompact else CardPadding
+    val side = cardSideInset(compact)
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -271,8 +289,16 @@ fun NoteCard(
                 MarkdownPreview(
                     content = content,
                     markdownEnabled = markdownEnabled,
-                    style = MaterialTheme.typography.bodyMedium,
+                    // Lines are set to the pitch a task's box needs rather than to the body's own:
+                    // a box drawn inside the text is as tall as the line it stands in, so a body
+                    // set at its usual line height showed a list of tasks as boxes that touched.
+                    // The pitch is a length in dp for the same reason - the box it makes room for
+                    // is 18dp whatever size the reader has set the text to.
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        lineHeight = with(LocalDensity.current) { TaskBoxPitch.toSp() },
+                    ),
                     maxLines = bodyMaxLines,
+                    onToggleTask = onToggleTask,
                 )
             }
         }

@@ -163,7 +163,9 @@ fun UnlockScreen(
                 viewModel.refreshLockState()
                 // And removing it lets the cards show their notes again.
                 viewModel.refreshWidgets()
-                notice = context.getString(R.string.unlock_password_removed)
+                // Nothing is announced here: the password row itself changes from "remove" to
+                // "set", which is the confirmation, and a dialog on top of a screen that has
+                // already said what happened is one more thing to dismiss.
             },
             onDismiss = { removeDialog = false },
         )

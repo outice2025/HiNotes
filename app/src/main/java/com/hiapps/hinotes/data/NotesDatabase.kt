@@ -78,6 +78,20 @@ internal class NotesDatabase(context: Context) :
         writableDatabase.delete(TABLE, "$COL_ID = ?", arrayOf(id))
     }
 
+    /**
+     * Sets the pin flag of every note in [ids] as one statement.
+     *
+     * One statement rather than one write per note: a selection can hold the whole list, and the
+     * list is read again after the write - a write per note would make that read happen once for
+     * each of them, which the screen shows as the list re-flowing over and over.
+     */
+    fun setPinned(ids: Collection<String>, pinned: Boolean) {
+        if (ids.isEmpty()) return
+        val values = ContentValues().apply { put(COL_PINNED, if (pinned) 1 else 0) }
+        val placeholders = ids.joinToString(",") { "?" }
+        writableDatabase.update(TABLE, values, "$COL_ID IN ($placeholders)", ids.toTypedArray())
+    }
+
     fun deleteAll() {
         writableDatabase.delete(TABLE, null, null)
     }

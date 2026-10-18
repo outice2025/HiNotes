@@ -11,7 +11,7 @@
     <string name="home_layout_grid">Grid layout</string>
     <string name="home_layout_list">List layout</string>
     <string name="home_delete_notes">Delete notes</string>
-    <string name="home_delete_selected_message">%1$d notes will be permanently deleted. This cannot be undone.</string>
+    <string name="home_deleted_message">%1$d notes deleted</string>
     <string name="editor_delete">Delete</string>
     <string name="editor_lock">Lock</string>
     <string name="editor_unlock">Unlock</string>
@@ -22,14 +22,12 @@
     <string name="home_empty_hint">Tap “Create note” to write your first note</string>
     <string name="home_create_note">Create note</string>
     <string name="home_note_count">%1$d notes</string>
+    <string name="home_unpinned">Not pinned</string>
     <string name="home_clear_search">Clear search</string>
     <string name="home_sort">Sort</string>
     <string name="home_sort_updated">Last updated</string>
     <string name="home_sort_created">Date created</string>
     <string name="home_sort_title">Title</string>
-    <string name="home_delete_title">Delete note?</string>
-    <string name="home_delete_message">“%1$s” will be permanently deleted. This cannot be undone.</string>
-    <string name="home_delete_confirm">Delete</string>
     <string name="home_untitled">Untitled</string>
     <string name="home_locked_badge">Locked</string>
 
@@ -63,6 +61,8 @@
     <string name="editor_share_failed">No app can share this note</string>
     <string name="editor_save_failed">The note could not be saved</string>
     <string name="editor_more_actions">More actions</string>
+    <string name="editor_insert_image">Insert image</string>
+    <string name="editor_image_failed">Could not import the image</string>
 
     <!-- Settings root -->
     <string name="settings_title">Settings</string>
@@ -90,8 +90,8 @@
     <string name="appearance_oled">OLED dark</string>
     <string name="appearance_oled_support">Use a true black background</string>
     <string name="appearance_color">Color</string>
-    <string name="appearance_font_size">App font size</string>
-    <string name="appearance_font_size_support">Set the app font size</string>
+    <string name="appearance_font_size">App font settings</string>
+    <string name="appearance_font_size_support">Set the app font</string>
     <string name="appearance_dynamic_unavailable">Dynamic color needs Android 12 or newer</string>
     <string name="appearance_follow_system">Follow system</string>
     <string name="appearance_follow_system_support">Match the device light and dark setting</string>
@@ -102,8 +102,8 @@
     <string name="editor_settings_markdown_support">Write notes in Markdown</string>
     <string name="editor_settings_autosave">Autosave</string>
     <string name="editor_settings_autosave_support">Notes are saved as you write them</string>
-    <string name="editor_settings_font_size">Note font size</string>
-    <string name="editor_settings_font_size_support">Set the note font size</string>
+    <string name="editor_settings_font_size">Note font settings</string>
+    <string name="editor_settings_font_size_support">Set the note font</string>
 
     <!-- Backup -->
     <string name="backup_title">Backup</string>
@@ -121,7 +121,7 @@
     <string name="backup_import_notes_done">Imported %1$d notes</string>
     <string name="backup_import_confirm_title">Overwrite everything?</string>
     <string name="backup_import_confirm_message">Your current data will be replaced by the contents of %1$s. This cannot be undone.</string>
-    <string name="backup_import_confirm">Overwrite</string>
+    <string name="backup_import_confirm">Confirm</string>
     <string name="backup_import_invalid_settings">That file is not a HiNotes settings backup</string>
     <string name="backup_import_invalid_notes">That file is not a HiNotes notes backup</string>
     <string name="backup_import_unreadable">Could not read the selected file (%1$s)</string>
@@ -150,7 +150,6 @@
     <string name="unlock_password_error_mismatch">Passwords do not match</string>
     <string name="unlock_password_error_wrong">Wrong password</string>
     <string name="unlock_password_set">Password set</string>
-    <string name="unlock_password_removed">Password removed</string>
     <string name="unlock_no_password_warning">Set a password first — biometric unlock needs one</string>
     <string name="unlock_enter_title">Enter password</string>
     <string name="unlock_enter_support">Unlock HiNotes to continue</string>
@@ -183,13 +182,17 @@
     <string name="common_ok">OK</string>
 
     <!-- Font size / weight level sliders -->
-    <string name="picker_font_size_title">App font size</string>
-    <string name="picker_font_size_note_title">Note font size</string>
+    <string name="picker_font_size_title">Font size</string>
     <string name="picker_weight_title">App font weight</string>
     <string name="picker_weight_note_title">Note font weight</string>
-    <string name="level_small">Small</string>
-    <string name="level_medium">Medium</string>
-    <string name="level_large">Large</string>
+    <string name="level_scale_08">0.8</string>
+    <string name="level_scale_09">0.9</string>
+    <string name="level_scale_10">1.0</string>
+    <string name="level_scale_11">1.1</string>
+    <string name="level_scale_12">1.2</string>
+    <string name="level_scale_13">1.3</string>
+    <string name="level_scale_14">1.4</string>
+    <string name="level_scale_15">1.5</string>
     <string name="level_light">Light</string>
     <string name="level_regular">Regular</string>
     <string name="level_medium_weight">Medium</string>
@@ -204,14 +207,20 @@
     <string name="accent_yellow">Yellow</string>
     <string name="appearance_typography">Typography</string>
 
+    <!-- Language picker: each language is named in its own script -->
+    <string name="language_chinese">简体中文</string>
+    <string name="language_english">English</string>
+
     <!-- Home screen widget -->
     <string name="widget_label">HiNotes widget</string>
     <string name="widget_description">Show one note on the home screen</string>
     <string name="widget_title">Widget</string>
     <string name="widget_pick_title">Choose a note</string>
     <string name="widget_pick_empty">No notes yet - create one in the app first</string>
-    <string name="widget_settings_font">Set widget font size</string>
-    <string name="widget_settings_font_support">Set the home screen widget\'s font size</string>
+    <string name="widget_settings_show_title">Show title</string>
+    <string name="widget_settings_show_title_support">Hide it and the note fills the card</string>
+    <string name="widget_settings_font">Widget font settings</string>
+    <string name="widget_settings_font_support">Set the widget font</string>
     <string name="picker_font_size_widget_title">Widget font size</string>
     <string name="picker_weight_widget_title">Widget font weight</string>
 </resources>

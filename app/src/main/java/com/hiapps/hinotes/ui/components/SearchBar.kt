@@ -31,14 +31,22 @@ import com.hiapps.hinotes.ui.icons.SymbolIcon
 import com.hiapps.hinotes.ui.icons.Symbols
 
 /**
- * The home screen's search field, with the settings action beside it.
+ * The home screen's search field, with the screen's own action beside it.
  *
  * The field is a 56dp [BasicTextField] on a `surfaceContainerHigh` pill: no border and no
  * focus ring, because Material 3's outlined field reserves a stroke that reads as a permanent
  * highlight ring on a filled container. Content is centred with explicit padding rather than a
- * text field's internal insets, which keeps it on exactly the same axis as the settings button
+ * text field's internal insets, which keeps it on exactly the same axis as the button beside it
  * (also 56dp) - Material 3's `SearchBar` reserves extra room for its expanded results and so
  * sits off that axis.
+ *
+ * The button is described by its caller rather than named here, because the one place beside the
+ * field holds whatever the screen is doing at the moment: settings while the list is being browsed,
+ * and the pin of the selected notes once a long press has turned the page into a selection.
+ *
+ * @param actionIcon the glyph the button draws.
+ * @param actionContentDescription what the button says it does, for a reader that cannot see it.
+ * @param onActionClick what the button does.
  */
 @Composable
 fun HomeSearchBar(
@@ -46,8 +54,9 @@ fun HomeSearchBar(
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     placeholder: String,
-    settingsContentDescription: String,
-    onSettingsClick: () -> Unit,
+    actionIcon: Int,
+    actionContentDescription: String,
+    onActionClick: () -> Unit,
     modifier: Modifier = Modifier,
     onClear: (() -> Unit)? = null,
     clearContentDescription: String? = null,
@@ -129,7 +138,7 @@ fun HomeSearchBar(
 
         // Same height and container colour as the field, so the two read as siblings on one line.
         Surface(
-            onClick = onSettingsClick,
+            onClick = onActionClick,
             modifier = Modifier.size(SearchFieldHeight),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -137,8 +146,8 @@ fun HomeSearchBar(
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 SymbolIcon(
-                    codepoint = Symbols.Settings,
-                    contentDescription = settingsContentDescription,
+                    codepoint = actionIcon,
+                    contentDescription = actionContentDescription,
                     size = 24.dp,
                 )
             }
@@ -146,5 +155,5 @@ fun HomeSearchBar(
     }
 }
 
-/** Height shared by the search field and the settings button, per the design. */
+/** Height shared by the search field and the button beside it, per the design. */
 private val SearchFieldHeight = 56.dp

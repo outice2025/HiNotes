@@ -1,5 +1,8 @@
 package com.hiapps.hinotes.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.MutableState
@@ -61,3 +64,17 @@ internal fun openDocumentIntent(): Intent =
  * here rather than taken from a counter this app cannot see.
  */
 internal const val REQUEST_OPEN_DOCUMENT = 0x1001
+
+/**
+ * The activity a composition is hosted by, or null when there is none.
+ *
+ * `LocalContext` is a [ContextWrapper] around the activity, not the activity itself, so the
+ * wrappers are unwrapped one at a time and anything else - a service, a test host, a preview - is
+ * reported as "no activity" instead of being cast and crashing. Every picker this app starts needs
+ * it, because a pick is started on the activity rather than through the activity-result registry.
+ */
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}

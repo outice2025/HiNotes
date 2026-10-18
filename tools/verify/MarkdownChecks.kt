@@ -1,6 +1,7 @@
 package com.hiapps.hinotes.ui.editor
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -481,6 +482,197 @@ object MarkdownChecks {
             plainInline.text == "plain b tail" &&
                 plainInline.spanStyles.any { it.item.fontWeight == FontWeight.Bold },
             "'${plainInline.text}'",
+        )
+
+        // The reported crash: the caret sitting at the very start of a note whose first character is
+        // a line break made the toggle ask for a substring that ran from 1 back to 0.
+        val leadingBreak = Markdown.toggleLinePrefix(value("\nabc", start = 0), CHECKBOX)
+        check(
+            "a caret at the very start of a note gains the prefix",
+            leadingBreak.text == CHECKBOX + "\nabc",
+            "'${leadingBreak.text}'",
+        )
+        // Every caret position in the notes that used to break it. The toggle is a button the user
+        // presses wherever the caret happens to be, so no position may throw.
+        val shapes = listOf("", "\n", "\nabc", "a\n\nb", "\n\n", "a\n", "- one\n\n- two")
+        var thrown: String? = null
+        shapes.forEach { shape ->
+            for (caret in 0..shape.length) {
+                runCatching { Markdown.toggleLinePrefix(value(shape, caret), CHECKBOX) }
+                    .onFailure { if (thrown == null) thrown = "caret $caret: $it" }
+            }
+        }
+        check("no caret position throws", thrown == null, thrown.orEmpty())
+
+        println("Markdown pictures")
+
+        val picture = Markdown.insertImage(value("hello", start = 5), "hinotes-image://a.png")
+        check(
+            "a picture lands on a line of its own",
+            picture.text == "hello\n![](hinotes-image://a.png)\n",
+            "'${picture.text}'",
+        )
+        check(
+            "the caret follows the picture onto the empty line under it",
+            picture.selection.start == picture.text.length,
+            "${picture.selection}",
+        )
+        // The break after the picture is what keeps it one: with the caret left on the address, the
+        // next keystroke would make that line ordinary text and the preview would show the address
+        // instead of the picture, with no way back but editing the Markdown by hand.
+        check(
+            "what is typed next cannot join the address",
+            Markdown.insertImage(value("hello", start = 5), "u")
+                .text
+                .lineSequence()
+                .any { it == "![](u)" },
+        )
+        val midPicture = Markdown.insertImage(value("ab", start = 1), "u")
+        check(
+            "a picture in the middle of a line takes one of its own",
+            midPicture.text == "a\n![](u)\nb",
+            "'${midPicture.text}'",
+        )
+        val drawnImage = Markdown.render("![alt](hinotes-image://a.png)")
+        check(
+            "an image is its address where there is no room to draw it",
+            drawnImage.text == "hinotes-image://a.png",
+            "'${drawnImage.text}'",
+        )
+        val drawnMarks = drawnImage.getStringAnnotations(Markdown.IMAGE_TAG, 0, drawnImage.length)
+        check(
+            "an image drawn as its address carries it too",
+            drawnMarks.size == 1 && drawnMarks.single().item == "hinotes-image://a.png",
+            "$drawnMarks",
+        )
+        val markedImage = Markdown.render("![alt](hinotes-image://a.png)", imageMark = '*')
+        check(
+            "an image is reduced to the mark its caller fills in",
+            markedImage.text == "*",
+            "'${markedImage.text}'",
+        )
+        val marks = markedImage.getStringAnnotations(Markdown.IMAGE_TAG, 0, markedImage.length)
+        check(
+            "a reduced image still carries the address it stands for",
+            marks.size == 1 && marks.single().item == "hinotes-image://a.png" &&
+                marks.single().start == 0 && marks.single().end == 1,
+            "$marks",
+        )
+        // Two pictures in one note: each place carries its own address, so neither can end up drawn
+        // as the other - which counting the marks against the addresses could not promise once a
+        // line between them was rewritten on the way into the text.
+        val twoImages = Markdown.render(
+            "![](hinotes-image://a.png)\n![](hinotes-image://b.png)",
+            imageMark = '*',
+        )
+        val twoMarks = twoImages.getStringAnnotations(Markdown.IMAGE_TAG, 0, twoImages.length)
+        check(
+            "two pictures keep their own addresses",
+            twoImages.text == "*\n*" &&
+                twoMarks.map { it.item } ==
+                listOf("hinotes-image://a.png", "hinotes-image://b.png"),
+            "'${twoImages.text}' $twoMarks",
+        )
+        val imageBlocks = Markdown.previewBlocks("before\n\n![alt](hinotes-image://a.png)\n\nafter")
+        check(
+            "an image alone on its line is a block of its own",
+            imageBlocks.any { it is Markdown.PreviewBlock.Image && it.url == "hinotes-image://a.png" },
+            "$imageBlocks",
+        )
+        val sentenceImage = Markdown.previewBlocks("text ![a](b.png) more")
+        check(
+            "an image inside a sentence stays prose",
+            sentenceImage.none { it is Markdown.PreviewBlock.Image } &&
+                sentenceImage.filterIsInstance<Markdown.PreviewBlock.Prose>()
+                    .any { it.text.text.contains("b.png") },
+            "$sentenceImage",
+        )
+
+        println("Markdown links")
+
+        val linked = Markdown.render("see [the docs](https://example.com/x) now")
+        check("a link is drawn as its own text", linked.text == "see the docs now", "'${linked.text}'")
+        check(
+            "a link carries the address a tap opens",
+            linked.getLinkAnnotations(0, linked.length).any {
+                (it.item as? LinkAnnotation.Url)?.url == "https://example.com/x"
+            },
+            "${linked.getLinkAnnotations(0, linked.length)}",
+        )
+        val autolinked = Markdown.render("go to <https://example.com>")
+        check(
+            "a bare address is a link too",
+            autolinked.text == "go to https://example.com",
+            "'${autolinked.text}'",
+        )
+        val linkInCode = Markdown.render("`[a](b)`")
+        check(
+            "a link inside code stays the characters it is",
+            linkInCode.text == "[a](b)",
+            "'${linkInCode.text}'",
+        )
+
+        println("Markdown code backgrounds")
+
+        val fencedBody = Markdown.render("before\n```\ncode one\ncode two\n```\nafter")
+        val codeBlocks = fencedBody.getStringAnnotations(Markdown.CODE_TAG, 0, fencedBody.length)
+        check(
+            "a fenced block marks every line of its code",
+            codeBlocks.size == 2 && codeBlocks.all { it.item == Markdown.CODE_BLOCK },
+            "$codeBlocks",
+        )
+        val codeSpan = Markdown.render("a `x` b")
+        val codeSpans = codeSpan.getStringAnnotations(Markdown.CODE_TAG, 0, codeSpan.length)
+        check(
+            "inline code is marked as a span",
+            codeSpans.size == 1 && codeSpans.single().item == Markdown.CODE_INLINE &&
+                codeSpan.text.substring(codeSpans.single().start, codeSpans.single().end) == "x",
+            "$codeSpans",
+        )
+
+        val inlineBoxes = Markdown.render("- [x] done", taskBox = Markdown.TaskBox.Inline)
+        check(
+            "a task's box is left as a place for a real checkbox",
+            inlineBoxes.text.startsWith("☑ ") && !inlineBoxes.text.startsWith("☑  "),
+            "'${inlineBoxes.text}'",
+        )
+
+        println("Markdown task slots")
+        // A card's boxes are controls: each place has to know which line it stands for, or a tap
+        // could not write the tick back to the line it was drawn on.
+        val slotsBody = Markdown.renderBody("- [ ] one\n- [x] two")
+        check("every task line leaves a place of its own", slotsBody.slots.size == 2, "${slotsBody.slots}")
+        check(
+            "each place carries the line it stands for",
+            slotsBody.slots.map { it.line } == listOf(0, 1),
+            "${slotsBody.slots}",
+        )
+        check(
+            "each place carries the state the note records",
+            slotsBody.slots.map { it.checked } == listOf(false, true),
+            "${slotsBody.slots}",
+        )
+        check(
+            "the places of one body are distinct",
+            slotsBody.slots.map { it.id }.toSet().size == slotsBody.slots.size,
+            "${slotsBody.slots.map { it.id }}",
+        )
+        check(
+            "the two states of a box are different places",
+            Markdown.taskBoxId(3, true) != Markdown.taskBoxId(3, false),
+        )
+        // A removed comment is not drawn, but it is still a line of the source: a task below one
+        // must write back to its own line rather than to the one the rendering moved it to.
+        val slotsAfterComment = Markdown.renderBody("a\n<!-- note -->\n- [ ] later")
+        check(
+            "a comment does not shift the line a box writes back to",
+            slotsAfterComment.slots.single().line == 2,
+            "${slotsAfterComment.slots}",
+        )
+        check(
+            "a note without tasks leaves no places",
+            Markdown.renderBody("just words").slots.isEmpty(),
+            "${Markdown.renderBody("just words").slots}",
         )
 
         report()

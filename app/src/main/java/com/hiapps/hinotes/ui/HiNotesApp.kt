@@ -142,6 +142,30 @@ fun HiNotesApp(
         }
     }
 
+    /**
+     * Opens [route], and refuses a second call that arrives while the first page is still moving.
+     *
+     * A card is a large target under a finger that is often still moving, and two taps in quick
+     * succession ask for the same page twice. Single-top keeps the second request on the page that
+     * is already at the top of the stack, but the request still reaches the navigator, which
+     * replaces that page's entry and so rebuilds the screen in the middle of its own arrival - the
+     * flash that a quick double tap on a note was reported as. One page is pushed per transition,
+     * which is what makes an arrival play once, the way a return already does.
+     */
+    var pushing by remember { mutableStateOf(false) }
+    LaunchedEffect(pushing) {
+        if (pushing) {
+            delay(TRANSITION_MS.toLong())
+            pushing = false
+        }
+    }
+    val push: (String) -> Unit = { route ->
+        if (!pushing) {
+            pushing = true
+            navController.navigate(route) { launchSingleTop = true }
+        }
+    }
+
     // A tapped widget asks for one note by name: the editor opens over the home screen, which
     // stays in the back stack underneath, and the request is reported as shown so a recomposition
     // or a rotation does not open it a second time. Tapping the same widget again while its note
@@ -154,7 +178,7 @@ fun HiNotesApp(
     LaunchedEffect(startNoteId) {
         val noteId = startNoteId ?: return@LaunchedEffect
         if (viewModel.notesRepository.note(noteId) != null) {
-            navController.navigate(Routes.editor(noteId)) { launchSingleTop = true }
+            push(Routes.editor(noteId))
         }
         onStartNoteShown()
     }
@@ -176,9 +200,20 @@ fun HiNotesApp(
         composable(Routes.HOME) {
             HomeScreen(
                 viewModel = viewModel,
-                onCreateNote = { navController.navigate(Routes.editor(NEW_NOTE_ID)) },
-                onOpenNote = { id -> navController.navigate(Routes.editor(id)) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                // The same guard the cards carry, for the same reason: the button that starts a
+                // note is a large target under a finger that is often still moving, and two taps
+                // would otherwise leave two editors of the same new note to back out of.
+                onCreateNote = {
+                    push(Routes.editor(NEW_NOTE_ID))
+                },
+                // A quick double tap on a card would otherwise navigate twice and push two editors
+                // for the same note, so leaving the editor would take two back presses. The editor
+                // route is a single destination whatever note it carries, which is what lets
+                // single-top keep the second call on the entry already at the top of the stack.
+                onOpenNote = { id ->
+                    push(Routes.editor(id))
+                },
+                onOpenSettings = { push(Routes.SETTINGS) },
             )
         }
 
@@ -193,13 +228,14 @@ fun HiNotesApp(
 
         composable(Routes.SETTINGS) {
             SettingsScreen(
+                viewModel = viewModel,
                 onBack = back,
-                onOpenAppearance = { navController.navigate(Routes.SETTINGS_APPEARANCE) },
-                onOpenEditorSettings = { navController.navigate(Routes.SETTINGS_EDITOR) },
-                onOpenWidgetSettings = { navController.navigate(Routes.SETTINGS_WIDGET) },
-                onOpenBackup = { navController.navigate(Routes.SETTINGS_BACKUP) },
-                onOpenUnlock = { navController.navigate(Routes.SETTINGS_UNLOCK) },
-                onOpenAbout = { navController.navigate(Routes.ABOUT) },
+                onOpenAppearance = { push(Routes.SETTINGS_APPEARANCE) },
+                onOpenEditorSettings = { push(Routes.SETTINGS_EDITOR) },
+                onOpenWidgetSettings = { push(Routes.SETTINGS_WIDGET) },
+                onOpenBackup = { push(Routes.SETTINGS_BACKUP) },
+                onOpenUnlock = { push(Routes.SETTINGS_UNLOCK) },
+                onOpenAbout = { push(Routes.ABOUT) },
             )
         }
 

@@ -1,10 +1,12 @@
 package com.hiapps.hinotes
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,14 +16,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hiapps.hinotes.data.AppLanguage
 import com.hiapps.hinotes.data.CrashLogger
+import com.hiapps.hinotes.ui.AppLocale
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.AppViewModelFactory
 import com.hiapps.hinotes.ui.HiNotesApp
 import com.hiapps.hinotes.ui.LockGate
 import com.hiapps.hinotes.ui.applyScreenCapturePolicy
 import com.hiapps.hinotes.ui.screens.PickedDocumentRelay
+import com.hiapps.hinotes.ui.screens.PickedImageRelay
 import com.hiapps.hinotes.ui.screens.REQUEST_OPEN_DOCUMENT
+import com.hiapps.hinotes.ui.screens.REQUEST_PICK_IMAGE
+import com.hiapps.hinotes.ui.screens.pickedImage
 import com.hiapps.hinotes.ui.theme.HiNotesTheme
 import com.hiapps.hinotes.widget.HiNotesWidgetProvider
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +61,28 @@ class MainActivity : FragmentActivity() {
      */
     private val pendingNoteId = MutableStateFlow<String?>(null)
 
+    /**
+     * The language this activity was built in.
+     *
+     * A language change writes the stored setting and the locale mirror together, and the two are
+     * compared here to tell a real change from the settings flow re-emitting the value that is
+     * already in force. Without it, every emission would restart the activity.
+     */
+    private lateinit var lastAppliedLocale: AppLanguage
+
+    /**
+     * Builds the activity in the chosen language, before anything resolves a string.
+     *
+     * Android's configurable resources can only be told what to draw while the context is being
+     * attached. The mirror is read from the context handed in rather than from the property of the
+     * same name, which would come straight back here.
+     */
+    override fun attachBaseContext(newBase: Context) {
+        val base = AppLocale.localized(newBase)
+        lastAppliedLocale = AppLocale.current(newBase)
+        super.attachBaseContext(base)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install the last-resort crash recorder before anything else can throw, so a crash
         // leaves a report the user can export from the About screen.
@@ -62,9 +91,16 @@ class MainActivity : FragmentActivity() {
         // helper's default style paints a translucent scrim behind the navigation buttons on API
         // 28 and below, and a scrim is exactly the band this removes. Behind the bar the app's own
         // surface shows through, painted to the bottom of the window.
+        //
+        // The icons over them follow the *app's* theme rather than the system's. The helper's own
+        // detection reads the phone's setting, so an app switched to light on a phone in dark mode
+        // drew white status-bar icons on its own white background. The theme in force is read here
+        // from the settings the view model already holds - one blocking read, so it is in hand
+        // before the first frame - and applied again from the composition whenever it changes.
+        val appDark = viewModel.settings.value.darkMode.isDark(systemDark())
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { appDark },
+            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { appDark },
         )
         super.onCreate(savedInstanceState)
         // Screenshots and screen recording are blocked, or allowed, before anything is drawn: the
@@ -83,6 +119,23 @@ class MainActivity : FragmentActivity() {
             val locked by viewModel.locked.collectAsStateWithLifecycle()
             val noteToOpen by pendingNoteId.collectAsStateWithLifecycle()
 
+            // The pieces of a language the running app cannot change by itself.
+            //
+            // The mirror is written and, from Android 13, the platform is told as well - so the
+            // widget and anything else the system builds for this app follow the choice. The
+            // on-screen strings are the other piece, and only a newly built activity picks them up:
+            // `attachBaseContext` decides the language once, and this activity handles locale
+            // changes itself (`android:configChanges`), so nothing else restarts it and the strings
+            // would otherwise change only the next time the app is opened. The comparison is against
+            // the language the activity was built in, which is what the mirror holds, so the
+            // recreation runs once per change rather than once per emission.
+            LaunchedEffect(settings.language) {
+                val language = settings.language
+                if (language == lastAppliedLocale) return@LaunchedEffect
+                AppLocale.apply(this@MainActivity, language)
+                recreate()
+            }
+
             // The switch is inside this app, so the window follows it while the app is open rather
             // than only being told once at launch.
             LaunchedEffect(settings.screenCaptureDisabled) {
@@ -91,6 +144,19 @@ class MainActivity : FragmentActivity() {
 
             val systemDark = isSystemInDarkTheme()
             val darkTheme = settings.darkMode.isDark(systemDark)
+
+            // The bars' icons follow the theme the app is drawing in, whatever the phone is set to:
+            // a switch to light mode has to reach the status bar as well as the window.
+            LaunchedEffect(darkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) {
+                        darkTheme
+                    },
+                    navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) {
+                        darkTheme
+                    },
+                )
+            }
 
             HiNotesTheme(
                 darkTheme = darkTheme,
@@ -129,6 +195,11 @@ class MainActivity : FragmentActivity() {
         pendingNoteId.value = intent.getStringExtra(EXTRA_NOTE_ID)
     }
 
+    /** True while the device itself is in dark mode, which the app's own setting may override. */
+    private fun systemDark(): Boolean =
+        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+
     /**
      * The device's configuration changed, which with the app set to follow the system is what a
      * dark-mode switch is.
@@ -145,23 +216,53 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
-     * Receives the file the backup screen's picker returned.
+     * Receives the file or picture a picker returned.
      *
-     * The pick is started with `startActivityForResult` rather than through the activity-result
-     * registry - see [PickedDocumentRelay] for why - so its result arrives here. Only
-     * [REQUEST_OPEN_DOCUMENT] is ours, and a cancelled picker reports `RESULT_CANCELED` rather
-     * than a URI, so both are checked before anything is published.
+     * The picks are started with `startActivityForResult` rather than through the activity-result
+     * registry - see [PickedDocumentRelay] for why - so their results arrive here. Both request
+     * codes are checked before anything is published, and a cancelled picker reports
+     * `RESULT_CANCELED` rather than a URI.
+     *
+     * Every answer is logged, because a pick that never comes back and a pick that comes back empty
+     * look the same from the screen: the app says nothing either way, and only this line tells the
+     * two apart when the tap is reported as doing nothing.
      */
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_OPEN_DOCUMENT) return
-        if (resultCode != Activity.RESULT_OK) return
-        data?.data?.let { PickedDocumentRelay.publish(it) }
+        if (requestCode != REQUEST_OPEN_DOCUMENT && requestCode != REQUEST_PICK_IMAGE) return
+        val picked = pickedImage(data)
+        // The address itself is not logged: a media id names a picture in the user's own gallery, and
+        // these lines travel with the diagnostics export. The scheme and the authority are enough to
+        // tell a document pick from a picker that answered with nothing.
+        Log.i(
+            PICK_TAG,
+            "picker answer: request=$requestCode result=$resultCode data=${data != null} " +
+                "clip=${data?.clipData?.itemCount ?: 0} " +
+                "uri=${picked?.let { "${it.scheme}://${it.authority}" }}",
+        )
+        // A picture that came back without an address is reported as a failed pick rather than
+        // dropped here: the editor is the only place that can tell the user, and a picker that
+        // answers with nothing is a tap that would otherwise look like it did nothing at all.
+        if (resultCode != Activity.RESULT_OK) {
+            if (requestCode == REQUEST_PICK_IMAGE) PickedImageRelay.refuse()
+            return
+        }
+        when (requestCode) {
+            // The answer is read the same way for a file as for a picture: a picker may hand its
+            // result over in a clip item rather than in the intent's data, and one that does would
+            // otherwise be dropped in silence.
+            REQUEST_OPEN_DOCUMENT -> picked?.let { PickedDocumentRelay.publish(it) }
+            else -> picked?.let { PickedImageRelay.publish(it) }
+                ?: PickedImageRelay.refuse()
+        }
     }
 
     companion object {
         /** Extra a tapped widget carries: the id of the note it shows. */
         const val EXTRA_NOTE_ID = "com.hiapps.hinotes.extra.NOTE_ID"
+
+        /** The tag a picked picture is reported under, on both sides of the handover. */
+        private const val PICK_TAG = "HiNotesEditor"
     }
 }

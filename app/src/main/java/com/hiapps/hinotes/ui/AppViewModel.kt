@@ -10,7 +10,10 @@ import com.hiapps.hinotes.data.Note
 import com.hiapps.hinotes.data.NoteSort
 import com.hiapps.hinotes.data.NotesRepository
 import com.hiapps.hinotes.data.SettingsRepository
+import com.hiapps.hinotes.ui.editor.Markdown
 import com.hiapps.hinotes.widget.HiNotesWidgetProvider
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -84,6 +87,31 @@ class AppViewModel(context: Context) : ViewModel() {
     private val _selectedNoteIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedNoteIds: StateFlow<Set<String>> = _selectedNoteIds.asStateFlow()
 
+    /**
+     * The notes deleted a moment ago, waiting out the window in which they can come back.
+     *
+     * They are already gone from [notes] - the list the user is looking at - but not yet from the
+     * store: one tap of undo puts them back, and the moment the window closes they are removed for
+     * good. A note is only ever held here between [stageDelete] and one of [undoStagedDelete] and
+     * [commitStagedDelete], so nothing can be lost between the two.
+     *
+     * Declared before the `init` block below, like every other flow the first read of the notes
+     * touches: that read filters the list through this one.
+     */
+    private val _stagedDelete = MutableStateFlow<List<Note>>(emptyList())
+
+    /**
+     * The notes whose deletion is waiting out its window, or nothing when there are none.
+     *
+     * The screen that shows the note list watches this to offer the deletion back: a note can be
+     * deleted from the editor as well as from the list, and the offer belongs to the list either way
+     * - it is the screen the note returns to.
+     */
+    val stagedDelete: StateFlow<List<Note>> = _stagedDelete.asStateFlow()
+
+    /** The timer that closes the undo window; cancelled when the notes come back. */
+    private var stagedDeleteTimer: Job? = null
+
     init {
         // The notes are read here, while the app is still starting, the way the settings above are:
         // a list that starts empty and is filled a frame later shows "no notes" to someone who has
@@ -115,7 +143,9 @@ class AppViewModel(context: Context) : ViewModel() {
     }
 
     private fun recomputeVisible() {
-        _notes.value = notesRepository.visibleNotes()
+        // The notes waiting out their undo window are gone from the list but still in the store.
+        val held = _stagedDelete.value.mapTo(HashSet()) { it.id }
+        _notes.value = notesRepository.visibleNotes().filterNot { it.id in held }
     }
 
     /** Creates an empty note and binds it to the editor. */
@@ -175,6 +205,46 @@ class AppViewModel(context: Context) : ViewModel() {
         recomputeVisible()
     }
 
+    /**
+     * Pins or unpins every note in [ids], as the one change the button beside the field asked for.
+     *
+     * The whole selection is written and published together, so the list re-flows once rather than
+     * once per note - which is what the user saw as the page flashing while it was pinned.
+     */
+    suspend fun pinNotes(ids: Collection<String>, pinned: Boolean) {
+        if (ids.isEmpty()) return
+        notesRepository.setPinned(ids, pinned)
+        val editing = _editingNote.value
+        if (editing != null && editing.id in ids) {
+            _editingNote.value = notesRepository.note(editing.id)
+        }
+        recomputeVisible()
+    }
+
+    /**
+     * Ticks the task on source line [line] of note [id], or clears it, and stores the note.
+     *
+     * A card draws its tasks with real boxes, so a note can be worked through from the home screen:
+     * the tick is written back to the line the box stood on, which is what the slot the renderer
+     * left carries. The note is stored, but its modified time is deliberately left where it was -
+     * see [NotesRepository.replaceContent] - because the card is standing in a list ordered by that
+     * time, and a tick that jumped the note to the top would move the box out from under the finger
+     * that ticked it. A widget showing the note is redrawn.
+     *
+     * Nothing happens when the note is gone or the line no longer holds a task: a card can be drawn
+     * from a snapshot a save has already moved on from, and a stale tap must not rewrite a line that
+     * has since become something else.
+     */
+    suspend fun setTaskChecked(id: String, line: Int, checked: Boolean) {
+        val note = notesRepository.note(id) ?: return
+        val updated = Markdown.setTaskChecked(note.content, line, checked)
+        if (updated == note.content) return
+        notesRepository.replaceContent(id, updated) ?: return
+        if (_editingNote.value?.id == id) _editingNote.value = notesRepository.note(id)
+        recomputeVisible()
+        HiNotesWidgetProvider.refreshNote(appContext, id)
+    }
+
     fun setQuery(value: String) {
         _query.value = value
         notesRepository.setQuery(value)
@@ -222,13 +292,52 @@ class AppViewModel(context: Context) : ViewModel() {
         if (retained != current) _selectedNoteIds.value = retained
     }
 
-    /** Deletes every selected note and leaves multi-select. */
-    suspend fun deleteSelectedNotes() {
-        val ids = _selectedNoteIds.value.toList()
-        if (ids.isEmpty()) return
+    /**
+     * Removes [notes] from the list and holds them, deleted, until the window closes.
+     *
+     * A deletion one tap can undo is one the user can make without being certain, so the row goes
+     * at once - which is what the tap asked for - and the note itself is removed from the store
+     * only when the window closes. The window is closed here rather than by the screen that opened
+     * it: a user who navigates away, or whose screen is rebuilt, must still get the deletion they
+     * asked for.
+     *
+     * A second deletion closes the window the first one opened: one snackbar can offer to bring
+     * back one batch, and notes left held by a window nobody closed would never be deleted.
+     */
+    suspend fun stageDelete(notes: List<Note>) {
+        if (notes.isEmpty()) return
+        commitStagedDelete()
+        _stagedDelete.value = notes
+        _selectedNoteIds.value = emptySet()
+        recomputeVisible()
+        stagedDeleteTimer = viewModelScope.launch {
+            delay(DeleteUndoMs)
+            // Cleared before the commit runs, so the commit does not cancel the coroutine it is
+            // being called from - which would abandon it halfway through.
+            stagedDeleteTimer = null
+            commitStagedDelete()
+        }
+    }
+
+    /** Brings back the notes of the last deletion and closes the window. */
+    fun undoStagedDelete() {
+        if (_stagedDelete.value.isEmpty()) return
+        stagedDeleteTimer?.cancel()
+        stagedDeleteTimer = null
+        _stagedDelete.value = emptyList()
+        recomputeVisible()
+    }
+
+    /** Removes the notes of the last deletion from the store; their window is over. */
+    suspend fun commitStagedDelete() {
+        stagedDeleteTimer?.cancel()
+        stagedDeleteTimer = null
+        val notes = _stagedDelete.value
+        if (notes.isEmpty()) return
+        _stagedDelete.value = emptyList()
+        val ids = notes.map { it.id }
         ids.forEach { notesRepository.deleteNote(it) }
         if (_editingNote.value?.id in ids) _editingNote.value = null
-        _selectedNoteIds.value = emptySet()
         recomputeVisible()
         // One redraw per widget, however many of the deleted notes one of them was showing.
         HiNotesWidgetProvider.refreshNotes(appContext, ids)
@@ -267,9 +376,11 @@ class AppViewModel(context: Context) : ViewModel() {
     }
 
     /**
-     * The settings a widget is drawn with: its palette and theme, and whether notes are rendered as
-     * Markdown. A dragged font-size slider writes settings on every step and none of those steps
-     * change what a widget looks like, which is what this comparison keeps out of the widget's way.
+     * The settings a widget is drawn with: its palette and theme, whether notes are rendered as
+     * Markdown, its own type, whether the title is shown at all, and the language its own labels
+     * ("Untitled") are written in. A dragged font-size slider writes settings on every step and none
+     * of those steps change what a widget looks like, which is what this comparison keeps out of the
+     * widget's way.
      */
     private fun widgetSettings(settings: HiNotesSettings) = listOf(
         settings.dynamicColor,
@@ -279,6 +390,8 @@ class AppViewModel(context: Context) : ViewModel() {
         settings.markdownEnabled,
         settings.widgetFontScale,
         settings.widgetFontWeight,
+        settings.widgetShowTitle,
+        settings.language,
     )
 
     /**
@@ -301,6 +414,18 @@ class AppViewModel(context: Context) : ViewModel() {
     /** Re-evaluates whether the app should be locked, e.g. after removing the password. */
     fun refreshLockState() {
         if (!lockStore.isConfigured) _locked.value = false
+    }
+
+    companion object {
+
+        /**
+         * How long a deleted note can be brought back.
+         *
+         * Three seconds: long enough that a deletion nobody meant is still one tap away from being
+         * undone, short enough that the offer is not still on screen once the user has moved on.
+         * The screen showing the offer counts its own snackbar down from the same number.
+         */
+        const val DeleteUndoMs = 3_000L
     }
 }
 

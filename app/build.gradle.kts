@@ -16,8 +16,8 @@ val keystoreProps = Properties().apply {
     }
 }
 
-val appVersionName = "1.0.8"
-val appVersionCode = 18
+val appVersionName = "1.0.9"
+val appVersionCode = 19
 
 // Which build this is: the About screen shows it next to the version number. Every build made
 // while a version is still being tested says "Debug"; the build that is published says "Release",

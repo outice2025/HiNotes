@@ -1,13 +1,19 @@
 package com.hiapps.hinotes.ui.editor
 
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 
@@ -72,8 +78,12 @@ object Markdown {
         val start = value.selection.min
         val end = value.selection.max
 
-        val lineStart = text.lastIndexOf('\n', (start - 1).coerceAtLeast(0))
-            .let { if (it < 0) 0 else it + 1 }
+        // The search for the line's start runs from the character *before* the selection, which is
+        // -1 once that selection sits at the very beginning of the note: the first line starts at 0
+        // there, and asking for a newline at or before 0 instead answered with the newline at 0
+        // itself - so a note whose first character is a line break reported a block running from 1
+        // back to 0, and the substring it asked for took the editor down.
+        val lineStart = text.lastIndexOf('\n', start - 1).let { if (it < 0) 0 else it + 1 }
         val lineEnd = text.indexOf('\n', end).let { if (it < 0) text.length else it }
 
         val block = text.substring(lineStart, lineEnd)
@@ -96,6 +106,81 @@ object Markdown {
         val newEnd = (end + delta).coerceIn(newStart, lineStart + rebuilt.length)
         return TextFieldValue(newText, TextRange(newStart, newEnd))
     }
+
+    /**
+     * How a rendered body draws a task's box.
+     *
+     * [Glyph] writes the ☑/☐ character, which is all the spanned text a widget carries can hold.
+     * [Inline] leaves a place for a real checkbox instead, which the caller fills in - see
+     * [TASK_BOX_CHECKED] and [TASK_BOX_UNCHECKED].
+     */
+    enum class TaskBox { Glyph, Inline }
+
+    /** The inline-content ids a task's box is left under when [TaskBox.Inline] asks for one. */
+    const val TASK_BOX_CHECKED = "hinotes.task.checked"
+    const val TASK_BOX_UNCHECKED = "hinotes.task.unchecked"
+
+    /**
+     * The inline-content id of the box standing on source line [line].
+     *
+     * The line is what makes one box tell itself apart from another: a box a caller fills in is a
+     * control, and a control that only said "a box was tapped" could not write the tick back to the
+     * line it belongs to. The two forms stay separate ids so that a caller can fill in one of them
+     * without the other, which is what the card does when a note is locked.
+     */
+    fun taskBoxId(line: Int, checked: Boolean): String =
+        "${if (checked) TASK_BOX_CHECKED else TASK_BOX_UNCHECKED}@$line"
+
+    /** One place a rendered body left for the caller's own checkbox, and the line it stands for. */
+    data class TaskSlot(val id: String, val line: Int, val checked: Boolean)
+
+    /** A rendered body together with the places it left for the caller's own checkboxes. */
+    class Body internal constructor(val text: AnnotatedString, val slots: List<TaskSlot>)
+
+    /**
+     * The annotation marking a run of code, so a caller can draw the rounded background a text run
+     * cannot draw for itself. The value is [CODE_BLOCK] for a fenced block, [CODE_INLINE] for a span.
+     */
+    const val CODE_TAG = "hinotes.code"
+    const val CODE_BLOCK = "block"
+    const val CODE_INLINE = "inline"
+
+    /**
+     * Writes `![alt](url)` onto a line of its own, replacing the selection.
+     *
+     * A picture is drawn where it is written only when it is alone on its line - a text layout
+     * cannot put one in the middle of a sentence - so the insertion makes room on both sides: a
+     * line break before it where the text runs on, and one after it as well, at the end of the note
+     * as much as in the middle. Without that last break whatever is typed next is appended to the
+     * address, and the line stops being a picture for good: the preview would then show the address
+     * and nothing else, with no way back but editing the Markdown by hand.
+     */
+    fun insertImage(value: TextFieldValue, url: String, alt: String = ""): TextFieldValue {
+        val text = value.text
+        val start = value.selection.min
+        val end = value.selection.max
+        val written = buildString {
+            if (start > 0 && text[start - 1] != '\n') append('\n')
+            append("![").append(alt).append("](").append(url).append(')')
+            // The caret is left on the empty line the picture was given, ready for a caption.
+            append('\n')
+        }
+        return TextFieldValue(
+            text = text.replaceRange(start, end, written),
+            selection = TextRange(start + written.length),
+        )
+    }
+
+    /**
+     * The annotation carrying the address of a picture, over the range that picture was drawn as.
+     *
+     * That range is the address itself where the text has room to show it, or the single character a
+     * caller asked for with `imageMark` where the caller draws the picture instead. Either way the
+     * caller that draws it knows which address each place stands for without reading the note a
+     * second time - which is what keeps a mark and its picture together through everything the
+     * renderer does to a line on the way from the note to the text.
+     */
+    const val IMAGE_TAG = "hinotes.image"
 
     /** One rendered element of the preview. */
     sealed interface PreviewBlock {
@@ -136,10 +221,48 @@ object Markdown {
             val rows: List<List<AnnotatedString>>,
             val alignments: List<ColumnAlignment>,
         ) : PreviewBlock
+
+        /** One image, written as `![alt](url)` on a line of its own. */
+        data class Image(val url: String, val alt: String) : PreviewBlock
     }
 
     /** Where a table column puts its cells, as the colons of its delimiter row ask. */
     enum class ColumnAlignment { Start, Center, End }
+
+    /**
+     * What one rendering pass does with the parts a run of text cannot draw.
+     *
+     * @param linkColor the colour a link takes, so a link reads as one; [Color.Unspecified] leaves
+     *   it the colour of the text around it, underlined either way.
+     * @param taskBox a task's box, as [TaskBox] describes.
+     * @param imageMark the character an image is reduced to, for a caller that swaps it for the
+     *   picture itself (the widget's spanned text); null writes the image's URL, which is what the
+     *   list cards show.
+     */
+    private data class Options(
+        val linkColor: Color,
+        val taskBox: TaskBox,
+        val imageMark: Char?,
+        /**
+         * Where the places left for a caller's checkboxes are reported as they are written.
+         *
+         * A render that fills none in leaves it empty, and one that draws the ☑/☐ character never
+         * adds to it: the list is how a caller learns which line each of its controls stands for.
+         */
+        val slots: MutableList<TaskSlot> = mutableListOf(),
+    )
+
+    /**
+     * `![alt](url)`: the one form the renderer does not draw as the text it is written with - as a
+     * block of its own when it stands alone on its line, and as the address it holds otherwise.
+     */
+    private val IMAGE = Regex("!\\[([^\\]]*)]\\(([^)\\s]+)\\)")
+
+    /** `[text](url)`: a link, drawn in the link colour and opened by a tap. */
+    private val LINK_AT = Regex("\\[([^\\]]*)]\\(([^)\\s]+)\\)")
+
+    /** `<url>`: an address written bare, which is a link as well. */
+    private val AUTOLINK_AT = Regex("<((?:https?://|mailto:)[^>\\s]+)>")
 
     /**
      * A task-list line: optional indent, an optional `-`/`*`/`+` bullet, the `[ ]` box and the
@@ -216,7 +339,8 @@ object Markdown {
      * grid or a real divider for them. None of the three is recognised inside a code fence: there it
      * is code, not Markdown.
      */
-    fun previewBlocks(source: String): List<PreviewBlock> {
+    fun previewBlocks(source: String, linkColor: Color = Color.Unspecified): List<PreviewBlock> {
+        val options = Options(linkColor = linkColor, taskBox = TaskBox.Glyph, imageMark = null)
         val stripper = CommentStripper()
         // Comments are removed up front, but the lines that survive keep their index in the source:
         // that index is what a tap on a task writes back to.
@@ -228,7 +352,7 @@ object Markdown {
 
         fun flushProse() {
             if (prose.isEmpty()) return
-            out += PreviewBlock.Prose(render(prose.toString()))
+            out += PreviewBlock.Prose(render(prose.toString(), linkColor))
             prose.setLength(0)
         }
 
@@ -242,12 +366,19 @@ object Markdown {
             val table = if (inCodeBlock) null else parseTable(lines, index)
             val task = if (inCodeBlock || table != null) null else TASK_LINE.matchEntire(line)
             val rule = !inCodeBlock && table == null && task == null && RULE_LINE.matches(line)
+            val image = if (inCodeBlock || table != null || task != null || rule) {
+                null
+            } else {
+                IMAGE.matchEntire(line.trim())
+            }
             when {
                 table != null -> {
                     flushProse()
                     out += PreviewBlock.Table(
-                        header = table.header.map { renderInline(it) },
-                        rows = table.rows.map { row -> table.cells(row).map { renderInline(it) } },
+                        header = table.header.map { renderInline(it, options) },
+                        rows = table.rows.map { row ->
+                            table.cells(row).map { renderInline(it, options) }
+                        },
                         alignments = table.alignments,
                     )
                     index += table.lineCount
@@ -259,10 +390,19 @@ object Markdown {
                     index++
                 }
 
+                image != null -> {
+                    flushProse()
+                    out += PreviewBlock.Image(
+                        url = image.groupValues[2],
+                        alt = image.groupValues[1],
+                    )
+                    index++
+                }
+
                 task != null -> {
                     flushProse()
                     out += PreviewBlock.Task(
-                        text = renderInline(task.groupValues[4]),
+                        text = renderInline(task.groupValues[4], options),
                         checked = task.groupValues[2] != " ",
                         line = index,
                     )
@@ -405,67 +545,146 @@ object Markdown {
         return alignments
     }
 
-    /** Converts Markdown source into styled text for the preview mode. */
-    fun render(source: String): AnnotatedString = buildAnnotatedString {
+    /**
+     * Converts Markdown source into styled text for the preview mode.
+     *
+     * @param linkColor the colour a link takes, so it reads as one in the text around it;
+     *   [Color.Unspecified] leaves it that text's own colour, underlined either way.
+     * @param taskBox whether a task's box is the ☑/☐ character or a place for a real checkbox.
+     * @param imageMark the character an image is reduced to, for a caller that draws the picture
+     *   itself; null writes the image's URL, which is what a card has room for.
+     */
+    fun render(
+        source: String,
+        linkColor: Color = Color.Unspecified,
+        taskBox: TaskBox = TaskBox.Glyph,
+        imageMark: Char? = null,
+    ): AnnotatedString = buildBody(source, Options(linkColor, taskBox, imageMark)).text
+
+    /**
+     * [render] together with the places it left for a caller's own checkboxes.
+     *
+     * The boxes are left as places rather than drawn, so that a caller can draw a control of its own
+     * in each one - and the places are reported with the source line each of them stands for, which
+     * is what a caller needs to write a tick, or its absence, back to the note. See [taskBoxId].
+     */
+    fun renderBody(source: String, linkColor: Color = Color.Unspecified): Body =
+        buildBody(source, Options(linkColor, TaskBox.Inline, imageMark = null))
+
+    /** [render] as one pass, keeping the source line every task's box was drawn for. */
+    private fun buildBody(source: String, options: Options): Body {
         val stripper = CommentStripper()
-        // A comment-only line goes with the line break it sat on, so the visible lines are gathered
-        // first and the walk below writes the break between two drawn lines itself.
-        val lines = source.split('\n').mapNotNull { stripper.clean(it) }
-        var inCodeBlock = false
-        var inMathBlock = false
-        var started = false
-        var index = 0
+        // Every source line is kept, with null standing for one that held nothing but a comment. A
+        // dropped line would move every task below it, and the source line is what a caller's
+        // checkbox writes back to.
+        val lines = source.split('\n').map { stripper.clean(it) }
+        val text = buildAnnotatedString {
+            var inCodeBlock = false
+            var inMathBlock = false
+            var started = false
+            var index = 0
 
-        fun lineBreak() {
-            if (started) append('\n')
-            started = true
-        }
-
-        while (index < lines.size) {
-            val line = lines[index]
-            val fence = line.trimStart().startsWith("```")
-            val formulaFence = line.trim() == MATH_FENCE
-            val table = if (inCodeBlock || inMathBlock || fence || formulaFence) {
-                null
-            } else {
-                parseTable(lines, index)
+            fun lineBreak() {
+                if (started) append('\n')
+                started = true
             }
 
-            lineBreak()
-            when {
-                table != null -> {
-                    appendTable(table)
-                    index += table.lineCount
+            while (index < lines.size) {
+                val line = lines[index]
+                if (line == null) {
+                    index++
                     continue
                 }
+                val fence = line.trimStart().startsWith("```")
+                val formulaFence = line.trim() == MATH_FENCE
+                val table = if (inCodeBlock || inMathBlock || fence || formulaFence) {
+                    null
+                } else {
+                    parseTable(lines, index)
+                }
 
-                // The fence itself is not shown, but the break written above keeps its line.
-                fence -> inCodeBlock = !inCodeBlock
+                lineBreak()
+                when {
+                    table != null -> {
+                        appendTable(table, options)
+                        index += table.lineCount
+                        continue
+                    }
 
-                inCodeBlock -> withStyle(
-                    SpanStyle(
-                        fontFamily = FontFamily.Monospace,
-                        background = androidx.compose.ui.graphics.Color.Transparent,
-                    )
-                ) { append(line) }
+                    // The fence itself is not shown, but the break written above keeps its line.
+                    fence -> inCodeBlock = !inCodeBlock
 
-                // A lone `$$` fences the formula below it the same way, so a multi-line formula
-                // keeps the lines the author gave it instead of being run into the prose.
-                formulaFence -> inMathBlock = !inMathBlock
+                    inCodeBlock -> withCode(CODE_BLOCK) {
+                        withStyle(
+                            SpanStyle(
+                                fontFamily = FontFamily.Monospace,
+                                background = Color.Transparent,
+                            )
+                        ) { append(line) }
+                    }
 
-                inMathBlock -> withStyle(MATH_STYLE) { append(line) }
+                    // A lone `$$` fences the formula below it the same way, so a multi-line formula
+                    // keeps the lines the author gave it instead of being run into the prose.
+                    formulaFence -> inMathBlock = !inMathBlock
 
-                else -> appendInline(line)
+                    inMathBlock -> withStyle(MATH_STYLE) { append(line) }
+
+                    else -> appendInline(line, options, index)
+                }
+                index++
             }
-            index++
         }
+        return Body(text, options.slots)
     }
 
     /** One line's worth of inline markup, without the block-level treatment [render] adds. */
-    private fun renderInline(text: String): AnnotatedString =
-        buildAnnotatedString { appendInlineMarkup(text) }
+    private fun renderInline(text: String, options: Options): AnnotatedString =
+        buildAnnotatedString { appendInlineMarkup(text, options) }
 
-    private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInline(line: String) {
+    /**
+     * Appends what [block] writes and marks it as a run of code of the kind [kind].
+     *
+     * A text run cannot draw itself a rounded background, so the range is left in the string for
+     * the caller to fill in: see [CODE_TAG].
+     */
+    private inline fun AnnotatedString.Builder.withCode(
+        kind: String,
+        block: AnnotatedString.Builder.() -> Unit,
+    ) {
+        val start = length
+        block()
+        if (length > start) addStringAnnotation(CODE_TAG, kind, start, length)
+    }
+
+    /**
+     * A task's box on source line [line]: the ☑/☐ character, or a place for the caller's own
+     * checkbox.
+     *
+     * The place carries that character as its alternative text, so a caller that fills the place in
+     * draws a real checkbox and one that does not still draws something a reader understands. The
+     * place is reported to [Options.slots] under [taskBoxId] of the line it stands on, which is how
+     * a caller that fills one in learns what it is a control for.
+     */
+    private fun AnnotatedString.Builder.appendTaskBox(checked: Boolean, options: Options, line: Int) {
+        val glyph = if (checked) "☑" else "☐"
+        if (options.taskBox == TaskBox.Inline) {
+            val id = taskBoxId(line, checked)
+            options.slots += TaskSlot(id, line, checked)
+            appendInlineContent(
+                id,
+                // The glyph and a space stand in for the box wherever nothing fills the place in.
+                "$glyph ",
+            )
+        } else {
+            append("$glyph  ")
+        }
+    }
+
+    private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInline(
+        line: String,
+        options: Options,
+        sourceLine: Int,
+    ) {
         val trimmed = line.trimStart()
         val depth = indentDepth(line)
         val indent = "    ".repeat(depth)
@@ -482,19 +701,19 @@ object Markdown {
 
             trimmed.startsWith("### ") -> {
                 withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, fontSize = PREVIEW_H3)) {
-                    appendInlineMarkup(trimmed.removePrefix("### "))
+                    appendInlineMarkup(trimmed.removePrefix("### "), options)
                 }
             }
 
             trimmed.startsWith("## ") -> {
                 withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, fontSize = PREVIEW_H2)) {
-                    appendInlineMarkup(trimmed.removePrefix("## "))
+                    appendInlineMarkup(trimmed.removePrefix("## "), options)
                 }
             }
 
             trimmed.startsWith("# ") -> {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = PREVIEW_H1)) {
-                    appendInlineMarkup(trimmed.removePrefix("# "))
+                    appendInlineMarkup(trimmed.removePrefix("# "), options)
                 }
             }
 
@@ -502,8 +721,8 @@ object Markdown {
                 trimmed.startsWith("- [X] ") -> {
                 val checked = !trimmed.startsWith("- [ ] ")
                 append(indent)
-                append(if (checked) "☑  " else "☐  ")
-                appendInlineMarkup(trimmed.substring(6))
+                appendTaskBox(checked, options, sourceLine)
+                appendInlineMarkup(trimmed.substring(6), options)
             }
 
             // The toolbar's checkbox button writes a bare "[ ] " at the start of a line, so the
@@ -512,8 +731,8 @@ object Markdown {
                 trimmed.startsWith("[X] ") -> {
                 val checked = !trimmed.startsWith("[ ] ")
                 append(indent)
-                append(if (checked) "☑  " else "☐  ")
-                appendInlineMarkup(trimmed.substring(4))
+                appendTaskBox(checked, options, sourceLine)
+                appendInlineMarkup(trimmed.substring(4), options)
             }
 
             trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("+ ") -> {
@@ -522,7 +741,7 @@ object Markdown {
                 append(indent)
                 append(BULLETS[minOf(depth, BULLETS.lastIndex)])
                 append("  ")
-                appendInlineMarkup(trimmed.substring(2))
+                appendInlineMarkup(trimmed.substring(2), options)
             }
 
             ordered != null -> {
@@ -530,19 +749,19 @@ object Markdown {
                 // quotes a list starting at three, or one whose items were written out of order.
                 append(indent)
                 append(ordered.value)
-                appendInlineMarkup(trimmed.substring(ordered.value.length))
+                appendInlineMarkup(trimmed.substring(ordered.value.length), options)
             }
 
             trimmed.startsWith("> ") -> {
                 append("│  ")
                 withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                    appendInlineMarkup(trimmed.removePrefix("> "))
+                    appendInlineMarkup(trimmed.removePrefix("> "), options)
                 }
             }
 
             RULE_LINE.matches(line) -> append("─".repeat(RULER_WIDTH))
 
-            else -> appendInlineMarkup(line)
+            else -> appendInlineMarkup(line, options)
         }
     }
 
@@ -591,9 +810,12 @@ object Markdown {
      * as the border pipes separate the cells. A cell keeps its own spans, so a bold or struck word
      * inside one still reads as one.
      */
-    private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTable(table: ParsedTable) {
-        val header = table.header.map { renderInline(it) }
-        val rows = table.rows.map { row -> table.cells(row).map { renderInline(it) } }
+    private fun androidx.compose.ui.text.AnnotatedString.Builder.appendTable(
+        table: ParsedTable,
+        options: Options,
+    ) {
+        val header = table.header.map { renderInline(it, options) }
+        val rows = table.rows.map { row -> table.cells(row).map { renderInline(it, options) } }
         val widths = table.alignments.indices.map { column ->
             (listOf(header) + rows).maxOf { displayWidth(it[column].text) }
         }
@@ -664,7 +886,10 @@ object Markdown {
      * left to right also leaves one rule for where a span ends - the first unescaped delimiter of
      * the kind that opened it.
      */
-    private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInlineMarkup(text: String) {
+    private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInlineMarkup(
+        text: String,
+        options: Options,
+    ) {
         var i = 0
         val plain = StringBuilder()
 
@@ -684,6 +909,43 @@ object Markdown {
                 i += 2
                 continue
             }
+
+            // An image, a link and a bare address are read before the span table, so that the
+            // brackets of a link are never taken for markup opening a span of its own.
+            val image = IMAGE.matchAt(text, i)
+            if (image != null) {
+                flush()
+                // A caller with no room to draw a picture is handed the address the note holds,
+                // which is what a card shows; one that draws pictures is handed a place to fill.
+                // The address goes with the text either way, so the caller that draws it does not
+                // have to find it again - see [IMAGE_TAG].
+                val start = length
+                val mark = options.imageMark
+                if (mark == null) append(image.groupValues[2]) else append(mark)
+                addStringAnnotation(IMAGE_TAG, image.groupValues[2], start, length)
+                i = image.range.last + 1
+                continue
+            }
+            val link = LINK_AT.matchAt(text, i)
+            if (link != null) {
+                flush()
+                withLink(LinkAnnotation.Url(link.groupValues[2], linkStyles(options.linkColor))) {
+                    // The link's own text is read as markup, so a bold word inside a link is bold.
+                    appendInlineMarkup(link.groupValues[1], options)
+                }
+                i = link.range.last + 1
+                continue
+            }
+            val address = AUTOLINK_AT.matchAt(text, i)
+            if (address != null) {
+                flush()
+                withLink(LinkAnnotation.Url(address.groupValues[1], linkStyles(options.linkColor))) {
+                    append(address.groupValues[1])
+                }
+                i = address.range.last + 1
+                continue
+            }
+
             val span = spanAt(text, i)
             if (span == null) {
                 plain.append(text[i])
@@ -693,11 +955,23 @@ object Markdown {
             flush()
             // A span's text is drawn as written, with its escapes resolved: markup inside it is not
             // read a second time, so the stars in a code span stay the characters they are.
-            withStyle(span.style) { appendLiteral(text.substring(span.from, span.until)) }
+            val body: AnnotatedString.Builder.() -> Unit = {
+                appendLiteral(text.substring(span.from, span.until))
+            }
+            if (span.delimiter == CODE_DELIMITER) {
+                withCode(CODE_INLINE) { withStyle(span.style, body) }
+            } else {
+                withStyle(span.style, body)
+            }
             i = span.until + span.delimiter.length
         }
         flush()
     }
+
+    /** A link's styling: the caller's colour where it asked for one, underlined either way. */
+    private fun linkStyles(color: Color): TextLinkStyles = TextLinkStyles(
+        style = SpanStyle(color = color, textDecoration = TextDecoration.Underline),
+    )
 
     /**
      * The span that opens at [index], or null when none does: the character there is not a marker,
@@ -787,7 +1061,7 @@ object Markdown {
         "**" to SpanStyle(fontWeight = FontWeight.Bold),
         "__" to SpanStyle(fontWeight = FontWeight.Bold),
         "~~" to SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough),
-        "`" to SpanStyle(fontFamily = FontFamily.Monospace),
+        CODE_DELIMITER to SpanStyle(fontFamily = FontFamily.Monospace),
         MATH_DELIMITER to MATH_STYLE,
         "*" to SpanStyle(fontStyle = FontStyle.Italic),
     )
@@ -798,6 +1072,9 @@ object Markdown {
 
     /** The inline formula's delimiter; the block form fences with [MATH_FENCE] instead. */
     private const val MATH_DELIMITER = "\$"
+
+    /** The span delimiter that makes a run of code, which is the one drawn with a background. */
+    private const val CODE_DELIMITER = "`"
 
     /** Columns one list level takes: two spaces, or a tab read as that same step. */
     private const val INDENT_COLUMNS = 2

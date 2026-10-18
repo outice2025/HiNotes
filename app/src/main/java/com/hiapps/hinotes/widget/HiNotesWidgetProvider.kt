@@ -16,6 +16,7 @@ import com.hiapps.hinotes.MainActivity
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.HiNotesSettings
 import com.hiapps.hinotes.data.Note
+import com.hiapps.hinotes.ui.editor.Markdown
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -68,13 +69,64 @@ class HiNotesWidgetProvider : AppWidgetProvider() {
      * nothing in the app changed. The platform restricts implicit broadcasts, so this is best
      * effort - when it arrives, everything is repainted; when it does not, the next note save, app
      * launch or resize does the same job.
+     *
+     * A tap on a task's box arrives here as well: a card is drawn by the launcher, so the only way
+     * it can change the note is to ask the app to, which is what [tickTask] answers.
      */
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_CONFIGURATION_CHANGED) {
-            refreshAll(context)
-            return
+        when (intent.action) {
+            Intent.ACTION_CONFIGURATION_CHANGED -> {
+                refreshAll(context)
+                return
+            }
+
+            ACTION_TICK_TASK -> {
+                tickTask(context, intent)
+                return
+            }
         }
         super.onReceive(context, intent)
+    }
+
+    /**
+     * Ticks, or clears, the task a box on a card stands for.
+     *
+     * The state the tap asks for travels with it, because the box was drawn in one state and pressed
+     * in that same one: the tap means the other one, whatever the store says by the time the
+     * broadcast is handled. A line that is no longer a task is left alone - the note may have been
+     * edited between the card being drawn and the box being pressed - and nothing else about the
+     * note is touched.
+     *
+     * The work is done off the main thread, which is what [goAsync] is for: a broadcast receiver's
+     * own time on the main thread is short, and reading a note and writing it back is not.
+     */
+    private fun tickTask(context: Context, intent: Intent) {
+        val widgetId = intent.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID,
+        )
+        val line = intent.getIntExtra(EXTRA_TASK_LINE, -1)
+        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID || line < 0) return
+        val checked = intent.getBooleanExtra(EXTRA_TASK_CHECKED, false)
+        val pending = goAsync()
+        scope.launch {
+            try {
+                val app = context.applicationContext
+                // What the card is allowed to show, which is nothing at all while the app is locked.
+                val note = WidgetContent.note(app, widgetId) ?: return@launch
+                val updated = Markdown.setTaskChecked(note.content, line, checked)
+                // The content only: the note's modified time is left alone, or ticking an item
+                // would reorder the app's own list behind the card the user is ticking.
+                if (updated != note.content) {
+                    WidgetRepositories.notes(app).replaceContent(note.id, updated)
+                }
+                refresh(app, widgetId)
+            } catch (failure: Throwable) {
+                Log.w(TAG, "could not tick a task on widget $widgetId", failure)
+            } finally {
+                pending.finish()
+            }
+        }
     }
 
     override fun onDeleted(context: Context, ids: IntArray) {
@@ -83,6 +135,15 @@ class HiNotesWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+
+        /** The action a task's box sends when it is tapped; see [tickTask]. */
+        const val ACTION_TICK_TASK = "com.hiapps.hinotes.action.TICK_TASK"
+
+        /** The source line of the task the tapped box stands for. */
+        const val EXTRA_TASK_LINE = "com.hiapps.hinotes.extra.TASK_LINE"
+
+        /** The state the tapped box asked for: true for a tick, false for clearing it. */
+        const val EXTRA_TASK_CHECKED = "com.hiapps.hinotes.extra.TASK_CHECKED"
 
         /**
          * Where a redraw is prepared.
@@ -179,8 +240,10 @@ class HiNotesWidgetProvider : AppWidgetProvider() {
 
             if (note == null) {
                 // Nothing is bound, the note it was bound to is gone, or the app has an unlock
-                // password: the card is drawn in the scheme's colour and holds nothing at all.
-                views.setViewVisibility(R.id.widget_title, View.GONE)
+                // password: the card is drawn in the scheme's colour and holds nothing at all. It is
+                // left this way whatever the title setting says, because an empty card has no title
+                // for that setting to be about.
+                views.setViewVisibility(R.id.widget_title, titleVisibility(settings, bound = false))
                 views.setViewVisibility(android.R.id.list, View.GONE)
                 // The tap is taken off the card rather than only left unset. The card was drawn a
                 // moment ago with a tap on it, so the drawing that follows a deletion says the tap
@@ -191,13 +254,17 @@ class HiNotesWidgetProvider : AppWidgetProvider() {
                 return views
             }
 
-            views.setViewVisibility(R.id.widget_title, View.VISIBLE)
+            // With the title switched off the card shows the note's body alone - see
+            // `widget_card.xml`, where the gap under the title belongs to the title.
+            views.setViewVisibility(R.id.widget_title, titleVisibility(settings, bound = true))
             views.setViewVisibility(android.R.id.list, View.VISIBLE)
-            views.setTextViewText(
-                R.id.widget_title,
-                note.displayTitle(app.getString(R.string.home_untitled)),
-            )
-            views.setTextColor(R.id.widget_title, style.title)
+            if (settings.widgetShowTitle) {
+                views.setTextViewText(
+                    R.id.widget_title,
+                    note.displayTitle(app.getString(R.string.home_untitled)),
+                )
+                views.setTextColor(R.id.widget_title, style.title)
+            }
 
             val open = openNote(app, note.id, widgetId)
             views.setRemoteAdapter(android.R.id.list, adapter(app, widgetId))
@@ -207,6 +274,16 @@ class HiNotesWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_card, open)
             return views
         }
+
+        /**
+         * Whether the title is drawn.
+         *
+         * The setting only answers that for a card that is showing a note: a card with nothing bound
+         * has no title to show either way, and its appearance is not a preference about titles. One
+         * place decides both cases, so the two drawings of a card cannot disagree about it.
+         */
+        private fun titleVisibility(settings: HiNotesSettings, bound: Boolean): Int =
+            if (bound && settings.widgetShowTitle) View.VISIBLE else View.GONE
 
         /**
          * The service intent the list asks for its items with.

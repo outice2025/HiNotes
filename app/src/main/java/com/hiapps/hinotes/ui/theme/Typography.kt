@@ -8,22 +8,44 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import com.hiapps.hinotes.R
 
 /**
- * User-selectable type scale, in three steps.
+ * User-selectable type scale, from 0.8x to 1.5x in tenths.
  *
- * Levels are named by ordinal (small → large) rather than against a device default, so the
- * slider reads the same on every phone. The multiplier applies on top of the Material 3 scale.
+ * Levels are named by the multiplier they apply rather than against a device default, so the slider
+ * reads the same on every phone, and the dialog labels each stop with that multiplier. The range
+ * covers both "smaller than the device's own type" and large print, and no two neighbouring stops
+ * are far enough apart to make the choice feel coarse. The multiplier applies on top of the
+ * Material 3 scale.
  */
 enum class AppFontScale(val multiplier: Float, val labelRes: Int) {
-    Small(0.9f, R.string.level_small),
-    Medium(1.0f, R.string.level_medium),
-    Large(1.15f, R.string.level_large),
+    Step08(0.8f, R.string.level_scale_08),
+    Step09(0.9f, R.string.level_scale_09),
+    Step10(1.0f, R.string.level_scale_10),
+    Step11(1.1f, R.string.level_scale_11),
+    Step12(1.2f, R.string.level_scale_12),
+    Step13(1.3f, R.string.level_scale_13),
+    Step14(1.4f, R.string.level_scale_14),
+    Step15(1.5f, R.string.level_scale_15),
     ;
 
     companion object {
-        val Default = Medium
+        val Default = Step10
 
+        /**
+         * Reads a stored key.
+         *
+         * The three names 1.0.8 wrote - `Small`, `Medium`, `Large` - are still understood, at the
+         * stop nearest the multiplier they stood for (0.9, 1.0 and 1.15). A settings file written
+         * by an older version, or a backup taken from one, therefore keeps the size the user chose
+         * instead of quietly falling back to the default.
+         */
         fun fromKey(key: String): AppFontScale =
-            entries.firstOrNull { it.name.equals(key, ignoreCase = true) } ?: Default
+            entries.firstOrNull { it.name.equals(key, ignoreCase = true) }
+                ?: when (key.lowercase()) {
+                    "small" -> Step09
+                    "medium" -> Step10
+                    "large" -> Step12
+                    else -> Default
+                }
     }
 }
 

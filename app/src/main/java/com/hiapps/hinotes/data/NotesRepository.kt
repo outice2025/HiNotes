@@ -15,6 +15,8 @@ import kotlinx.coroutines.withContext
  */
 class NotesRepository(context: Context) {
 
+    private val appContext = context.applicationContext
+
     private val database = NotesDatabase(context)
 
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
@@ -85,8 +87,9 @@ class NotesRepository(context: Context) {
         val trimmedTitle = note.title.trim()
         val isEmpty = trimmedTitle.isEmpty() && note.content.isBlank()
         if (isEmpty) {
-            database.delete(note.id)
-            _notes.value = sortNotes(database.all(), _sort.value)
+            // A note that is thrown away this way is removed exactly as a deleted one is, pictures
+            // and all: the row goes, so nothing is left that could ever show them again.
+            _notes.value = sortNotes(deleteNoteRow(note.id), _sort.value)
             return@withContext null
         }
         val stored = note.copy(
@@ -99,8 +102,60 @@ class NotesRepository(context: Context) {
     }
 
     suspend fun deleteNote(id: String) = withContext(Dispatchers.IO) {
-        database.delete(id)
+        _notes.value = sortNotes(deleteNoteRow(id), _sort.value)
+    }
+
+    /**
+     * Writes [content] into the note stored as [id], leaving its modified time alone.
+     *
+     * Ticking a task on a card is an edit of what the note says and is stored like any other, but the
+     * list that card stands in is ordered by that same modified time: updating it would jump the card
+     * to the top of the list under the finger that ticked it. The content is written and the time is
+     * kept, which is what lets a checklist be worked through from the home screen.
+     *
+     * @return the note as it is now stored, or null when there is no such note.
+     */
+    suspend fun replaceContent(id: String, content: String): Note? = withContext(Dispatchers.IO) {
+        val existing = database.byId(id) ?: return@withContext null
+        if (existing.content == content) return@withContext existing
+        val stored = existing.copy(content = content)
+        database.upsert(stored)
         _notes.value = sortNotes(database.all(), _sort.value)
+        stored
+    }
+
+    /**
+     * Removes the row for [id] together with the picture files only that note held.
+     *
+     * Every delete in the app comes through here - the editor's single note, the home screen's
+     * selection, and the note the editor throws away for being blank - because the pictures have to
+     * go in the same breath as the row: the note's text is the only record of which files it holds,
+     * so a row that is gone is a set of files nothing can ever name again. The addresses are read
+     * from the stored note rather than from whatever copy the caller has, since the working copy may
+     * have moved on since it was written and the file belongs to the text that is being removed.
+     *
+     * The file work is kept off the main thread by the callers, all of which already run on
+     * [Dispatchers.IO], and it is never allowed to fail the delete: a picture that cannot be removed
+     * is a picture left behind, and the renderer draws the address of a picture it cannot read - the
+     * note is what the user asked to be rid of.
+     *
+     * @return the notes that are left, in the active sort order.
+     */
+    private fun deleteNoteRow(id: String): List<Note> {
+        val removed = database.byId(id)
+        database.delete(id)
+        val remaining = database.all()
+        if (removed != null) {
+            // Whatever the removed note held, less whatever a note that is left still names: two
+            // notes can hold one address - duplicating a note copies its text, and the text is all
+            // there is - so the picture belongs to the note that is still there.
+            NoteImages.delete(
+                context = appContext,
+                addresses = NoteImages.addresses(removed.content),
+                keep = remaining.flatMap { NoteImages.addresses(it.content) },
+            )
+        }
+        return remaining
     }
 
     suspend fun setLocked(id: String, locked: Boolean) = withContext(Dispatchers.IO) {
@@ -115,9 +170,21 @@ class NotesRepository(context: Context) {
      * Pinning is not an edit of what the note says, so the modified time is deliberately left
      * alone: a note must not jump to the top of "last updated" merely because it was pinned.
      */
-    suspend fun setPinned(id: String, pinned: Boolean) = withContext(Dispatchers.IO) {
-        val existing = database.byId(id) ?: return@withContext
-        database.upsert(existing.copy(pinned = pinned))
+    suspend fun setPinned(id: String, pinned: Boolean) = setPinned(listOf(id), pinned)
+
+    /**
+     * Pins or unpins every note in [ids] as one change.
+     *
+     * A selection is pinned by one press, so it is one write and one new list: a write per note
+     * would re-read and re-sort the whole list once for each of them, and the home screen shows
+     * that as a list that re-flows a dozen times under the finger that pressed the button.
+     *
+     * Pinning is not an edit of what a note says, so no note's modified time is touched - see
+     * [database].
+     */
+    suspend fun setPinned(ids: Collection<String>, pinned: Boolean) = withContext(Dispatchers.IO) {
+        if (ids.isEmpty()) return@withContext
+        database.setPinned(ids, pinned)
         _notes.value = sortNotes(database.all(), _sort.value)
     }
 

@@ -1,8 +1,6 @@
 package com.hiapps.hinotes.ui.screens
 
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
@@ -23,6 +21,7 @@ import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.Backup
 import com.hiapps.hinotes.data.ImportResult
 import com.hiapps.hinotes.data.Note
+import com.hiapps.hinotes.data.NoteImages
 import com.hiapps.hinotes.data.NotesArchive
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.components.ConfirmDialog
@@ -340,19 +339,6 @@ fun BackupScreen(
 // ------------------------------------------------------------------------ helpers
 
 /**
- * The activity this composition is hosted by, or null when there is none.
- *
- * `LocalContext` is a [ContextWrapper] around the activity, not the activity itself, so the
- * wrappers are unwrapped one at a time and anything else - a service, a test host, a preview - is
- * reported as "no activity" instead of being cast and crashing.
- */
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
-
-/**
  * The name a picked document is shown under.
  *
  * A `content://` URI carries no file name of its own, so the provider that issued it is asked;
@@ -450,6 +436,12 @@ private suspend fun importSettings(
  * documents the export writes now - Markdown or plain text, whichever the editor was writing. The
  * zip is recognised by its signature rather than by the file name, so a renamed or re-extensioned
  * file still imports.
+ *
+ * A zip's pictures are put back into this app's own storage as the archive is read, under the very
+ * names the notes' addresses hold, so a restored note shows its pictures again rather than the
+ * addresses of files that were never here. A picture that is already on this device under that name
+ * is left alone, and one the archive does not carry costs the note nothing: its address stays in the
+ * text, which is what the renderer falls back to.
  */
 private suspend fun importNotes(
     context: Context,
@@ -462,8 +454,11 @@ private suspend fun importNotes(
             return ImportResult.Failure(context.getString(R.string.backup_import_unreadable, read.reason))
     }
     val notes: List<Note> = if (NotesArchive.looksLikeArchive(bytes)) {
-        NotesArchive.decode(bytes)
-            ?: return ImportResult.Failure(context.getString(R.string.backup_import_invalid_notes))
+        // Writing the pictures out is file work in among the reading, so both halves of an archive
+        // import run where every other file in this app is read and written.
+        withContext(Dispatchers.IO) {
+            NotesArchive.decode(bytes) { name, picture -> NoteImages.restore(context, name, picture) }
+        } ?: return ImportResult.Failure(context.getString(R.string.backup_import_invalid_notes))
     } else {
         Backup.decodeNotes(bytes.toString(Charsets.UTF_8))
             ?: return ImportResult.Failure(context.getString(R.string.backup_import_invalid_notes))

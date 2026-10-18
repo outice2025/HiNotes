@@ -77,7 +77,7 @@ fun EditorSettingsScreen(
     if (showFont) {
         FontSettingsDialog(
             title = stringResource(R.string.appearance_typography),
-            sizeTitle = stringResource(R.string.picker_font_size_note_title),
+            sizeTitle = stringResource(R.string.picker_font_size_title),
             weightTitle = stringResource(R.string.picker_weight_note_title),
             scale = settings.noteFontScale,
             weight = settings.noteFontWeight,

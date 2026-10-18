@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The widget body's justification, from API 26 onwards.
+
+      The body is filled to the same inset on both sides, and a chunk of it is one wrapped run of
+      text: without justification the last word of every line stops wherever it happens to fit, so
+      the right edge of the body is ragged while the card's padding holds the left one straight, and
+      the gap on the right reads as the wider of the two. Justifying the lines leaves only the last
+      line of each chunk short, which is where a reader expects a paragraph to end.
+
+      "inter_word" stretches the spaces between words rather than the words themselves, which is the
+      form that suits prose; the attribute itself arrived in API 26, and the item layouts are also
+      used below that, so the property is set here rather than in them - a layout naming an attribute
+      the platform does not know is a layout that fails to inflate. The names are the same as the base
+      file's, so a widget on API 26 or later gets these and an older one keeps the plain styles.
+
+      Justification never applies to the last line of a chunk, so a chunk that is a single short line
+      is still drawn as it was written.
+    -->
+    <style name="WidgetBody.Light" parent="">
+        <item name="android:justificationMode">inter_word</item>
+    </style>
+    <style name="WidgetBody.Regular" parent="">
+        <item name="android:justificationMode">inter_word</item>
+    </style>
+    <style name="WidgetBody.Medium" parent="">
+        <item name="android:justificationMode">inter_word</item>
+    </style>
+    <style name="WidgetBody.SemiBold" parent="">
+        <item name="android:justificationMode">inter_word</item>
+    </style>
+</resources>

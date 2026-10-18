@@ -28,9 +28,17 @@
         android:scaleType="fitXY"
         android:src="@drawable/widget_background" />
 
+    <!--
+      The card's content is centred against the card's own height, so a note with less in it than the
+      card can hold sits in the middle of the surface rather than at the top of an empty card - which
+      is what a card looks like with the title switched off and a few lines in it. A note longer than
+      the card fills it and the list scrolls as before, because the centring has nothing left to do
+      once the content is taller than the space.
+    -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:gravity="center_vertical"
         android:orientation="vertical"
         android:padding="16dp">
 
@@ -38,11 +46,19 @@
           The title carries the app's name until the first drawing arrives: on Android 12 and later
           this very layout is what the widget picker previews, and an empty card would preview as a
           blank. The note's own title replaces it the moment the widget is placed.
+
+          The gap between the title and the body is the title's own bottom margin rather than the
+          body's top margin, because the title can be switched off: a margin that belongs to it goes
+          with it, and the body then starts at the card's own inset instead of leaving the hole the
+          title used to fill. It is also what keeps the gap in place now that the body is centred: a
+          `GONE` view contributes no margin, so nothing is left above the centred body to push it off
+          centre.
         -->
         <TextView
             android:id="@+id/widget_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/app_name"
@@ -53,13 +69,18 @@
           The body is a collection, not a scrolling view: see HiNotesWidgetService. The scrollbar is
           switched off, so the text simply continues as the user swipes; the divider is removed so
           the chunks read as one note rather than as a list of them.
+
+          The list is measured at the height its items ask for rather than stretched to the card, so
+          that the card's own vertical centring has something to centre: a list stretched to the card
+          would start at its top and a short note would sit above the middle of the surface. A list
+          given an at-most height stops measuring its items once they have passed the room there is,
+          so one longer than the card is still measured at the card's height, fills it and scrolls
+          rather than walking every item it holds.
         -->
         <ListView
             android:id="@android:id/list"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginTop="8dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
             android:divider="@null"
             android:dividerHeight="0dp"
             android:scrollbars="none" />
