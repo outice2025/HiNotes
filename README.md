@@ -28,8 +28,7 @@ English · [简体中文](README.zh-CN.md)
 A simple, easy-to-use 100% FOSS note-taking app for Android, built with Jetpack Compose and
 Material 3 Expressive.
 
-Local-first: notes live in SQLite on the device, settings in DataStore. The app asks for no
-INTERNET permission.
+Local-first: notes and settings are kept on the device. The app asks for no INTERNET permission.
 
 ### Features
 
@@ -37,18 +36,11 @@ INTERNET permission.
 - Create, edit and delete notes.
 - Search titles and bodies; sort by updated, created or title.
 - A single-column list or a two-column staggered grid on the home screen.
-- Write notes in Markdown: headings, ordered and nested lists, task lists, quotes, tables, formulas,
-  code on a rounded background, links that open in the browser, emphasis, strikethrough, comments
-  and escapes.
-- Insert a picture from the gallery: the preview and the widget draw it, while the note itself holds
-  the address it is kept at, which is what the list cards show.
-- Long-press to select several notes and delete them together, or export just those.
+- Write notes in Markdown.
+- Show pictures.
+- Long-press to select several notes and act on them together.
 - Share a note as text or as a Markdown attachment.
-- A note can be locked to keep it from being edited: it is then shown the way a preview is shown,
-  the formatting toolbar is dropped and the mode switch is greyed out, while the note can still be
-  selected and deleted.
-- Pin a note to keep it in a run of its own above the rest, under a heading of its own, whatever the
-  sort order is.
+- Lock and pin notes.
 
 **Widget**
 - A home screen widget showing one note, chosen for each widget as it is added.
@@ -57,34 +49,33 @@ INTERNET permission.
 - Its title can be hidden, and the note then fills the whole card.
 - Drawn in the app's colour scheme, and follows the Markdown switch.
 - Its own font size and weight.
-- A card whose note has been deleted is drawn empty, and a press on it does nothing.
 
 **Editor**
-- Markdown source editing, and find in note: enter jumps to the next match and marks it, wrapping
-  round at the end.
-- The formatting toolbar is drawn while a note is being written; find in note sits beside Save,
-  above it.
-- Preview a note as Markdown.
+- Markdown editing and preview.
+- Find in note.
+- The formatting toolbar.
 - Autosave.
-- A properties sheet with the note's length and its created / modified times.
+- A properties sheet with the note's information.
 
 **Appearance**
-- Seven Material 3 colour schemes.
-- Wallpaper-derived dynamic colour.
-- OLED dark, and app-wide font size - 0.8x to 1.5x - and weight.
+- Material You colour schemes / dynamic colour.
+- OLED dark.
+- Font size and weight.
 
 **Backup**
-- Export and import settings files and note files - notes leave as `.md` files while Markdown is
-  on and as `.txt` files while it is off, together with the pictures they hold.
+- Export and import settings and notes.
 - Restore defaults.
 - Export a diagnostics report.
 
 **Privacy**
-- Screenshots, screen recording and casting can be blocked inside the app.
-- Password protection with PBKDF2-HMAC-SHA1.
+- No analytics, no tracking, no accounts.
+- Screen protection inside the app.
+- Password unlock for the app.
+- Notes and settings stay on the device.
+- The app makes no network request.
 
 **Language**
-- English and Simplified Chinese, chosen inside the app.
+- English and Simplified Chinese.
 
 ### Building
 
@@ -141,12 +132,6 @@ python tools/verify/check_migrations.py  # every notes-database upgrade path, ag
 python tools/verify/audit_resources.py   # string, symbol and drawable references
 python tools/verify/check_icon_geometry.py
 ```
-
-### Privacy
-
-- No analytics, no tracking, no accounts.
-- Notes and settings stay on the device.
-- The app makes no network request of its own.
 
 ### Licence
 
