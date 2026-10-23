@@ -9,7 +9,9 @@
     <p>A simple, easy-to-use 100% FOSS note app</p>
 </div>
 
+<div align="center">
 English · [简体中文](README.zh-CN.md)
+</div>
 
 ---
 
