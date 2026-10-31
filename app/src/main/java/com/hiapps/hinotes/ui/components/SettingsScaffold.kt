@@ -126,8 +126,13 @@ private val BackButtonSize = 44.dp
 /** Height of the bar the title ends up in: the back button and the little margin above it. */
 private val BarHeight = BackButtonTop + BackButtonSize
 
-/** Where the title rests before the page is scrolled, and how big it is there. */
-private val TitleStartTop = BarHeight + 12.dp
+/**
+ * Where the title rests before the page is scrolled, and how big it is there.
+ *
+ * The 20dp under the bar is breathing room above the heading: a settings page opens with its own
+ * name, and the name should stand clear of the bar rather than hang off the back button.
+ */
+private val TitleStartTop = BarHeight + 20.dp
 private val TitleStartSize = 28.sp
 
 /** The size the title takes once it is in the bar, and the line it is set on there. */
@@ -137,10 +142,19 @@ private val TitleEndLine = 28.sp
 /** The one line height the large title is laid out in, so it cannot jump as it fades. */
 private val TitleStartLine = 36.sp
 
-/** The gap under the title, before the first row. */
-private val TitleBottomGap = 36.dp
+/**
+ * The gap under the title, before the first row.
+ *
+ * Generous by design: the heading is the page's own header, and the first row should read as the
+ * list beginning rather than as the heading's next line.
+ */
+private val TitleBottomGap = 44.dp
 
-/** Room the scrolling content leaves for the expanded title. */
+/**
+ * Room the scrolling content leaves for the expanded title: the room above it, its own one-line box
+ * and the gap under it. [TitleStartTop] and [TitleBottomGap] both feed this, so enlarging either
+ * moves the first row down with the title instead of leaving the heading to overlap it.
+ */
 private val ExpandedHeader = TitleStartTop + 36.dp + TitleBottomGap
 
 /**

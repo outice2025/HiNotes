@@ -1,5 +1,8 @@
 package com.hiapps.hinotes.ui.components
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -23,8 +26,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +66,12 @@ internal fun PickerDialog(
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // The content below fills the dialog window so the card can keep the reference's edge margins.
+    // That also defeats the dialog's own outside-click handling, which measures the composition's
+    // bounds: the empty area around the card is still "inside". The tap is handled here instead,
+    // and `dismiss` keeps that handler current without restarting it on every recomposition.
+    val dismiss by rememberUpdatedState(onDismiss)
+
     // A platform-width dialog would ignore the reference's edge margins: the default window insets
     // the content to at most 560dp and centres it, while the reference is the screen minus 28dp.
     Dialog(
@@ -69,6 +81,11 @@ internal fun PickerDialog(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
+                // Placed before the padding so the 28dp/24dp gaps around the card count too. A
+                // tap here means the same as 取消: close, leaving an applied choice in place.
+                .pointerInput(Unit) {
+                    detectTapGestures { dismiss() }
+                }
                 .padding(horizontal = PickerSideMargin, vertical = PickerVerticalMargin),
             contentAlignment = Alignment.Center,
         ) {
@@ -76,7 +93,12 @@ internal fun PickerDialog(
                 modifier = Modifier
                     .widthIn(max = PickerMaxWidth)
                     .fillMaxWidth()
-                    .heightIn(max = maxHeight),
+                    .heightIn(max = maxHeight)
+                    // A tap on the card is not a dismissal: swallow it before the handler around
+                    // the card sees it. Rows and the cancel button are hit first and still work.
+                    .pointerInput(Unit) {
+                        awaitEachGesture { awaitFirstDown().consume() }
+                    },
                 shape = RoundedCornerShape(HiNotesCorners.Dialog),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {

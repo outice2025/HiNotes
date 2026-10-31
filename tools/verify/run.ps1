@@ -183,6 +183,11 @@ Invoke-Check 'ui.screens.DocumentPickChecks' (Join-Path $PSScriptRoot 'DocumentP
 
 Invoke-Check 'ui.screens.EditorChecks' (Join-Path $PSScriptRoot 'EditorChecks.kt') @() $androidJar
 
+# The app shell around the widget: the build the checks were revised for, the picker frame both
+# choice lists share, the room a settings page keeps around its heading, the wallpaper signals a
+# card follows, and the lifecycle triggers that repaint a card the process missed a change for.
+Invoke-Check 'AppShellChecks' (Join-Path $PSScriptRoot 'AppShellChecks.kt') @()
+
 Write-Host ""
 if ($failures -eq 0) {
     Write-Host "verify: all checks passed" -ForegroundColor Green

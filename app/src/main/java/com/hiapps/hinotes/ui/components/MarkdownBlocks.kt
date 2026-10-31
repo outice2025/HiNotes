@@ -44,6 +44,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
+ * The breath a run of prose is given before the block that follows it when the run ends on a heading.
+ *
+ * The renderer folds the blank line the author writes under a heading, and inside one run of prose
+ * the heading's own line box is what separates it from the next line (about 3.6sp at the default
+ * size). A block that starts a new run has no leading of its own to carry that separation - a task
+ * row starts at its box, a picture at its frame, a table at its border, a rule at its line - so the
+ * run keeps the smallest gap that does not look like a collision. One dp is that gap: enough to keep
+ * a heading from sitting flush against the block under it, small enough to leave the spacing the
+ * design asks for. It is given as layout padding rather than through the heading's line height so
+ * the text layout, and the rectangles a found match is brought into view with, stay exactly as
+ * rendered.
+ */
+private val HeadingBreath = 1.dp
+
+/**
  * A note drawn the way a page is: one block after another.
  *
  * The renderer already splits a note into what a page shows - prose, a task line, a rule, a table, a
@@ -70,6 +85,10 @@ import kotlinx.coroutines.withContext
  * @param onTextLayout called with the layout of each prose block's text, so a page can find the
  *   rectangle a match is drawn in and scroll to it; null for a card.
  * @param tableReveal the row of the table a page has to scroll into view, or null for a card.
+ * @param moreBlocksAfter true when the caller knows another block follows the last one in [blocks],
+ *   even though it passes one block at a time: the reading mode draws each block on its own so a
+ *   found match can be brought into view, and the breath a heading is given before the next block
+ *   has to be given there too.
  */
 @Composable
 internal fun MarkdownBlocks(
@@ -80,13 +99,25 @@ internal fun MarkdownBlocks(
     pictureAspect: Float? = null,
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
     tableReveal: TableReveal? = null,
+    moreBlocksAfter: Boolean = false,
 ) {
     Column(modifier.fillMaxWidth()) {
-        blocks.forEach { block ->
+        blocks.forEachIndexed { position, block ->
+            // Whether a block follows this one: in this call, or known to the caller that draws the
+            // blocks one at a time.
+            val followedByBlock = position < blocks.lastIndex || moreBlocksAfter
             when (block) {
                 is Markdown.PreviewBlock.Prose -> MarkdownText(
                     text = block.text,
                     style = style,
+                    // The blank line under a heading is folded by the renderer, so a run that ends
+                    // on one and is followed by a block carries the breath the folded line used to
+                    // give it - see [HeadingBreath].
+                    modifier = if (followedByBlock && Markdown.endsWithHeading(block.text)) {
+                        Modifier.padding(bottom = HeadingBreath)
+                    } else {
+                        Modifier
+                    },
                     onTextLayout = onTextLayout,
                 )
 
@@ -322,7 +353,12 @@ private fun MarkdownTableRow(
                 },
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 4.dp),
+                    // Six dp rather than four: on a narrow screen a table of three or more columns
+                    // put a cell's first and last characters against the rules between the
+                    // columns, so the grid read as one run of text with lines drawn through it. Two
+                    // columns keep their look, and the cell still takes its equal share of the
+                    // width - only the gap between the writing and the rule grows.
+                    .padding(horizontal = 6.dp),
             )
         }
     }

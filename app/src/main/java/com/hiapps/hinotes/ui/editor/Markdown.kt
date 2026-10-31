@@ -156,6 +156,22 @@ object Markdown {
     )
 
     /**
+     * Whether [text] ends with a heading.
+     *
+     * A page gives the run of prose that ends with a heading a small breath before the block that
+     * follows it. The blank line the author writes under a heading is folded by [buildBody], and
+     * inside one run of prose the heading's line box is the separation to the next line; a block
+     * that starts a new run - a task row, a picture, a table, a rule - has no leading of its own to
+     * carry that separation, so the caller adds it where it can be laid out.
+     *
+     * False when the heading is not the run's last line, and false when the run ends on a line
+     * break: a run that ends in a blank line ends in no heading at all.
+     */
+    internal fun endsWithHeading(text: AnnotatedString): Boolean =
+        text.length > 0 &&
+            text.getStringAnnotations(HEADING_TAG, 0, text.length).any { it.end == text.length }
+
+    /**
      * The annotation marking a run of code, so a caller can draw the rounded background a text run
      * cannot draw for itself. The value is [CODE_BLOCK] for a fenced block, [CODE_INLINE] for a span.
      */
@@ -400,7 +416,13 @@ object Markdown {
 
         fun flushProse() {
             if (prose.isEmpty()) return
-            out += PreviewBlock.Prose(render(prose.toString(), linkColor))
+            // The run keeps a break after its last line so it reads back as the lines it was
+            // written as, but at a block boundary that break is drawn as a blank line of its own -
+            // one body line of nothing between the prose and the block after it, which no block
+            // asked for. It is cut here, before the run is rendered: the cards and the reading mode
+            // both draw through this preview, and both showed that extra line. A blank line the
+            // author left inside the run is untouched; only the trailing breaks of the run go.
+            out += PreviewBlock.Prose(render(prose.toString().trimEnd('\n'), linkColor))
             prose.setLength(0)
         }
 
@@ -663,6 +685,9 @@ object Markdown {
             var inCodeBlock = false
             var inMathBlock = false
             var started = false
+            // Whether the last line that put something on the page was a heading, so the blank line
+            // a heading is conventionally followed by can be told from a blank line the author kept.
+            var lastWasHeading = false
             var index = 0
 
             fun lineBreak() {
@@ -676,6 +701,22 @@ object Markdown {
                     index++
                     continue
                 }
+                // Markdown asks for a blank line under a heading, and a blank line of source is a
+                // whole empty line of drawn text: kept as one, it put a body line's height of
+                // nothing below every heading. It is folded away when content follows it, because
+                // the heading's own line box is the separation that was meant - it is measured
+                // against the heading's glyphs instead of against the body's line. The fold skips
+                // the whole run of blank lines in one jump, so a pasted run of them cannot make the
+                // scan quadratic. A blank line between two headings is kept: those are two banners,
+                // and the line the author left is the section break between what they open.
+                if (lastWasHeading && line.isBlank()) {
+                    val next = nextContentIndex(lines, index + 1) ?: break
+                    val nextLine = lines[next]
+                    if (nextLine != null && !nextLine.startsWithHeading()) {
+                        index = next
+                        continue
+                    }
+                }
                 val fence = isCodeFence(line)
                 val formulaFence = isMathFence(line)
                 val table = if (!opensBlocks(line, inCodeBlock, inMathBlock)) {
@@ -688,39 +729,72 @@ object Markdown {
                 when {
                     table != null -> {
                         appendTable(table, options)
+                        lastWasHeading = false
                         index += table.lineCount
                         continue
                     }
 
                     // The fence itself is not shown, but the break written above keeps its line.
-                    fence -> inCodeBlock = !inCodeBlock
+                    fence -> {
+                        inCodeBlock = !inCodeBlock
+                        lastWasHeading = false
+                    }
 
-                    inCodeBlock -> withCode(CODE_BLOCK) {
-                        withStyle(
-                            SpanStyle(
-                                fontFamily = FontFamily.Monospace,
-                                background = Color.Transparent,
-                            )
-                        ) { append(line) }
+                    inCodeBlock -> {
+                        withCode(CODE_BLOCK) {
+                            withStyle(
+                                SpanStyle(
+                                    fontFamily = FontFamily.Monospace,
+                                    background = Color.Transparent,
+                                )
+                            ) { append(line) }
+                        }
+                        lastWasHeading = false
                     }
 
                     // A lone `$$` fences the formula below it the same way, so a multi-line formula
                     // keeps the lines the author gave it instead of being run into the prose.
-                    formulaFence -> inMathBlock = !inMathBlock
+                    formulaFence -> {
+                        inMathBlock = !inMathBlock
+                        lastWasHeading = false
+                    }
 
                     inMathBlock -> {
                         val start = length
                         withStyle(MATH_STYLE) { append(line) }
                         addStringAnnotation(MATH_TAG, MATH_BLOCK, start, length)
+                        lastWasHeading = false
                     }
 
-                    else -> appendInline(line, options, index)
+                    else -> {
+                        appendInline(line, options, index)
+                        lastWasHeading = line.startsWithHeading()
+                    }
                 }
                 index++
             }
         }
         return Body(text, options.marks)
     }
+
+    /**
+     * The position of the next line from [from] on that will be drawn, or null when the run holds
+     * none.
+     *
+     * A comment-only line reports null, and a blank line draws nothing either: the rule for folding
+     * a blank line after a heading has to look past both to the line it is really making room for.
+     */
+    private fun nextContentIndex(lines: List<String?>, from: Int): Int? {
+        for (position in from until lines.size) {
+            val line = lines[position] ?: continue
+            if (line.isBlank()) continue
+            return position
+        }
+        return null
+    }
+
+    /** Whether [this] is a heading line: the first thing [appendInline] asks of a line. */
+    private fun String.startsWithHeading(): Boolean = headingLevel(trimStart()) != 0
 
     /** One line's worth of inline markup, without the block-level treatment [render] adds. */
     private fun renderInline(text: String, options: Options): AnnotatedString =

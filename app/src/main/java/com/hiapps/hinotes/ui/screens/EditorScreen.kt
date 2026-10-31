@@ -1091,7 +1091,9 @@ fun EditorScreen(
             Box {
                 BasicTextField(
                     value = titleValue,
-                    onValueChange = { titleValue = titleClipboard.guard(it) },
+                    onValueChange = {
+                        titleValue = titleClipboard.guard(it)
+                    },
                     singleLine = true,
                     // Read-only in either way of reading the note, because both promise that what is
                     // on screen cannot be changed by typing into it.
@@ -1311,6 +1313,10 @@ fun EditorScreen(
                                         } else {
                                             null
                                         },
+                                        // The page draws its blocks one at a time, so this is
+                                        // how the painter knows another block follows this one:
+                                        // a run ending on a heading keeps its breath before it.
+                                        moreBlocksAfter = index < markedBlocks.lastIndex,
                                     )
                                 }
                             }

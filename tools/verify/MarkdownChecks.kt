@@ -119,7 +119,9 @@ object MarkdownChecks {
         check("second task keeps its line number", secondTask.line == 2, "${secondTask.line}")
         check("second task is checked", secondTask.checked)
         val firstProse = (blocks[0] as Markdown.PreviewBlock.Prose).text.text
-        check("prose keeps the whole run", firstProse == "intro\n", "'$firstProse'")
+        // The block break after a run is not part of its text: a trailing newline would draw an
+        // empty line between the prose and whatever block comes next.
+        check("prose drops the block break", firstProse == "intro", "'$firstProse'")
 
         val checkedTask = Markdown.previewBlocks("- [x] done")[0] as Markdown.PreviewBlock.Task
         check("checked task reports checked", checkedTask.checked)
@@ -718,6 +720,12 @@ object MarkdownChecks {
             scales.all { it.lineHeight > it.size },
             "${scales.map { it.lineHeight to it.size }}",
         )
+        check(
+            "the scale table keeps the reference sizes",
+            scales.map { it.size } == listOf(1.6f, 1.4f, 1.2f) &&
+                scales.map { it.lineHeight } == listOf(2.0f, 1.8f, 1.6f),
+            "${scales.map { it.size to it.lineHeight }}",
+        )
         // The widget draws the same ranks from the same marks; its spanned text is an Android type
         // this desktop check cannot run, so the wiring is asserted in the source.
         val widgetText = File("app/src/main/java/com/hiapps/hinotes/widget/WidgetText.kt").readText()
@@ -727,6 +735,161 @@ object MarkdownChecks {
                 widgetText.contains("Markdown.HEADING_SCALES") &&
                 widgetText.contains("RelativeSizeSpan("),
             "a heading that keeps a page-only size reads wrong on the home screen",
+        )
+
+        // A blank line under a heading is a writing convention, not a line of the note: kept as a
+        // drawn line it was a body-height gap under every heading. The renderer folds it away when
+        // content follows, and keeps it between two headings, where it is the section break the
+        // author left. A run of prose that ends on a heading is then given a small breath by the
+        // painter, because a block that follows it starts a new run with no leading of its own.
+        println("Markdown heading spacing")
+
+        val foldedHeading = Markdown.render("# one\n\nbody").text
+        check(
+            "a blank line under a heading draws no line of its own",
+            foldedHeading == "one\nbody",
+            "'$foldedHeading'",
+        )
+        val blankRun = Markdown.render("# one\n\n\n\nbody").text
+        check(
+            "a run of blank lines under a heading folds in one step",
+            blankRun == "one\nbody",
+            "'$blankRun'",
+        )
+        val headingGap = Markdown.render("# a\n\n## b").text
+        check(
+            "the blank line between two headings is kept",
+            headingGap == "a\n\nb",
+            "'$headingGap'",
+        )
+        val gapAboveHeading = Markdown.render("body\n\n# one").text
+        check(
+            "a blank line above a heading is kept",
+            gapAboveHeading == "body\n\none",
+            "'$gapAboveHeading'",
+        )
+        val fencedHash = Markdown.render("```\n# not a heading\n```")
+        check(
+            "a hash inside a fence is not a heading",
+            fencedHash.text.contains("# not a heading") &&
+                fencedHash.getStringAnnotations(Markdown.HEADING_TAG, 0, fencedHash.length).isEmpty(),
+            "'${fencedHash.text}'",
+        )
+
+        // A block that ends the heading's run starts a new line box; the run is what a painter can
+        // give a breath, and it is only a breathing space when the run really ends on the heading.
+        val headingTask = Markdown.previewBlocks("# h\n\n- [ ] a")
+        check(
+            "a task under a heading follows the heading's run",
+            headingTask.size == 2 &&
+                headingTask[0] is Markdown.PreviewBlock.Prose &&
+                headingTask[1] is Markdown.PreviewBlock.Task &&
+                Markdown.endsWithHeading((headingTask[0] as Markdown.PreviewBlock.Prose).text),
+            "$headingTask",
+        )
+        val headingTable = Markdown.previewBlocks("# h\n\n| a | b |\n| --- | --- |")
+        check(
+            "a table under a heading follows the heading's run",
+            headingTable.size == 2 &&
+                headingTable[1] is Markdown.PreviewBlock.Table &&
+                Markdown.endsWithHeading((headingTable[0] as Markdown.PreviewBlock.Prose).text),
+            "$headingTable",
+        )
+        val headingRule = Markdown.previewBlocks("# h\n\n---")
+        check(
+            "a rule under a heading follows the heading's run",
+            headingRule.size == 2 && headingRule[1] is Markdown.PreviewBlock.Divider,
+            "$headingRule",
+        )
+        val headingPicture = Markdown.previewBlocks("# h\n\n![](hinotes-image://x.png)")
+        check(
+            "a picture under a heading follows the heading's run",
+            headingPicture.size == 2 && headingPicture[1] is Markdown.PreviewBlock.Image,
+            "$headingPicture",
+        )
+        // A list is prose, so its lines join the heading's own run: the blank line the author wrote
+        // under the heading is folded inside that render, not left as an empty paragraph.
+        val headingList = Markdown.previewBlocks("# h\n\n- a")
+        check(
+            "a list under a heading stays in the same run",
+            headingList.size == 1 && headingList.single() is Markdown.PreviewBlock.Prose,
+            "$headingList",
+        )
+        val headingListText = (headingList.single() as Markdown.PreviewBlock.Prose).text.text
+        check(
+            "that run draws no empty line under the heading",
+            headingListText == "h\n•  a",
+            "'$headingListText'",
+        )
+
+        // The run keeps a break after every line but not after its last: at a block boundary that
+        // break is drawn as an empty line of prose between the run and the block.
+        val boundaries = listOf(
+            "intro\n\n- [ ] a",
+            "intro\n\n| a | b |\n| --- | --- |",
+            "intro\n\n---",
+            "intro\n\n![](hinotes-image://x.png)",
+        )
+        check(
+            "a run drops its trailing break at every block boundary",
+            boundaries.all { source ->
+                val first = Markdown.previewBlocks(source).firstOrNull()
+                first is Markdown.PreviewBlock.Prose && first.text.text == "intro"
+            },
+            "${boundaries.map { Markdown.previewBlocks(it) }}",
+        )
+
+        check(
+            "a run that ends on a heading is recognised",
+            Markdown.endsWithHeading(Markdown.render("# h")),
+            "the painter's breath is added from this answer",
+        )
+        check(
+            "a run with a line after the heading is not",
+            !Markdown.endsWithHeading(Markdown.render("# h\nbody")),
+        )
+        check(
+            "an empty run ends on no heading",
+            !Markdown.endsWithHeading(Markdown.render("")),
+        )
+
+        // The painter's side: a 1dp breath under a run that ends on a heading, added only where the
+        // caller knows another block follows - the reading page draws one block at a time and has to
+        // say so.
+        val spacingSource =
+            File("app/src/main/java/com/hiapps/hinotes/ui/editor/Markdown.kt").readText()
+        check(
+            "the renderer folds a heading's blank line and drops a run's trailing break",
+            spacingSource.contains("var lastWasHeading = false") &&
+                spacingSource.contains("nextContentIndex(") &&
+                spacingSource.contains("startsWithHeading()") &&
+                spacingSource.contains("trimEnd('\\n')"),
+            "the fold is what keeps a body line of nothing from being drawn under every heading",
+        )
+        check(
+            "a run ending on a heading is recognised from its mark",
+            spacingSource.contains("internal fun endsWithHeading(text: AnnotatedString)") &&
+                spacingSource.contains("it.end == text.length"),
+            "the answer has to come from the heading's annotation, not the text's ending",
+        )
+        val headingBlocksSource =
+            File("app/src/main/java/com/hiapps/hinotes/ui/components/MarkdownBlocks.kt").readText()
+        check(
+            "the painter gives a heading-ended run its 1dp breath",
+            headingBlocksSource.contains("private val HeadingBreath = 1.dp") &&
+                headingBlocksSource.contains(
+                    "val followedByBlock = position < blocks.lastIndex || moreBlocksAfter"
+                ) &&
+                headingBlocksSource.contains("Markdown.endsWithHeading(block.text)") &&
+                headingBlocksSource.contains("Modifier.padding(bottom = HeadingBreath)"),
+            "the breath is only added where another block follows the heading",
+        )
+        val readingPageSource =
+            File("app/src/main/java/com/hiapps/hinotes/ui/screens/EditorScreen.kt").readText()
+        check(
+            "the reading page says another block follows",
+            readingPageSource.contains("moreBlocksAfter = index < markedBlocks.lastIndex"),
+            "the page draws its blocks one at a time, so the painter cannot count them",
         )
 
         // A display formula is not Markdown inside: a line in it that looks like a rule, a table or a
@@ -786,6 +949,15 @@ object MarkdownChecks {
         check(
             "the header and the rows keep their horizontal rules",
             blocksSource.contains("HorizontalDivider(color = outline)"),
+        )
+        // A cell that sits on the column rule reads as the rule crossing its own text.
+        val tableRowStart = blocksSource.indexOf("private fun MarkdownTableRow(")
+        val cellPadding = blocksSource.indexOf(".padding(horizontal = 6.dp)")
+        check(
+            "a cell keeps its room from the column rule",
+            tableRowStart >= 0 && cellPadding > tableRowStart &&
+                !blocksSource.contains(".padding(horizontal = 4.dp)"),
+            "the rule and the text must not touch",
         )
 
         // A page that has to scroll to a found match needs two hooks this drawing offers and a card
