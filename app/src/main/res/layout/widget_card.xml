@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The widget's card: a rounded surface carrying the note's title and its scrolling body.
+
+  The surface is a view of its own rather than the root's own background, because that is what lets
+  the card keep its rounded corners on every version the app supports (see HiNotesWidgetProvider).
+  Every colour here is written again at runtime from the app's own colour scheme (see
+  WidgetStyle.kt), so the values below are only the state before the first drawing arrives - which
+  is a moment, because the card is drawn as soon as it is placed (see HiNotesWidgetProvider). The
+  title is not part of the widget's type setting: the app's own note font settings apply to note
+  content, and a card's title is drawn in the card's own style.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_card"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!--
+      The card's fill, stretched to whatever size the card is placed at: a shape has no intrinsic
+      size, so the corners keep the radius the app's own large surfaces use rather than being scaled
+      with the card. It is decoration, so it is kept out of the accessibility tree.
+    -->
+    <ImageView
+        android:id="@+id/widget_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_background" />
+
+    <!--
+      The card's content starts at the card's own top-left corner, whatever it holds: a card is a
+      window onto the beginning of a note, so its first line is at the top of the surface rather
+      than floating in the middle of an empty one. The content is pulled to the top rather than
+      centred, which is what "the note always starts at its first line" means for a note shorter
+      than the card.
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="top"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!--
+          The title carries the app's name until the first drawing arrives: on Android 12 and later
+          this very layout is what the widget picker previews, and an empty card would preview as a
+          blank. The note's own title replaces it the moment the widget is placed.
+
+          The gap between the title and the body is the title's own bottom margin rather than the
+          body's top margin, because the title can be switched off: a margin that belongs to it goes
+          with it, and the body then starts at the card's own inset instead of leaving the hole the
+          title used to fill. It is also what keeps the gap in place now that the body is centred: a
+          `GONE` view contributes no margin, so nothing is left above the centred body to push it off
+          centre.
+        -->
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/app_name"
+            android:textColor="#FF000000"
+            android:textSize="16sp" />
+
+        <!--
+          The body is a collection, not a scrolling view: see HiNotesWidgetService. The scrollbar is
+          switched off, so the text simply continues as the user swipes; the divider is removed so
+          the chunks read as one note rather than as a list of them.
+
+          The list is measured at the height its items ask for rather than stretched to the card, so
+          that a note shorter than the card keeps its own height under the title instead of being
+          stretched into a list of empty space. A list given an at-most height stops measuring its
+          items once they have passed the room there is, so one longer than the card is still
+          measured at the height left for it, fills it and scrolls rather than walking every item.
+        -->
+        <ListView
+            android:id="@android:id/list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:scrollbars="none" />
+
+    </LinearLayout>
+
+</FrameLayout>

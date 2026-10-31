@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      No INTERNET permission: the app makes no network request of its own. "Check for updates" on
+      the About screen opens the project's releases page in a browser, which is the browser's
+      request rather than the app's.
+    -->
+
+    <!--
+      Declared so the biometric prompt can run; a normal permission with no runtime prompt.
+    -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!--
+      androidx.biometric declares USE_FINGERPRINT in its own manifest for the API 23-27 fallback
+      path, so it reaches the merged manifest without being asked for here. The app offers a
+      biometric prompt rather than a fingerprint switch, so the declaration is removed again
+      instead of shipping as a permission the app itself never names.
+    -->
+    <uses-permission
+        android:name="android.permission.USE_FINGERPRINT"
+        tools:node="remove" />
+
+    <application
+        android:name=".HiNotesApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.HiNotes"
+        android:enableOnBackInvokedCallback="false"
+        tools:targetApi="36">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale|locale|layoutDirection"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.HiNotes">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!--
+          The home screen widget. The receiver is not exported: only the system's app widget
+          service sends it anything, and it does so by component rather than by broadcast.
+
+          A light/dark switch has to repaint every card, but a manifest-declared receiver is never
+          handed ACTION_CONFIGURATION_CHANGED. The application hears the change instead (see
+          HiNotesApplication), and the activity hears it from its own `configChanges`.
+        -->
+        <receiver
+            android:name=".widget.HiNotesWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/hi_notes_widget_info" />
+        </receiver>
+
+        <!-- The widget's scrolling body; only the widget host may bind to it. -->
+        <service
+            android:name=".widget.HiNotesWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <!--
+          What a tap on one of a card's rows opens: it reads the note a row asked to open, or the
+          task line a box asked to tick, and finishes without showing anything. It is reachable only
+          through the card's own pending intent, so it is not exported. It shares the app's own task
+          affinity, so a tap on a card whose app is already open lands in that app's task rather than
+          in a second one of its own.
+        -->
+        <activity
+            android:name=".widget.WidgetTapActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.HiNotes.Trampoline" />
+
+        <!--
+          The note picker the host opens when a widget is placed. It is exported because the
+          launcher, not this app, starts it, and it is the only entry point into the app that is.
+        -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.HiNotes">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

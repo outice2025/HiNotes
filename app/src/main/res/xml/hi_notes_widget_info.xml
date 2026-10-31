@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The widget's declaration.
+
+  `resizeMode` is both directions, so the card can be dragged to whatever shape the home screen has
+  room for; the text reflows and the list simply shows more of the note. It is placed at two cells by
+  one, which is the smallest size a title and a line of a note fit in, and grows from there.
+
+  `updatePeriodMillis` is zero: the app does no work in the background, so there is nothing for the
+  platform to wake it up for. A card is drawn when it is placed, when the host measures or resizes
+  it, when the app is told the configuration changed while it is alive, and whenever the note or the
+  appearance it shows changes.
+
+  `configure` is the note picker, which is why a widget always knows which note it shows. The
+  preview is the layout itself, so the picker shows the real card rather than a picture of one.
+
+  `description`, `previewLayout` and the target cell size are API 31 additions: an older platform
+  ignores them, which the target API marking says in a way the linter can read.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:configure="com.hiapps.hinotes.widget.WidgetConfigActivity"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/widget_card"
+    android:minHeight="40dp"
+    android:minWidth="110dp"
+    android:previewLayout="@layout/widget_card"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="1"
+    android:targetCellWidth="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    tools:targetApi="31" />

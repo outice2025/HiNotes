@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One chunk of the note's body at the regular weight; see widget_item_light.xml for why there is one
+  layout per weight, and why a chunk is a row with a box in it.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_item"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="top"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/widget_box"
+        android:layout_width="20dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginEnd="8dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/widget_chunk"
+        style="@style/WidgetBody.Regular"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:lineSpacingExtra="4dp"
+        android:lineSpacingMultiplier="1.4"
+        android:textColor="#FF000000"
+        android:textSize="14sp" />
+
+
+    <!--
+      A picture the note holds. It is hidden for every item that is text: a picture cannot travel in
+      the text a widget hands the launcher, so it gets an item of its own and this view draws it.
+    -->
+    <ImageView
+        android:id="@+id/widget_picture"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+</LinearLayout>

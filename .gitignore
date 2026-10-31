@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+*.log
+
+# Archived release APKs (build output kept outside build/)
+releases/
+
+# A build output that escaped build/; the archives above are the ones worth keeping
+*.apk
+*.aab
+
+# Android SDK location (machine-specific)
+local.properties
+
+# Release signing material - never commit these
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Python bytecode from the tools in tools/
+__pycache__/
+*.pyc

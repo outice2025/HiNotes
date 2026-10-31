@@ -1,0 +1,23 @@
+# Line endings.
+#
+# Text is stored as LF in the repository whatever the machine's core.autocrlf is, so a tree cloned
+# on Windows and a tree cloned on Linux produce the same commits and the same diffs. Without this
+# every file in a Windows-authored repository arrives with CRLF and the first commit made from
+# another machine rewrites the whole tree.
+* text=auto
+
+# Windows scripts keep native line endings on checkout.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Assets and archives the text filters must never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ttf binary
+*.jar binary
+*.jks binary
+*.keystore binary
+*.apk binary

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The widget body's type weight, from API 28 onwards.
+
+      `textFontWeight` picks a weight out of a variable font's axis, so the picker's four stops are
+      four genuinely different weights rather than two. The names are the same as the base file's, so
+      a widget on API 28 or later gets these and an older one keeps the normal/bold pair.
+    -->
+    <style name="WidgetBody.Light" parent="">
+        <item name="android:textFontWeight">300</item>
+    </style>
+    <style name="WidgetBody.Regular" parent="">
+        <item name="android:textFontWeight">400</item>
+    </style>
+    <style name="WidgetBody.Medium" parent="">
+        <item name="android:textFontWeight">500</item>
+    </style>
+    <style name="WidgetBody.SemiBold" parent="">
+        <item name="android:textFontWeight">600</item>
+    </style>
+</resources>

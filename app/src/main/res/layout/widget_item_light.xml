@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One chunk of the note's body, at the weight the widget's own type setting asks for.
+
+  There is a layout per weight because a RemoteViews cannot be handed a `Typeface`, and the size and
+  colour are set at runtime on top of this. The line spacing is a 1.4 multiplier, close to the app's
+  own leading, so a paragraph reads at the same rhythm on the home screen as it does in the editor.
+  The size and colour below are only what the launcher draws before the first item arrives - the
+  runtime values are what is shown.
+
+  A chunk is a row rather than a bare text view because a task line draws its box *beside* its text,
+  the way the editor's checklist does, and a box drawn inside the text cannot be tapped on its own.
+  The box is hidden for a chunk that is prose, so an ordinary paragraph starts at the card's own
+  inset; the gap between the two is the box's own end margin, which goes with it when it is hidden.
+
+  The box is the one a card draws beside a task: a 20dp square, with the same 8dp gap before the
+  item's text. It is drawn at that fixed size rather than scaled with the type setting, because the
+  composed checkbox it has to look like keeps one size whatever the note's text size is. A box that
+  grew with the body looked like a second style of checkbox beside a card's own.
+
+  The box stands on the item's *first* line, as it does in the app's own task row: the picture is
+  pinned to the top of the row instead of being centred on it, and its bitmap is taller than the
+  square - the square sits in the middle of a band one line of the body occupies - so an item that
+  wraps onto several lines still shows its box beside the line it starts on. The band, and the gap a
+  task line keeps above and below its text, are worked out at runtime in `WidgetItems`.
+
+  That gap is added at runtime to a task's text view rather than declared here, so it separates two
+  task lines without moving the prose around them.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_item"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="top"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/widget_box"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="8dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/widget_chunk"
+        style="@style/WidgetBody.Light"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:lineSpacingExtra="4dp"
+        android:lineSpacingMultiplier="1.4"
+        android:textColor="#FF000000"
+        android:textSize="14sp" />
+
+
+    <!--
+      A picture the note holds. It is hidden for every item that is text: a picture cannot travel in
+      the text a widget hands the launcher, so it gets an item of its own and this view draws it.
+    -->
+    <ImageView
+        android:id="@+id/widget_picture"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+</LinearLayout>
