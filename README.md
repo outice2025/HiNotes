@@ -44,7 +44,7 @@ Notes and app settings are stored locally; the app does not request the INTERNET
 - Long-press notes on the Home screen for batch operations.
 - Write notes in Markdown.
 - Import and display images in notes.
-- Export notes as .md or .txt.
+- Export notes as `.md` or `.txt`.
 - Lock and pin notes.
 
 **Widgets**
