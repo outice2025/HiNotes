@@ -13,9 +13,6 @@
     
 English - [简体中文](README.zh-CN.md)
 
-</div>
-
-
 <details>
 <summary><b>Screenshots</b></summary>
 
@@ -25,6 +22,8 @@ English - [简体中文](README.zh-CN.md)
 | Empty state | List and grid | Settings | About |
 
 </details>
+
+</div>
 
 ---
 
