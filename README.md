@@ -33,7 +33,7 @@ A simple, easy-to-use, 100% FOSS Android notes app built with Jetpack Compose an
 
 Notes and app settings are stored locally; the app does not request the INTERNET permission.
 
-### Features
+## Features
 
 **Notes**
 
@@ -87,6 +87,6 @@ Notes and app settings are stored locally; the app does not request the INTERNET
 
 - English, Simplified Chinese.
 
-### License
+## License
 
 GPL-3.0 [LICENSE](LICENSE)
