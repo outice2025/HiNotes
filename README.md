@@ -15,7 +15,6 @@ English - [简体中文](README.zh-CN.md)
 
 </div>
 
----
 
 <details>
 <summary><b>Screenshots</b></summary>
