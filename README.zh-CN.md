@@ -13,10 +13,6 @@
 
 [English](README.md) - 简体中文
 
-</div>
-
----
-
 <details>
 <summary><b>截图</b></summary>
 
@@ -24,8 +20,9 @@
 | :---: | :---: | :---: | :---: |
 | <img src="screenshots/home-empty.png" width="190"> | <img src="screenshots/home-notes.png" width="190"> | <img src="screenshots/settings.png" width="190"> | <img src="screenshots/about.png" width="190"> |
 | 空状态 | 列表与网格 | 设置 | 关于 |
-
 </details>
+
+</div>
 
 ---
 
