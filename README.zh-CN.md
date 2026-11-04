@@ -25,6 +25,9 @@
 </div>
 
 ---
+> [!IMPORTANT]
+> 由于个人精力有限，暂时不接受 `Issue` 和 `Pull Request`。
+---
 
 简单易用的 100% FOSS Android 笔记应用，使用 Jetpack Compose 与 Material 3 Expressive 构建。
 
