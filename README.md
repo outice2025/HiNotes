@@ -26,6 +26,9 @@ English - [简体中文](README.zh-CN.md)
 </div>
 
 ---
+> [!IMPORTANT]
+> Due to limited personal capacity, I am temporarily not accepting `Issues` or `Pull Request`.
+---
 
 A simple, easy-to-use, 100% FOSS Android notes app built with Jetpack Compose and Material 3 Expressive.
 
