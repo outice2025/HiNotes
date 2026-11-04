@@ -42,7 +42,7 @@ fun WidgetSettingsScreen(
             SwitchRow(
                 icon = Symbols.Title,
                 headline = stringResource(R.string.widget_settings_show_title),
-                supporting = null,
+                supporting = stringResource(R.string.widget_settings_show_title_support),
                 checked = settings.widgetShowTitle,
                 onCheckedChange = { show ->
                     viewModel.updateSettings { setWidgetShowTitle(show) }

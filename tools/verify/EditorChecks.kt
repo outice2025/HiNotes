@@ -933,7 +933,7 @@ object EditorChecks {
         )
         check(
             "the card stops scrolling while it is being selected",
-            card.contains("scrollable = !selecting"),
+            card.contains("scrollable = scrollable && !selecting"),
         )
 
         // One button selects everything and, once everything is selected, clears it.

@@ -105,19 +105,19 @@ object AppShellChecks {
 
         val gradle = code("app/build.gradle.kts")
         check(
-            "the test package is version 1.1.1",
-            gradle.contains("val appVersionName = \"1.1.1\""),
+            "the test package is version 1.1.2",
+            gradle.contains("val appVersionName = \"1.1.2\""),
             "the checks below were revised for this release",
         )
         check(
-            "the test package is versionCode 22",
-            gradle.contains("val appVersionCode = 22"),
+            "the test package is versionCode 23",
+            gradle.contains("val appVersionCode = 23"),
             "a package with the same code cannot replace the one testers installed",
         )
         check(
             "the package is the release build",
             gradle.contains("val appBuildChannel = \"Release\""),
-            "the channel is what the About screen promises and what a published build says",
+            "the About screen must say Release on the build that is published",
         )
         check(
             "the values are the ones the build stamps",
@@ -193,9 +193,9 @@ object AppShellChecks {
     /**
      * The room a settings page keeps around its own heading.
      *
-     * The title starts under the bar's height plus 20dp, the first row starts 44dp under the heading,
-     * and the content's top room is computed from both so enlarging either moves the first row down
-     * with the title instead of leaving the heading to overlap it.
+     * The title starts under the bar's height plus 28dp, its line box is 40dp, the first row starts
+     * 44dp under the heading, and the content's top room is computed from those three so enlarging
+     * any of them moves the first row down with the title instead of letting the heading overlap it.
      */
     private fun settingsHeadingSpacing() {
         println("Settings heading spacing")
@@ -207,9 +207,16 @@ object AppShellChecks {
             "the heading is placed from this height, so it cannot be a literal",
         )
         check(
-            "the heading starts 20dp under the bar",
-            scaffold.contains("private val TitleStartTop = BarHeight + 20.dp"),
+            "the heading starts 28dp under the bar",
+            scaffold.contains("private val TitleStartTop = BarHeight + 28.dp"),
             "the breathing room above a settings page's own name",
+        )
+        check(
+            "the heading's line box follows its type size",
+            scaffold.contains("private val TitleStartSize = 32.sp") &&
+                scaffold.contains("private val TitleStartLine = 40.sp") &&
+                scaffold.contains("private val TitleStartBox = 40.dp"),
+            "a bigger heading needs a bigger line box or it collides with the first row",
         )
         check(
             "the first row starts 44dp under the heading",
@@ -217,10 +224,10 @@ object AppShellChecks {
             "the first row has to read as the list beginning, not the heading's next line",
         )
         check(
-            "the content's top room is computed from both gaps",
-            scaffold.contains("private val ExpandedHeader = TitleStartTop + 36.dp + TitleBottomGap") &&
+            "the content's top room is computed from the heading and its gaps",
+            scaffold.contains("private val ExpandedHeader = TitleStartTop + TitleStartBox + TitleBottomGap") &&
                 scaffold.contains("top = ExpandedHeader") &&
-                !scaffold.contains("148.dp"),
+                !scaffold.contains("148.dp") && !scaffold.contains("160.dp"),
             "a written-out height would stop following the heading it is made of",
         )
         check(

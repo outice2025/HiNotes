@@ -103,7 +103,7 @@ fun AboutScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            AppLogoPlaceholder(size = 95.dp)
+            AppLogoPlaceholder(size = 120.dp)
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.app_name),
@@ -172,7 +172,7 @@ fun AboutScreen(
                 isLast = false,
             )
             SettingsRow(
-                icon = Symbols.Bookmarks,
+                icon = Symbols.BugReport,
                 headline = stringResource(R.string.about_export_logs),
                 supporting = stringResource(R.string.about_export_logs_support),
                 onClick = {

@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,7 +73,7 @@ private val HomeGutter = 16.dp
 /**
  * Left inset of the note-count line.
  *
- * The count sits on the same row as the two icon buttons, so its left margin is set to match the
+ * The count sits on the same row as the three icon buttons, so its left margin is set to match the
  * *visual* right margin of the rightmost button - the one the eye actually measures. That margin
  * is the gutter, plus the 12dp an `IconButton` keeps between its 48dp touch target and the 24dp
  * glyph, plus the 3.818dp the `sort` glyph's ink leaves inside its own 24dp box (its path runs to
@@ -120,7 +121,7 @@ private val RunLabelGap = 4.dp
  *
  * The grid is a staggered one: each card is exactly as tall as its own content and the columns
  * pack tight underneath, so a one-line note no longer leaves a hole beside a long one. The count
- * line is pinned above the list rather than scrolling with it, which keeps the layout toggle and
+ * line is pinned above the list rather than scrolling with it, which keeps the card controls and
  * the sort menu reachable however far down the list the user is.
  *
  * @param onCreateNote opens the editor for a brand-new note.
@@ -144,6 +145,11 @@ fun HomeScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var sortMenuOpen by remember { mutableStateOf(false) }
+
+    // Off until asked for: a card body that scrolls on its own would swallow the drag meant for
+    // the page, so the list scrolls first and only this switch hands the body its own scrolling.
+    // Saved across recreation because it is a reading preference, not a transient gesture.
+    var cardContentScroll by rememberSaveable { mutableStateOf(false) }
 
     val untitled = stringResource(R.string.home_untitled)
     val lockedLabel = stringResource(R.string.home_locked_badge)
@@ -429,6 +435,35 @@ fun HomeScreen(
                             exit = fadeOut(),
                         ) {
                             Row {
+                                // The card body's scrolling switch sits left of the layout toggle,
+                                // which itself sits immediately left of the sort button: the
+                                // reading choices are gathered at the row's end, nearest the thumb.
+                                // A closed book when the body is held still, an open one when it
+                                // scrolls; tinted when on, so the state is told apart at a glance
+                                // without reading the description the screen reader is given.
+                                IconButton(onClick = { cardContentScroll = !cardContentScroll }) {
+                                    SymbolIcon(
+                                        codepoint = if (cardContentScroll) {
+                                            Symbols.Book5
+                                        } else {
+                                            Symbols.Book4
+                                        },
+                                        contentDescription = stringResource(
+                                            if (cardContentScroll) {
+                                                R.string.home_card_scroll_on
+                                            } else {
+                                                R.string.home_card_scroll_off
+                                            },
+                                        ),
+                                        size = 24.dp,
+                                        tint = if (cardContentScroll) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                }
+
                                 // Layout toggle sits immediately LEFT of the sort button.
                                 IconButton(
                                     onClick = {
@@ -566,6 +601,9 @@ fun HomeScreen(
                             selecting = selecting,
                             selected = note.id in selectedIds,
                             compact = gridLayout,
+                            // The body scrolls only when the row's switch says so; a selection
+                            // still turns it off inside the card itself.
+                            scrollable = cardContentScroll,
                             onClick = {
                                 if (selecting) {
                                     viewModel.toggleSelection(note.id)

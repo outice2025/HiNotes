@@ -10,6 +10,8 @@
     <string name="home_select_none">Select none</string>
     <string name="home_layout_grid">Grid layout</string>
     <string name="home_layout_list">List layout</string>
+    <string name="home_card_scroll_off">Note cards do not scroll inside</string>
+    <string name="home_card_scroll_on">Note cards scroll inside</string>
     <string name="home_delete_notes">Delete Notes</string>
     <string name="home_deleted_message">%1$d notes deleted</string>
     <string name="editor_delete">Delete</string>
@@ -221,6 +223,7 @@
     <string name="widget_pick_title">Choose a note</string>
     <string name="widget_pick_empty">No notes yet - create one in the app first</string>
     <string name="widget_settings_show_title">Show title</string>
+    <string name="widget_settings_show_title_support">Note content fills the widget when off</string>
     <string name="widget_settings_font">Widget font settings</string>
     <string name="widget_settings_font_support">Set the widget font</string>
     <string name="picker_font_size_widget_title">Widget font size</string>

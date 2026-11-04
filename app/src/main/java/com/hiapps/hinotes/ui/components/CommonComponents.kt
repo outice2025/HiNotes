@@ -235,6 +235,9 @@ fun AppLogoPlaceholder(
  * @param onToggleTask called with the source line of a task in the body and the state it should be
  *   written as; null for a note that cannot be written, whose boxes are then drawn as static marks
  *   rather than as controls nothing may press.
+ * @param scrollable whether the body scrolls on its own inside the card. On by default, which is
+ *   what a card drawn outside the list (the widget picker's preview) has always had; the list
+ *   passes its own switch, and a selection turns scrolling off whatever that switch says.
  */
 @Composable
 fun NoteCard(
@@ -251,6 +254,7 @@ fun NoteCard(
     compact: Boolean = false,
     bodyMaxLines: Int = if (compact) 6 else 3,
     onToggleTask: ((Int, Boolean) -> Unit)? = null,
+    scrollable: Boolean = true,
 ) {
     val shape = RoundedCornerShape(HiNotesCorners.Card)
     val side = cardSideInset(compact)
@@ -326,7 +330,10 @@ fun NoteCard(
                     ),
                     maxLines = bodyMaxLines,
                     onToggleTask = onToggleTask,
-                    scrollable = !selecting,
+                    // A selection always wins over the list's switch: the card becomes one
+                    // selection target, and a body that still slid under the finger would swallow
+                    // the drag meant for the page.
+                    scrollable = scrollable && !selecting,
                 )
             }
         }
@@ -419,9 +426,10 @@ private object CardRenderCache {
  * what gives it something to scroll inside. The ruler draws nothing (it skips its own drawing and is
  * hidden from accessibility), so nothing is double-drawn.
  *
- * Scrolling is offered only while the card is not part of a selection: a long press makes the whole
- * card one target that ticks the note, and a body that still slid under the finger would swallow the
- * drag that is meant to move the page instead.
+ * Scrolling is offered only when the card was asked to scroll and it is not part of a selection.
+ * The list keeps the bodies fixed by default - the page is what scrolls - and asks for the inside of
+ * a card to move only through its own switch. A long press makes the whole card one target that
+ * ticks the note; a body that still slid under the finger would swallow that drag instead.
  */
 @Composable
 private fun CardBody(
@@ -464,6 +472,12 @@ private fun CardBody(
     }
 
     val scroll = rememberScrollState()
+    // A body that loses its scrolling is put back at its top: the offset it was left at would
+    // otherwise stay applied, and the card would show a slice from the middle of the note with no
+    // way to scroll the rest into view.
+    LaunchedEffect(scrollable) {
+        if (!scrollable) scroll.scrollTo(0)
+    }
     Layout(
         modifier = Modifier.fillMaxWidth(),
         content = {
