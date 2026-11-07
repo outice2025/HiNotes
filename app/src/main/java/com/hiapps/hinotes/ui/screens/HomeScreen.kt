@@ -41,7 +41,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -148,8 +147,9 @@ fun HomeScreen(
 
     // Off until asked for: a card body that scrolls on its own would swallow the drag meant for
     // the page, so the list scrolls first and only this switch hands the body its own scrolling.
-    // Saved across recreation because it is a reading preference, not a transient gesture.
-    var cardContentScroll by rememberSaveable { mutableStateOf(false) }
+    // The choice is a reading preference, so it is kept with the other settings rather than in
+    // the composition: it then survives recreation and leaving the app, like the layout toggle.
+    val cardContentScroll = settings.homeCardScroll
 
     val untitled = stringResource(R.string.home_untitled)
     val lockedLabel = stringResource(R.string.home_locked_badge)
@@ -438,15 +438,22 @@ fun HomeScreen(
                                 // The card body's scrolling switch sits left of the layout toggle,
                                 // which itself sits immediately left of the sort button: the
                                 // reading choices are gathered at the row's end, nearest the thumb.
-                                // A closed book when the body is held still, an open one when it
-                                // scrolls; tinted when on, so the state is told apart at a glance
-                                // without reading the description the screen reader is given.
-                                IconButton(onClick = { cardContentScroll = !cardContentScroll }) {
+                                // A plain book when the body is held still, a ribboned one when it
+                                // scrolls; the tint stays the same in both states, because the
+                                // layout toggle beside it is likewise not tinted when it is on,
+                                // and the two read as one row of plain controls.
+                                IconButton(
+                                    onClick = {
+                                        viewModel.updateSettings {
+                                            setHomeCardScroll(!cardContentScroll)
+                                        }
+                                    },
+                                ) {
                                     SymbolIcon(
                                         codepoint = if (cardContentScroll) {
-                                            Symbols.Book5
+                                            Symbols.BookRibbon
                                         } else {
-                                            Symbols.Book4
+                                            Symbols.Book2
                                         },
                                         contentDescription = stringResource(
                                             if (cardContentScroll) {
@@ -456,11 +463,7 @@ fun HomeScreen(
                                             },
                                         ),
                                         size = 24.dp,
-                                        tint = if (cardContentScroll) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
 

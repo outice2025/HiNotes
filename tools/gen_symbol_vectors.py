@@ -58,7 +58,7 @@ ICONS = {
     "Face": "face", "Lock": "lock", "Update": "update",
     "Box": "box", "OpenInNew": "open_in_new",
     "BrightnessMedium": "brightness_medium", "Book2": "book_2", "Style": "style",
-    "Book4": "book_4", "Book5": "book_5", "BugReport": "bug_report",
+    "BookRibbon": "book_ribbon", "License": "license", "BugReport": "bug_report",
     "ResetSettings": "reset_settings", "StopScreenShare": "stop_screen_share",
     "Keep": "keep", "KeepOff": "keep_off", "LockOpen": "lock_open",
     "Security": "security", "Title": "title", "AddPhotoAlternate": "add_photo_alternate",

@@ -92,7 +92,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiapps.hinotes.R
 import com.hiapps.hinotes.data.Note
 import com.hiapps.hinotes.data.NoteImages
+import com.hiapps.hinotes.data.countCharactersWithPunctuation
 import com.hiapps.hinotes.data.countNoteCharacters
+import com.hiapps.hinotes.data.countNoteLines
+import com.hiapps.hinotes.data.countNotePunctuation
 import com.hiapps.hinotes.ui.AppViewModel
 import com.hiapps.hinotes.ui.NEW_NOTE_ID
 import com.hiapps.hinotes.ui.components.ConfirmDialog
@@ -127,6 +130,17 @@ private const val TAG = "HiNotesEditor"
 
 /** The label the clipboard carries for text this editor puts there. */
 private const val CLIP_LABEL = "HiNotes"
+
+/**
+ * How many characters one edit must add before it is treated as an input method's paste.
+ *
+ * An input method's own paste does not arrive as a clipboard key: it commits the clipboard in one
+ * edit, and the same trailing rebuilds that can undo a clipboard key can undo it too. A commit of
+ * two or more characters is watched like one, so even a short paste that is taken back is written
+ * again; a single character is the unit of typing and stays out of the watch. The composition must
+ * be finished as well: characters an input method is still composing are not a paste.
+ */
+private const val PASTE_WATCH_CHARS = 2
 
 /**
  * How long save-as-you-type waits after the last keystroke before it writes.
@@ -742,11 +756,10 @@ fun EditorScreen(
             // just imported is the one thing on screen they could not type again, and a screen that
             // is rebuilt inside that pause would lose it.
             persist()
-            // The page turns to the note as a reader sees it, which is the only place a picture is
-            // drawn: the writing area is the note's Markdown source, so a picture imported there
-            // would otherwise arrive as the address it is written with and look like nothing
-            // happened. Readers who want to keep writing switch back with the mode button.
-            previewMode = true
+            // The note is left in edit mode rather than turned to its reading view: a picture is
+            // imported to be written around, and the mode the user was in is the one they can keep
+            // typing in. The picture appears when they switch to the reading view themselves.
+            previewMode = false
         }
     }
 
@@ -1091,8 +1104,16 @@ fun EditorScreen(
             Box {
                 BasicTextField(
                     value = titleValue,
-                    onValueChange = {
-                        titleValue = titleClipboard.guard(it)
+                    onValueChange = { new ->
+                        val inserted = new.text.length - titleValue.text.length
+                        if (new.composition == null && inserted >= PASTE_WATCH_CHARS) {
+                            titleClipboard.watchInsert(
+                                before = titleValue.text,
+                                after = new,
+                                describe = "the input method pasted $inserted characters into the title",
+                            )
+                        }
+                        titleValue = titleClipboard.guard(new)
                     },
                     singleLine = true,
                     // Read-only in either way of reading the note, because both promise that what is
@@ -1395,6 +1416,18 @@ fun EditorScreen(
                     BasicTextField(
                         value = editorState.value,
                         onValueChange = { new ->
+                            // A bulk insertion is the input method pasting the clipboard, not the
+                            // user typing. It is watched like a clipboard key would be, so if the
+                            // field's trailing edits rebuild the text without the paste, the paste
+                            // is written again instead of silently going missing.
+                            val inserted = new.text.length - editorState.value.text.length
+                            if (new.composition == null && inserted >= PASTE_WATCH_CHARS) {
+                                bodyClipboard.watchInsert(
+                                    before = editorState.value.text,
+                                    after = new,
+                                    describe = "the input method pasted $inserted characters",
+                                )
+                            }
                             editorState.onUserInput(bodyClipboard.guard(new))
                         },
                         visualTransformation = remember(markedBody) { MarkedText(markedBody) },
@@ -1541,6 +1574,10 @@ fun EditorScreen(
     if (showProperties) {
         PropertiesSheet(
             wordCount = countNoteCharacters(editorState.value.text),
+            charactersWithPunctuation =
+                countCharactersWithPunctuation(titleValue.text + editorState.value.text),
+            punctuationCount = countNotePunctuation(editorState.value.text),
+            lineCount = countNoteLines(editorState.value.text),
             createdAt = loadedNote?.createdAt,
             updatedAt = loadedNote?.updatedAt,
             onDismiss = { showProperties = false },
@@ -1790,6 +1827,28 @@ private class ClipboardFence(
             if (write !== entry || currentText() != entry.before) return@launch
             applyEdit(entry.after)
             Log.i(TAG, "${entry.describe}, now len=${entry.after.text.length}")
+        }
+    }
+
+    /**
+     * Watches an insertion the field has already taken - an input method's own paste, which is
+     * not a clipboard key - for the same rebuilds [write] answers: if the text the paste was made
+     * on comes back within the window, the insertion is written again instead of being lost.
+     */
+    fun watchInsert(before: String, after: TextFieldValue, describe: String) {
+        if (after.text == before) return
+        val entry = Write(before, after, describe, 0, nowMillis() + WindowMillis)
+        write = entry
+        scope.launch {
+            withFrameNanos { }
+            if (write !== entry) return@launch
+            if (currentText() == entry.before) {
+                applyEdit(entry.after)
+                Log.i(TAG, "${entry.describe}, now len=${entry.after.text.length}")
+            } else if (currentText() != entry.after.text) {
+                // The field has moved on to something else; the paste is no longer in question.
+                write = null
+            }
         }
     }
 

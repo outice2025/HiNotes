@@ -97,27 +97,27 @@ object AppShellChecks {
      * What the test package is.
      *
      * The checks that follow were adjusted for this release, so a run has to say which build it was
-     * run against. The channel is part of the fact: the package published from this tree is the
-     * release build, and its diagnostics have been removed before it was built.
+     * run against. The channel is part of the fact: the package handed to testers is the debug
+     * build, and the published package is built from the same tree with the channel switched over.
      */
     private fun buildFacts() {
         println("Build facts")
 
         val gradle = code("app/build.gradle.kts")
         check(
-            "the test package is version 1.1.2",
-            gradle.contains("val appVersionName = \"1.1.2\""),
+            "the test package is version 1.1.3",
+            gradle.contains("val appVersionName = \"1.1.3\""),
             "the checks below were revised for this release",
         )
         check(
-            "the test package is versionCode 23",
-            gradle.contains("val appVersionCode = 23"),
+            "the test package is versionCode 24",
+            gradle.contains("val appVersionCode = 24"),
             "a package with the same code cannot replace the one testers installed",
         )
         check(
             "the package is the release build",
             gradle.contains("val appBuildChannel = \"Release\""),
-            "the About screen must say Release on the build that is published",
+            "the About screen must say Release on the published package",
         )
         check(
             "the values are the ones the build stamps",

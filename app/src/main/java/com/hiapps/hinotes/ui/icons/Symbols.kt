@@ -14,8 +14,7 @@ object Symbols {
     @DrawableRes val Archive: Int = R.drawable.sym_archive
     @DrawableRes val ArrowBack: Int = R.drawable.sym_arrow_back
     @DrawableRes val Book2: Int = R.drawable.sym_book_2
-    @DrawableRes val Book4: Int = R.drawable.sym_book_4
-    @DrawableRes val Book5: Int = R.drawable.sym_book_5
+    @DrawableRes val BookRibbon: Int = R.drawable.sym_book_ribbon
     @DrawableRes val Box: Int = R.drawable.sym_box
     @DrawableRes val BrightnessMedium: Int = R.drawable.sym_brightness_medium
     @DrawableRes val BugReport: Int = R.drawable.sym_bug_report
@@ -38,6 +37,7 @@ object Symbols {
     @DrawableRes val Keep: Int = R.drawable.sym_keep
     @DrawableRes val KeepOff: Int = R.drawable.sym_keep_off
     @DrawableRes val Language: Int = R.drawable.sym_language
+    @DrawableRes val License: Int = R.drawable.sym_license
     @DrawableRes val List: Int = R.drawable.sym_list
     @DrawableRes val Lock: Int = R.drawable.sym_lock
     @DrawableRes val LockOpen: Int = R.drawable.sym_lock_open

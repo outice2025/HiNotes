@@ -23,15 +23,25 @@ import java.util.Date
 /**
  * The note's properties, raised from the bottom edge of the screen.
  *
- * Reports what the design asks for and nothing else: how much text the note holds, when it was
- * created and when it was last written to.
+ * Reports what the design asks for and nothing else: how much text the note holds, with and
+ * without its punctuation, how many punctuation marks it carries, how many lines it opens down the
+ * page, when it was created and when it was last written to. The counts come first, ordered from
+ * the strictest reading of the text to the two dates.
  *
- * @param wordCount characters of text in the body, title and punctuation excluded.
+ * @param wordCount characters of the body, title and punctuation excluded.
+ * @param charactersWithPunctuation characters of the title and body together, whitespace excluded:
+ *   the count that keeps the title and the punctuation the first one leaves out.
+ * @param punctuationCount punctuation and symbol characters in the body.
+ * @param lineCount lines the body opens; an empty body has none, and a trailing line break opens
+ *   one more.
  * @param createdAt/updatedAt epoch milliseconds, or null while the note is still being created.
  */
 @Composable
 fun PropertiesSheet(
     wordCount: Int,
+    charactersWithPunctuation: Int,
+    punctuationCount: Int,
+    lineCount: Int,
     createdAt: Long?,
     updatedAt: Long?,
     onDismiss: () -> Unit,
@@ -62,6 +72,18 @@ fun PropertiesSheet(
                 label = stringResource(R.string.editor_props_words),
                 value = wordCount.toString(),
                 hint = stringResource(R.string.editor_props_words_hint),
+            )
+            PropertyRow(
+                label = stringResource(R.string.editor_props_words_with_punctuation),
+                value = charactersWithPunctuation.toString(),
+            )
+            PropertyRow(
+                label = stringResource(R.string.editor_props_punctuation),
+                value = punctuationCount.toString(),
+            )
+            PropertyRow(
+                label = stringResource(R.string.editor_props_line_count),
+                value = lineCount.toString(),
             )
             PropertyRow(
                 label = stringResource(R.string.editor_props_created),

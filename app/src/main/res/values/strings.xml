@@ -55,10 +55,13 @@
     <string name="editor_find_no_match">No matches</string>
     <string name="editor_find_matches">%1$d of %2$d</string>
     <string name="editor_props_title">Properties</string>
-    <string name="editor_props_created">Created</string>
-    <string name="editor_props_updated">Last updated</string>
+    <string name="editor_props_created">Created date</string>
+    <string name="editor_props_updated">Modified date</string>
     <string name="editor_props_words">Words</string>
     <string name="editor_props_words_hint">Title and punctuation excluded</string>
+    <string name="editor_props_words_with_punctuation">Words (with punctuation)</string>
+    <string name="editor_props_punctuation">Punctuation marks</string>
+    <string name="editor_props_line_count">Lines</string>
     <string name="editor_share_chooser">Share note</string>
     <string name="editor_share_failed">No app can share this note</string>
     <string name="editor_save_failed">The note could not be saved</string>

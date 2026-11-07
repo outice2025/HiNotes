@@ -41,6 +41,34 @@ data class Note(
  */
 fun countNoteCharacters(content: String): Int = content.count { it.isLetterOrDigit() }
 
+/**
+ * How much text [text] holds with its punctuation kept, for the properties sheet's second count.
+ *
+ * Letters, digits, punctuation and symbols, whitespace excluded: the title and the punctuation the
+ * first count leaves out are both counted here, so the two numbers read as the same note measured
+ * strictly and loosely.
+ */
+fun countCharactersWithPunctuation(text: String): Int = text.count { !it.isWhitespace() }
+
+/**
+ * How many punctuation marks and symbols [text] carries.
+ *
+ * Unicode punctuation and symbol code points, emoji included, counted one apiece: the marks the two
+ * character counts above treat as not text are what this row is about. A surrogate pair is one
+ * symbol, not two characters.
+ */
+private val punctuationOrSymbol = Regex("[\\p{P}\\p{S}]")
+
+fun countNotePunctuation(text: String): Int = punctuationOrSymbol.findAll(text).count()
+
+/**
+ * How many lines [text] opens, for the properties sheet.
+ *
+ * An empty body has no line, and a trailing line break opens one more, because that is the line the
+ * caret sits on when the note ends with a break.
+ */
+fun countNoteLines(text: String): Int = if (text.isEmpty()) 0 else text.split('\n').size
+
 /** Sort orders offered on the home screen. */
 enum class NoteSort(val key: String) {
     UpdatedDesc("updated"),

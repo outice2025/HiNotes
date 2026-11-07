@@ -103,7 +103,7 @@ fun AboutScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            AppLogoPlaceholder(size = 120.dp)
+            AppLogoPlaceholder(size = 140.dp)
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.app_name),
@@ -142,7 +142,7 @@ fun AboutScreen(
             // A statement rather than an action: no tap, no chevron and no dialog. The licence
             // itself is the repository's LICENSE file, which the repository row above leads to.
             SettingsRow(
-                icon = Symbols.Book2,
+                icon = Symbols.License,
                 headline = stringResource(R.string.about_licenses),
                 supporting = LICENSE_NAME,
                 isFirst = false,

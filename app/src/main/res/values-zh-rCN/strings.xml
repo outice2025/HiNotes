@@ -55,10 +55,13 @@
     <string name="editor_find_no_match">没有匹配</string>
     <string name="editor_find_matches">第 %1$d 个，共 %2$d 个</string>
     <string name="editor_props_title">属性</string>
-    <string name="editor_props_created">创建时间</string>
-    <string name="editor_props_updated">最近修改</string>
+    <string name="editor_props_created">创建日期</string>
+    <string name="editor_props_updated">修改日期</string>
     <string name="editor_props_words">字数</string>
     <string name="editor_props_words_hint">不含标题与标点符号</string>
+    <string name="editor_props_words_with_punctuation">字数（含标点）</string>
+    <string name="editor_props_punctuation">标点数</string>
+    <string name="editor_props_line_count">行数</string>
     <string name="editor_share_chooser">分享笔记</string>
     <string name="editor_share_failed">没有可以分享这条笔记的应用</string>
     <string name="editor_save_failed">笔记保存失败</string>

@@ -106,6 +106,8 @@ data class HiNotesSettings(
      */
     val defaultEditMode: Boolean = true,
     val homeLayout: HomeLayout = HomeLayout.Default,
+    /** Whether a note card's own content scrolls inside the card on the home screen. */
+    val homeCardScroll: Boolean = true,
     val language: AppLanguage = AppLanguage.Default,
 ) {
     /** Number of settings that differ from their default, used to report import results. */
@@ -135,6 +137,7 @@ enum class SettingKey(val storageKey: String) {
     SortOrder("sort_order"),
     DefaultEditMode("default_edit_mode"),
     HomeLayout("home_layout"),
+    HomeCardScroll("home_card_scroll"),
     Language("language"),
     ;
 
@@ -157,6 +160,7 @@ enum class SettingKey(val storageKey: String) {
         SortOrder -> settings.sortOrder.key
         DefaultEditMode -> settings.defaultEditMode.toString()
         HomeLayout -> settings.homeLayout.key
+        HomeCardScroll -> settings.homeCardScroll.toString()
         Language -> settings.language.key
     }
 }
@@ -185,6 +189,7 @@ class SettingsRepository(private val context: Context) {
         val sortOrder = stringPreferencesKey("sort_order")
         val defaultEditMode = booleanPreferencesKey("default_edit_mode")
         val homeLayout = stringPreferencesKey("home_layout")
+        val homeCardScroll = booleanPreferencesKey("home_card_scroll")
         val language = stringPreferencesKey("language")
     }
 
@@ -223,6 +228,7 @@ class SettingsRepository(private val context: Context) {
                 defaultEditMode = prefs[Keys.defaultEditMode] ?: defaults.defaultEditMode,
                 homeLayout = prefs[Keys.homeLayout]?.let(HomeLayout::fromKey)
                     ?: defaults.homeLayout,
+                homeCardScroll = prefs[Keys.homeCardScroll] ?: defaults.homeCardScroll,
                 language = AppLanguage.fromKey(prefs[Keys.language]),
             )
         }
@@ -287,6 +293,8 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setHomeLayout(value: HomeLayout) = edit { it[Keys.homeLayout] = value.key }
 
+    suspend fun setHomeCardScroll(value: Boolean) = edit { it[Keys.homeCardScroll] = value }
+
     suspend fun setLanguage(value: AppLanguage) = edit { it[Keys.language] = value.key }
 
     suspend fun restoreDefaults() {
@@ -315,6 +323,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.sortOrder] = settings.sortOrder.key
             prefs[Keys.defaultEditMode] = settings.defaultEditMode
             prefs[Keys.homeLayout] = settings.homeLayout.key
+            prefs[Keys.homeCardScroll] = settings.homeCardScroll
             prefs[Keys.language] = settings.language.key
         }
     }
@@ -356,6 +365,7 @@ class SettingsRepository(private val context: Context) {
             defaultEditMode = bool(SettingKey.DefaultEditMode, fallback.defaultEditMode),
             homeLayout = pairs[SettingKey.HomeLayout.storageKey]
                 ?.let(HomeLayout::fromKey) ?: fallback.homeLayout,
+            homeCardScroll = bool(SettingKey.HomeCardScroll, fallback.homeCardScroll),
             language = pairs[SettingKey.Language.storageKey]
                 ?.let(AppLanguage::fromKey) ?: fallback.language,
         )

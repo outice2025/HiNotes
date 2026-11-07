@@ -266,11 +266,12 @@ object EditorChecks {
             "a tap that silently does nothing is the fault this guards",
         )
         // The writing area is the note's Markdown source: a picture imported there is only a line of
-        // text until the page is drawn as the reader sees it, which is where pictures are drawn.
+        // text until the page is drawn as the reader sees it, which is where pictures are drawn. The
+        // note is left in the writing mode all the same - a picture is imported to be written around.
         check(
-            "a picture that lands turns the page to the rendered note",
-            editor.contains("previewMode = true") && editor.contains("picture copied to "),
-            "an import that draws nothing looks exactly like an import that failed",
+            "a picture that lands leaves the note in its writing mode",
+            editor.contains("previewMode = false") && editor.contains("picture copied to "),
+            "the reading view hides the caret the picture was imported to be written around",
         )
         // The relay's value is the effect's own key, so the work it starts must not live in that
         // effect: clearing the relay recomposes the key and cancels whatever was suspended inside.
@@ -673,8 +674,17 @@ object EditorChecks {
                 editor.contains("entry.after.text != entry.before") &&
                 editor.contains("entry.rewrites >= Rewrites") &&
                 editor.contains("bodyClipboard.guard(new)") &&
-                editor.contains("titleClipboard.guard(it)"),
+                editor.contains("titleClipboard.guard(new)"),
             "one frame is not always enough: the rebuilding edit can arrive after the write",
+        )
+        check(
+            "an input method paste is watched for the same rebuilds",
+            editor.contains("fun watchInsert(") &&
+                editor.contains("PASTE_WATCH_CHARS") &&
+                editor.contains("new.composition == null") &&
+                editor.contains("bodyClipboard.watchInsert(") &&
+                editor.contains("titleClipboard.watchInsert("),
+            "a paste the input method's trailing edits rebuild would be lost without a word",
         )
         // The observed input method rebuilt the text six times over about a second, the last one
         // after the fifth rewrite. Rewriting is bounded by a deadline that a rewrite does not move,
