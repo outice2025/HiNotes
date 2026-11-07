@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Filled shapes of the empty-notes illustration.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="320dp"
+    android:viewportWidth="320"
+    android:viewportHeight="320">
+    <path
+        android:fillColor="#FF231E54"
+        android:fillType="evenOdd"
+        android:pathData="M101.642 36.2968C64.2347 32.8015 25.2498 60.5907 20.5038 97.7968C19.5014 105.654 19.9918 115.923 22.3371 127.264L144.223 78.5L156.268 83.4946C154.754 75.0107 152.5 65.9008 147.219 59.2968C134.817 43.7867 121.435 38.1463 101.642 36.2968ZM180.13 93.3898L289.838 138.883C289.924 137.565 289.962 136.364 289.962 135.297C289.962 111.195 286.456 96.2094 268.926 83.2968C249.003 68.6206 219.341 62.7968 198.306 75.7968C190.581 80.5712 184.861 87.366 180.13 93.3898Z" />
+</vector>

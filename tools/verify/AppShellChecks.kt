@@ -86,11 +86,70 @@ object AppShellChecks {
     @JvmStatic
     fun main(args: Array<String>) {
         buildFacts()
+        homeEmptyState()
         pickerDialog()
         settingsHeadingSpacing()
         wallpaperSignals()
         lifecycleTriggers()
         report()
+    }
+
+    /**
+     * The empty home screen's illustration.
+     *
+     * The picture is the title now, so the checks hold both halves: the empty-list branch draws the
+     * two tinted layers, and the search branch still answers with the text that names a failed
+     * query. They also pin the two layers apart - the source art is a filled silhouette and a line
+     * drawing - because one flat drawable would have to hard-code a palette and stop following
+     * dynamic colour.
+     */
+    private fun homeEmptyState() {
+        println("Empty home state")
+
+        val home = code("$SOURCE/ui/screens/HomeScreen.kt")
+        check(
+            "the empty home screen draws the picture",
+            home.contains("R.drawable.home_empty_fill") &&
+                home.contains("R.drawable.home_empty_line"),
+            "the title is the picture, so the two vectors are what the screen has to load",
+        )
+        check(
+            "the picture asks the colour scheme for both tones",
+            home.contains("val fill = MaterialTheme.colorScheme.primary") &&
+                home.contains("ColorFilter.tint(fill)") &&
+                home.contains("ColorFilter.tint(line)"),
+            "a flat drawable would keep its own colours instead of following dynamic colour",
+        )
+        check(
+            "the illustration carries the empty title's description",
+            home.contains("contentDescription = stringResource(R.string.home_empty)"),
+            "the picture replaced a title, so that title has to survive for screen readers",
+        )
+        check(
+            "the empty hint still follows the picture",
+            home.contains("R.string.home_empty_hint"),
+            "only the title was replaced; the hint is still the way to the first note",
+        )
+        check(
+            "a search with no matches still names the query result",
+            home.contains("R.string.home_empty_search"),
+            "the picture is for an empty list, not for a search that found nothing",
+        )
+
+        val fill = code("app/src/main/res/drawable/home_empty_fill.xml")
+        check(
+            "the filled layer is one even-odd path",
+            fill.contains("android:fillType=\"evenOdd\"") && fill.contains("android:pathData="),
+            "the source art draws its silhouette with an even-odd fill rule",
+        )
+        val line = code("app/src/main/res/drawable/home_empty_line.xml")
+        check(
+            "the outlined layer is stroked, not filled",
+            line.contains("android:strokeWidth=\"5\"") &&
+                line.contains("android:strokeLineCap=\"round\"") &&
+                line.contains("android:fillColor=\"@android:color/transparent\""),
+            "the source art is a line drawing with round caps, which is what the tint colours",
+        )
     }
 
     /**
@@ -105,19 +164,19 @@ object AppShellChecks {
 
         val gradle = code("app/build.gradle.kts")
         check(
-            "the test package is version 1.1.3",
-            gradle.contains("val appVersionName = \"1.1.3\""),
+            "the test package is version 1.1.4",
+            gradle.contains("val appVersionName = \"1.1.4\""),
             "the checks below were revised for this release",
         )
         check(
-            "the test package is versionCode 24",
-            gradle.contains("val appVersionCode = 24"),
+            "the test package is versionCode 25",
+            gradle.contains("val appVersionCode = 25"),
             "a package with the same code cannot replace the one testers installed",
         )
         check(
             "the package is the release build",
             gradle.contains("val appBuildChannel = \"Release\""),
-            "the About screen must say Release on the published package",
+            "the About screen must say Release on the published build",
         )
         check(
             "the values are the ones the build stamps",

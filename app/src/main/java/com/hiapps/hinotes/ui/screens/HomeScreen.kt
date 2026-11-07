@@ -2,6 +2,7 @@ package com.hiapps.hinotes.ui.screens
 
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemScope
@@ -44,7 +46,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -369,22 +373,28 @@ fun HomeScreen(
             if (notes.isEmpty()) {
                 Box(
                     modifier = Modifier
+                        // The empty state sits a touch above the true middle: a page reads as
+                        // balanced when its content is at the optical centre, and the extra bottom
+                        // room also keeps the hint clear of the create button in the corner.
                         .fillMaxSize()
-                        .padding(bottom = 96.dp),
+                        .padding(bottom = 152.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = stringResource(
-                                if (hasQuery) R.string.home_empty_search else R.string.home_empty,
-                            ),
-                            fontSize = 23.sp,
-                            lineHeight = 32.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                        if (!hasQuery) {
-                            Spacer(Modifier.height(8.dp))
+                        if (hasQuery) {
+                            Text(
+                                text = stringResource(R.string.home_empty_search),
+                                fontSize = 23.sp,
+                                lineHeight = 32.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        } else {
+                            EmptyNotesIllustration(
+                                contentDescription = stringResource(R.string.home_empty),
+                                modifier = Modifier.size(150.dp),
+                            )
+                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = stringResource(R.string.home_empty_hint),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -661,6 +671,37 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * The picture the empty home screen shows in place of a title.
+ *
+ * The source artwork is two colours: a filled silhouette and a line drawing. It is kept as two
+ * tinted layers rather than one flat drawable, because both tones are then asked of the colour
+ * scheme - the silhouette keeps the create button's own colour, the outlines the text tone - so the
+ * picture follows dynamic colour, the accent palettes and light/dark without a second asset.
+ */
+@Composable
+private fun EmptyNotesIllustration(
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    val fill = MaterialTheme.colorScheme.primary
+    val line = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(modifier) {
+        Image(
+            painter = painterResource(R.drawable.home_empty_fill),
+            contentDescription = contentDescription,
+            colorFilter = ColorFilter.tint(fill),
+            modifier = Modifier.matchParentSize(),
+        )
+        Image(
+            painter = painterResource(R.drawable.home_empty_line),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(line),
+            modifier = Modifier.matchParentSize(),
+        )
     }
 }
 
