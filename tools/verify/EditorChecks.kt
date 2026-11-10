@@ -116,25 +116,32 @@ object EditorChecks {
         )
 
         // The platform's own back handling, and why the graph takes it away from the host. A
-        // predictive back gesture drives the pop transition with the finger and finishes in only
+        // predictive back gesture drives the pop transition with the finger and then animates only
         // the fraction of the 300ms that is left, so a return is quicker than the push it should
-        // mirror - and the manifest opt-out that used to prevent that no longer applies to an app
-        // built for this platform. The graph's own handler answers the system's back with the same
-        // guarded pop the header buttons use, for every page that has no guard of its own. The
-        // first page is left to the system, which is what closes the app from the list.
+        // mirror. The graph's own handler answers the system's back with the same guarded pop the
+        // header buttons use, for every page that has no handler of its own; the editor keeps its
+        // own, and the first page keeps the system's back, which is what closes the app.
         check(
             "the app takes the system's back itself",
             app.contains("androidx.activity.compose.BackHandler") &&
                 app.contains("currentBackStackEntryAsState()") &&
-                app.contains("BackHandler(enabled = route != null && route != Routes.HOME && route != Routes.EDITOR)"),
+                app.contains("BackHandler(enabled = popping || (route != null && route != Routes.HOME && route != Routes.EDITOR))"),
             "predictive back would otherwise seek the pop instead of playing it",
         )
         check(
             "the system's back runs the same guarded pop as the buttons",
-            app.contains(
-                "BackHandler(enabled = route != null && route != Routes.HOME && route != Routes.EDITOR) {",
-            ) && app.contains("back()"),
+            app.contains("BackHandler(enabled = popping ||") && app.contains("back()"),
             "a second way out would be a second animation to keep in step",
+        )
+        // While a pop animates, the current entry is already the page underneath, so a return to
+        // the list leaves the handler disabled for the home screen and a second press would close
+        // the app over the unfinished animation. The pop flag keeps it enabled; the guard in `back`
+        // swallows that press, and never starts a second animation.
+        check(
+            "a press during a return is swallowed instead of closing the app",
+            app.contains("enabled = popping ||") &&
+                app.contains("if (!popping && navController.previousBackStackEntry != null)"),
+            "the platform would finish the app mid-animation",
         )
         // The editor is the one page the graph leaves alone, so its own handler has to be there for
         // the whole time it is on screen - not only while there are unsaved changes to ask about.
@@ -316,8 +323,13 @@ object EditorChecks {
         )
         check(
             "the same size is kept on every screen",
-            !editor.contains("toolbarSize(") && !editor.contains("BoxWithConstraints("),
-            "the bar is not resized to the canvas it is drawn on",
+            !editor.contains("toolbarSize("),
+            "the bar is sized by the design system, not by the canvas it is drawn on",
+        )
+        check(
+            "the body field measures its canvas only for the unwrapped lines",
+            editor.contains("BoxWithConstraints(Modifier.fillMaxSize())"),
+            "the unwrapped writing area needs the canvas width to decide how wide the field is",
         )
         check(
             "the bar is drawn for the whole of the edit mode",

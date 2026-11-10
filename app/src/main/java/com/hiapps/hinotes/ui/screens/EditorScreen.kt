@@ -11,10 +11,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -85,6 +88,7 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -153,6 +157,15 @@ private const val SAVE_AS_YOU_TYPE_MS = 1_200L
 
 /** How close to the canvas edge a dragged selection keeps the handle it is following. */
 private val SelectionFollowMargin = 8.dp
+
+/**
+ * Room kept to the right of the longest unwrapped line for the caret drawn after it.
+ *
+ * The layout width of a line leaves out trailing whitespace, so a caret placed after a space at the
+ * end of the line would have nothing to be drawn on - and at the largest type a space is under a
+ * third of this.
+ */
+private val UnwrappedCaretSlack = 8.dp
 
 /** How far the formatting toolbar is inset from the canvas' lower edge, on every side. */
 private val ToolbarInset = 12.dp
@@ -1345,6 +1358,12 @@ fun EditorScreen(
                     }
                 } else {
                     val bodyScroll = rememberScrollState()
+                    // The page's other axis, only used while the body does not wrap: a line that
+                    // runs past the edge is read by dragging the page sideways.
+                    val bodyHorizontalScroll = rememberScrollState()
+                    // Measures the note unwrapped, which is how the field learns how wide such a
+                    // line is before it draws one.
+                    val textMeasurer = rememberTextMeasurer()
 
                     // The note as the field should draw it: the same characters with the current
                     // find match painted. Built once per change of text or match and reused for
@@ -1413,51 +1432,138 @@ fun EditorScreen(
                         }
                     }
 
-                    BasicTextField(
-                        value = editorState.value,
-                        onValueChange = { new ->
-                            // A bulk insertion is the input method pasting the clipboard, not the
-                            // user typing. It is watched like a clipboard key would be, so if the
-                            // field's trailing edits rebuild the text without the paste, the paste
-                            // is written again instead of silently going missing.
-                            val inserted = new.text.length - editorState.value.text.length
-                            if (new.composition == null && inserted >= PASTE_WATCH_CHARS) {
-                                bodyClipboard.watchInsert(
-                                    before = editorState.value.text,
-                                    after = new,
-                                    describe = "the input method pasted $inserted characters",
+                    // Keeping the caret in sight sideways follows the same rule the effect above
+                    // follows downwards: with the body unwrapped, typing at the end of a long line
+                    // walks the caret past the right edge.
+                    if (!settings.editorWrapText) {
+                        LaunchedEffect(
+                            editorState.value.selection,
+                            bodyLayout,
+                            bodyHorizontalScroll.viewportSize,
+                        ) {
+                            val layout = bodyLayout ?: return@LaunchedEffect
+                            val viewport = bodyHorizontalScroll.viewportSize
+                            if (viewport == 0) return@LaunchedEffect
+                            // Same guard as above: a caret measured on the previous text is a
+                            // position the note no longer has.
+                            if (layout.layoutInput.text.length != editorState.value.text.length) {
+                                return@LaunchedEffect
+                            }
+                            val selection = editorState.value.selection
+                            val followed = selection.max.coerceIn(0, layout.layoutInput.text.length)
+                            val caret = layout.getCursorRect(followed)
+                            val left = caret.left - bodyHorizontalScroll.value
+                            val right = caret.right - bodyHorizontalScroll.value
+                            when {
+                                left < followMargin -> bodyHorizontalScroll.scrollTo(
+                                    (bodyHorizontalScroll.value + left - followMargin).toInt(),
+                                )
+                                right > viewport - followMargin -> bodyHorizontalScroll.scrollTo(
+                                    (bodyHorizontalScroll.value + right + followMargin - viewport).toInt(),
                                 )
                             }
-                            editorState.onUserInput(bodyClipboard.guard(new))
-                        },
-                        visualTransformation = remember(markedBody) { MarkedText(markedBody) },
-                        modifier = Modifier
-                            .onPreviewKeyEvent { clipboardKey(it) }
-                            .fillMaxSize()
-                            .padding(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 16.dp,
-                                bottom = BodyBottomInset,
+                        }
+                    }
+
+                    // One field for both wrap modes; the switch only changes the width the field is
+                    // laid out at, so the paste watch, the find highlight and the selection follow
+                    // above stay shared instead of becoming two drifting copies.
+                    BoxWithConstraints(Modifier.fillMaxSize()) {
+                        val bodyField: @Composable (Modifier) -> Unit = { fieldModifier ->
+                            BasicTextField(
+                                value = editorState.value,
+                                onValueChange = { new ->
+                                    // A bulk insertion is the input method pasting the clipboard, not the
+                                    // user typing. It is watched like a clipboard key would be, so if the
+                                    // field's trailing edits rebuild the text without the paste, the paste
+                                    // is written again instead of silently going missing.
+                                    val inserted = new.text.length - editorState.value.text.length
+                                    if (new.composition == null && inserted >= PASTE_WATCH_CHARS) {
+                                        bodyClipboard.watchInsert(
+                                            before = editorState.value.text,
+                                            after = new,
+                                            describe = "the input method pasted $inserted characters",
+                                        )
+                                    }
+                                    editorState.onUserInput(bodyClipboard.guard(new))
+                                },
+                                visualTransformation = remember(markedBody) { MarkedText(markedBody) },
+                                modifier = fieldModifier,
+                                textStyle = bodyStyle,
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                onTextLayout = { bodyLayout = it },
+                                decorationBox = { inner ->
+                                    Box {
+                                        if (editorState.value.text.isEmpty()) {
+                                            Text(
+                                                text = stringResource(R.string.editor_body_placeholder),
+                                                style = bodyStyle.copy(
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                ),
+                                            )
+                                        }
+                                        inner()
+                                    }
+                                },
                             )
-                            .verticalScroll(bodyScroll),
-                        textStyle = bodyStyle,
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        onTextLayout = { bodyLayout = it },
-                        decorationBox = { inner ->
-                            Box {
-                                if (editorState.value.text.isEmpty()) {
-                                    Text(
-                                        text = stringResource(R.string.editor_body_placeholder),
-                                        style = bodyStyle.copy(
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        ),
+                        }
+
+                        if (settings.editorWrapText) {
+                            // The body as it has always been: the page is the width of the text.
+                            bodyField(
+                                Modifier
+                                    .onPreviewKeyEvent { clipboardKey(it) }
+                                    .fillMaxSize()
+                                    .padding(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp,
+                                        bottom = BodyBottomInset,
                                     )
-                                }
-                                inner()
+                                    .verticalScroll(bodyScroll),
+                            )
+                        } else {
+                            val density = LocalDensity.current
+                            // The longest line at its natural width, plus room for a caret after a
+                            // trailing space. Never narrower than the canvas, so text that already
+                            // fits is not blown up past it.
+                            val naturalWidth = remember(editorState.value.text, bodyStyle) {
+                                textMeasurer.measure(
+                                    text = AnnotatedString(editorState.value.text),
+                                    style = bodyStyle,
+                                    softWrap = false,
+                                ).size.width
                             }
-                        },
-                    )
+                            val fieldWidth = with(density) {
+                                maxOf(
+                                    constraints.maxWidth - 2 * 16.dp.roundToPx(),
+                                    naturalWidth + UnwrappedCaretSlack.roundToPx(),
+                                ).toDp()
+                            }
+                            // A page wider than the canvas, dragged sideways to read a line: the
+                            // field is the wide child, the page is what scrolls. The canvas keeps
+                            // the wrapped page's side margin, so a long line is clipped at that
+                            // margin instead of running into the screen edge.
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp)
+                                    .horizontalScroll(bodyHorizontalScroll),
+                            ) {
+                                bodyField(
+                                    Modifier
+                                        .onPreviewKeyEvent { clipboardKey(it) }
+                                        .width(fieldWidth)
+                                        .fillMaxHeight()
+                                        .padding(
+                                            top = 16.dp,
+                                            bottom = BodyBottomInset,
+                                        )
+                                        .verticalScroll(bodyScroll),
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Connected formatting toolbar, drawn over the lower edge of the canvas.

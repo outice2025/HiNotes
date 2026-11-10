@@ -121,6 +121,15 @@ fun SettingsScaffold(
 
 /** The button the title starts under: 44dp, inset 4dp from the top of the page's frame. */
 private val BackButtonTop = 4.dp
+
+/**
+ * How far the whole bar sits below the frame's top edge.
+ *
+ * A bar that opens flush against the status bar reads as a continuation of it; a small drop gives
+ * the header its own edge. The bar's own drawing, the heading and the room the content leaves all
+ * include it, so the page keeps its proportions.
+ */
+private val BarDrop = 4.dp
 private val BackButtonSize = 44.dp
 
 /** Height of the bar the title ends up in: the back button and the little margin above it. */
@@ -133,7 +142,7 @@ private val BarHeight = BackButtonTop + BackButtonSize
  * name, and the name should stand clear of the bar rather than hang off the back button. The larger
  * start size keeps the page title visibly bigger than the 22sp name that replaces it in the bar.
  */
-private val TitleStartTop = BarHeight + 28.dp
+private val TitleStartTop = BarDrop + BarHeight + 28.dp
 private val TitleStartSize = 32.sp
 
 /** The size the title takes once it is in the bar, and the line it is set on there. */
@@ -197,6 +206,7 @@ private fun TopBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(BarHeight)
+            .offset(y = BarDrop)
             .background(color = color.copy(alpha = barAlpha))
             // The button's own margin above it belongs to the row, so the button and the name are
             // centred in the same 44dp and cannot sit a couple of dp apart.

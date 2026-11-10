@@ -89,6 +89,14 @@ data class HiNotesSettings(
     val appFontWeight: AppFontWeight = AppFontWeight.Regular,
     val markdownEnabled: Boolean = true,
     val autoSave: Boolean = true,
+    /**
+     * Whether the editor body wraps long lines to the width of the page.
+     *
+     * On out of the box: a note is read by scrolling the page, not by scrolling a line sideways.
+     * Switched off, the body lays out each line at its full width and the writing area scrolls
+     * horizontally instead, which is what a note of long lines needs more than it needs columns.
+     */
+    val editorWrapText: Boolean = true,
     val noteFontScale: AppFontScale = AppFontScale.Default,
     val noteFontWeight: AppFontWeight = AppFontWeight.Regular,
     val widgetFontScale: AppFontScale = AppFontScale.Default,
@@ -127,6 +135,7 @@ enum class SettingKey(val storageKey: String) {
     AppFontWeight("app_font_weight"),
     MarkdownEnabled("markdown_enabled"),
     AutoSave("auto_save"),
+    EditorWrapText("editor_wrap_text"),
     NoteFontScale("note_font_scale"),
     NoteFontWeight("note_font_weight"),
     WidgetFontScale("widget_font_scale"),
@@ -150,6 +159,7 @@ enum class SettingKey(val storageKey: String) {
         AppFontWeight -> settings.appFontWeight.name
         MarkdownEnabled -> settings.markdownEnabled.toString()
         AutoSave -> settings.autoSave.toString()
+        EditorWrapText -> settings.editorWrapText.toString()
         NoteFontScale -> settings.noteFontScale.name
         NoteFontWeight -> settings.noteFontWeight.name
         WidgetFontScale -> settings.widgetFontScale.name
@@ -179,6 +189,7 @@ class SettingsRepository(private val context: Context) {
         val appFontWeight = stringPreferencesKey("app_font_weight")
         val markdownEnabled = booleanPreferencesKey("markdown_enabled")
         val autoSave = booleanPreferencesKey("auto_save")
+        val editorWrapText = booleanPreferencesKey("editor_wrap_text")
         val noteFontScale = stringPreferencesKey("note_font_scale")
         val noteFontWeight = stringPreferencesKey("note_font_weight")
         val widgetFontScale = stringPreferencesKey("widget_font_scale")
@@ -212,6 +223,7 @@ class SettingsRepository(private val context: Context) {
                     ?: defaults.appFontWeight,
                 markdownEnabled = prefs[Keys.markdownEnabled] ?: defaults.markdownEnabled,
                 autoSave = prefs[Keys.autoSave] ?: defaults.autoSave,
+                editorWrapText = prefs[Keys.editorWrapText] ?: defaults.editorWrapText,
                 noteFontScale = prefs[Keys.noteFontScale]?.let(AppFontScale::fromKey)
                     ?: defaults.noteFontScale,
                 noteFontWeight = prefs[Keys.noteFontWeight]?.let(AppFontWeight::fromKey)
@@ -268,6 +280,8 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setAutoSave(value: Boolean) = edit { it[Keys.autoSave] = value }
 
+    suspend fun setEditorWrapText(value: Boolean) = edit { it[Keys.editorWrapText] = value }
+
     suspend fun setNoteFontScale(value: AppFontScale) =
         edit { it[Keys.noteFontScale] = value.name }
 
@@ -313,6 +327,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.appFontWeight] = settings.appFontWeight.name
             prefs[Keys.markdownEnabled] = settings.markdownEnabled
             prefs[Keys.autoSave] = settings.autoSave
+            prefs[Keys.editorWrapText] = settings.editorWrapText
             prefs[Keys.noteFontScale] = settings.noteFontScale.name
             prefs[Keys.noteFontWeight] = settings.noteFontWeight.name
             prefs[Keys.widgetFontScale] = settings.widgetFontScale.name
@@ -346,6 +361,7 @@ class SettingsRepository(private val context: Context) {
                 ?.let(AppFontWeight::fromKey) ?: fallback.appFontWeight,
             markdownEnabled = bool(SettingKey.MarkdownEnabled, fallback.markdownEnabled),
             autoSave = bool(SettingKey.AutoSave, fallback.autoSave),
+            editorWrapText = bool(SettingKey.EditorWrapText, fallback.editorWrapText),
             noteFontScale = pairs[SettingKey.NoteFontScale.storageKey]
                 ?.let(AppFontScale::fromKey) ?: fallback.noteFontScale,
             noteFontWeight = pairs[SettingKey.NoteFontWeight.storageKey]

@@ -11,9 +11,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -64,6 +64,16 @@ class MainActivity : FragmentActivity() {
     private val pendingNoteId = MutableStateFlow<String?>(null)
 
     /**
+     * The platform's light/dark flag, handed into Compose as state.
+     *
+     * The activity declares `uiMode` in `configChanges`, so a system theme switch never restarts
+     * it. The composition has to read the new flag from something that changes, and
+     * `isSystemInDarkTheme()` would only ever see the configuration the activity was built with;
+     * this copy is written in [onConfigurationChanged] and again in [onResume].
+     */
+    private val systemDarkState = mutableStateOf(false)
+
+    /**
      * The language this activity was built in.
      *
      * A language change writes the stored setting and the locale mirror together, and the two are
@@ -105,6 +115,9 @@ class MainActivity : FragmentActivity() {
             navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { appDark },
         )
         super.onCreate(savedInstanceState)
+        // The theme below reads the platform's night flag from this state, so it is filled before
+        // the first composition.
+        systemDarkState.value = systemDark()
         // Screenshots and screen recording are blocked, or allowed, before anything is drawn: the
         // stored setting is already in hand, because the view model reads it as it is built.
         applyScreenCapturePolicy(viewModel.settings.value.screenCaptureDisabled)
@@ -144,7 +157,7 @@ class MainActivity : FragmentActivity() {
                 applyScreenCapturePolicy(settings.screenCaptureDisabled)
             }
 
-            val systemDark = isSystemInDarkTheme()
+            val systemDark = systemDarkState.value
             val darkTheme = settings.darkMode.isDark(systemDark)
 
             // The bars' icons follow the theme the app is drawing in, whatever the phone is set to:
@@ -213,6 +226,9 @@ class MainActivity : FragmentActivity() {
      */
     override fun onResume() {
         super.onResume()
+        // A switch made while the app was in the background may not have reached
+        // [onConfigurationChanged]; reading the flag again on the way in keeps the theme live.
+        systemDarkState.value = systemDark()
         applyScreenCapturePolicy(viewModel.settings.value.screenCaptureDisabled)
         lifecycleScope.launch { viewModel.reloadNotes() }
         // A card is drawn once and stays as it was drawn, so opening the app - by a tap on a card,
@@ -232,6 +248,10 @@ class MainActivity : FragmentActivity() {
      */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        // The composition reads the flag as state; without this write a switch to dark mode would
+        // only be drawn the next time the app was opened.
+        systemDarkState.value =
+            newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
         HiNotesWidgetProvider.refreshAll(this)
     }
 

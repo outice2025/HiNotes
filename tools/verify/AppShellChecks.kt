@@ -89,6 +89,7 @@ object AppShellChecks {
         homeEmptyState()
         pickerDialog()
         settingsHeadingSpacing()
+        systemNightHandoff()
         wallpaperSignals()
         lifecycleTriggers()
         report()
@@ -164,13 +165,13 @@ object AppShellChecks {
 
         val gradle = code("app/build.gradle.kts")
         check(
-            "the test package is version 1.1.4",
-            gradle.contains("val appVersionName = \"1.1.4\""),
+            "the test package is version 1.1.5",
+            gradle.contains("val appVersionName = \"1.1.5\""),
             "the checks below were revised for this release",
         )
         check(
-            "the test package is versionCode 25",
-            gradle.contains("val appVersionCode = 25"),
+            "the test package is versionCode 26",
+            gradle.contains("val appVersionCode = 26"),
             "a package with the same code cannot replace the one testers installed",
         )
         check(
@@ -266,8 +267,14 @@ object AppShellChecks {
             "the heading is placed from this height, so it cannot be a literal",
         )
         check(
-            "the heading starts 28dp under the bar",
-            scaffold.contains("private val TitleStartTop = BarHeight + 28.dp"),
+            "the bar sits a few dp below the frame's top edge",
+            scaffold.contains("private val BarDrop = 4.dp") &&
+                scaffold.contains(".offset(y = BarDrop)"),
+            "a settings header flush against the status bar reads as part of it",
+        )
+        check(
+            "the heading starts 28dp under the bar, which sits at the drop",
+            scaffold.contains("private val TitleStartTop = BarDrop + BarHeight + 28.dp"),
             "the breathing room above a settings page's own name",
         )
         check(
@@ -294,6 +301,42 @@ object AppShellChecks {
             scaffold.contains("private val TitleEndSize = 22.sp") &&
                 scaffold.contains("private val TitleTravel = 44.dp"),
             "moving the heading must not move the bar it becomes",
+        )
+    }
+
+    /**
+     * How the platform's theme switch reaches the composition.
+     *
+     * The activity declares `uiMode` in `configChanges`, so a switch in the system theme does not
+     * restart it and the composition is not rebuilt by the platform. The new flag arrives in
+     * `onConfigurationChanged`, is kept as state, and the theme is read from that state - the
+     * platform's own `isSystemInDarkTheme()` would keep the value the activity was built with.
+     */
+    private fun systemNightHandoff() {
+        println("System theme hand-off")
+
+        val activity = code("$SOURCE/MainActivity.kt")
+        check(
+            "the night flag is kept as state",
+            activity.contains("private val systemDarkState = mutableStateOf(false)"),
+            "a plain read of the platform flag cannot see a switch once the activity is built",
+        )
+        check(
+            "the configuration change writes the new flag",
+            activity.contains("systemDarkState.value =") &&
+                activity.contains("newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK"),
+            "with uiMode in configChanges this callback is the only place the switch arrives",
+        )
+        check(
+            "the composition reads the copy",
+            activity.contains("val systemDark = systemDarkState.value") &&
+                activity.contains("systemDarkState.value = systemDark()"),
+            "the state has to be filled before the first composition and refreshed on the way in",
+        )
+        check(
+            "the platform flag is no longer read directly",
+            !activity.contains("isSystemInDarkTheme"),
+            "a direct read is a value captured once per composition and misses the switch",
         )
     }
 

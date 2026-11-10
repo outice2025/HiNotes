@@ -59,7 +59,7 @@
     <string name="editor_props_updated">Modified date</string>
     <string name="editor_props_words">Words</string>
     <string name="editor_props_words_hint">Title and punctuation excluded</string>
-    <string name="editor_props_words_with_punctuation">Words (with punctuation)</string>
+    <string name="editor_props_words_with_punctuation">Words</string>
     <string name="editor_props_punctuation">Punctuation marks</string>
     <string name="editor_props_line_count">Lines</string>
     <string name="editor_share_chooser">Share note</string>
@@ -108,6 +108,8 @@
     <string name="editor_settings_markdown_support">Write notes in Markdown</string>
     <string name="editor_settings_autosave">Autosave</string>
     <string name="editor_settings_autosave_support">Notes are saved as you write them</string>
+    <string name="editor_settings_wrap_text">Wrap text</string>
+    <string name="editor_settings_wrap_text_support">Wrap lines while editing</string>
     <string name="editor_settings_default_edit_mode">Default to edit mode</string>
     <string name="editor_settings_default_edit_mode_support">Open the editor in edit mode</string>
     <string name="editor_settings_font_size">Note font settings</string>

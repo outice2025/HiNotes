@@ -18,7 +18,8 @@ import com.hiapps.hinotes.ui.components.SwitchRow
 import com.hiapps.hinotes.ui.icons.Symbols
 
 /**
- * Editor settings: Markdown, autosave, the mode a note opens in, and the note content typography.
+ * Editor settings: Markdown, autosave, wrapping while writing, the mode a note opens in, and the
+ * note content typography.
  *
  * The note type settings only affect note content - the editor body, previews and list previews -
  * which is why they sit here as well as on the Appearance screen. Like the app typography, they
@@ -62,8 +63,22 @@ fun EditorSettingsScreen(
                 isFirst = true,
                 isLast = false,
             )
-            // Directly under autosave and in the same group: both answer how the editor behaves
-            // when a note is opened, where the rows above and below them are about the note's text.
+            // Under autosave: both answer what happens to the note while it is being written,
+            // where the rows below them are about how the text is drawn.
+            SwitchRow(
+                icon = Symbols.WrapText,
+                headline = stringResource(R.string.editor_settings_wrap_text),
+                supporting = stringResource(R.string.editor_settings_wrap_text_support),
+                checked = settings.editorWrapText,
+                onCheckedChange = { checked ->
+                    viewModel.updateSettings { setEditorWrapText(checked) }
+                },
+                isFirst = false,
+                isLast = false,
+            )
+            // Same group as autosave and wrapping, one step further out: those answer what happens
+            // to the note while it is being written, this answers how the editor opens it, and the
+            // font row below is about how the text is drawn.
             SwitchRow(
                 icon = Symbols.Edit,
                 headline = stringResource(R.string.editor_settings_default_edit_mode),

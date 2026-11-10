@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -54,73 +55,64 @@ object Routes {
     fun editor(noteId: String) = "editor/$noteId"
 }
 
-/**
- * Screen transition, matching the way Android's own Settings app moves between pages.
- *
- * One page arrives at full width and the page underneath it drifts a quarter of the way out, in
- * both directions: forward the *new* page arrives while the old one drifts away, and back the
- * *old* page returns while the current one drifts away. Popping is therefore the push played
- * backwards - the same distances over the same 300ms - so the page being dismissed moves at the
- * gentle rate in both directions, and neither direction snaps.
- *
- * Pushing: the arriving page sweeps the full width over the page drifting away, and nothing fades.
- * Two full-screen opaque pages cross-fading are both half transparent at the same moment, which is
- * exactly what an afterimage is, so forward there is no fade at all.
- *
- * Popping: the page being dismissed sweeps the full width to the right at the same speed the page
- * being returned to drifts its quarter width back underneath it. The dismissed page stays opaque
- * the whole way, so it cannot blend with anything, and it is completely gone when the motion ends.
- * The two designs before this one both failed that last point: left at a quarter width it was cut
- * off mid-screen, and faded out while it travelled it turned translucent over the page underneath,
- * which is the ghost. A full-width opaque slide has neither problem, and it is the push played
- * exactly backwards, so the two directions still mirror each other.
- */
+/** The one page transition. A page always moves on this clock, in either direction. */
 private const val TRANSITION_MS = 300
 
-/** Material 3 "standard" easing, the curve the platform's own transitions use. */
-private val StandardEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-
-private fun slideSpec(durationMs: Int = TRANSITION_MS) =
-    tween<androidx.compose.ui.unit.IntOffset>(durationMs, easing = StandardEasing)
-
-/** How far the covered page drifts while a new one covers it. */
+/** How far the page underneath drifts while the page above it covers it. */
 private const val PARALLAX_DIVISOR = 4
 
-/** A pushed page slides in from the right edge. */
+/** Material 3's standard easing, the curve the platform's own page changes use. */
+private val StandardEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+/**
+ * The single animation spec all four transitions share.
+ *
+ * One spec is what keeps a return from ever looking quicker than the push it mirrors: a page that
+ * moved on a different curve or a different length would visibly outrun the one it is paired with.
+ */
+private val SlideSpec = tween<IntOffset>(durationMillis = TRANSITION_MS, easing = StandardEasing)
+
+/**
+ * The page transition itself, which is a slide in both directions and nothing else.
+ *
+ * A moving page is always fully opaque, so two pages can never show through each other: there is no
+ * fade to make one out of two halves, and no point in the motion where the screen changes by
+ * itself. Forward, the arriving page sweeps in from the right edge at full width while the page
+ * underneath drifts a quarter width to the left, mostly hidden under it; back is that same motion
+ * played in reverse, the page underneath drifting back in from the left while the page on top
+ * slides the full width off to the right.
+ */
+
+/** A pushed page arrives from the right edge, covering the page underneath. */
 private fun AnimatedContentTransitionScope<*>.pushEnter(): EnterTransition =
-    slideInHorizontally(animationSpec = slideSpec(), initialOffsetX = { it })
+    slideInHorizontally(animationSpec = SlideSpec, initialOffsetX = { it })
 
-/** The page being covered drifts left a quarter width; the page above it hides the rest. */
+/** The page being covered drifts a quarter width left; the arriving page hides the rest. */
 private fun AnimatedContentTransitionScope<*>.pushExit(): ExitTransition =
-    slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { -it / PARALLAX_DIVISOR })
+    slideOutHorizontally(animationSpec = SlideSpec, targetOffsetX = { -it / PARALLAX_DIVISOR })
 
-/** The page being returned to drifts back in from the left, mirroring [pushExit]. */
+/** The page underneath drifts back in from the left, mirroring [pushExit]. */
 private fun AnimatedContentTransitionScope<*>.popEnter(): EnterTransition =
-    slideInHorizontally(animationSpec = slideSpec(), initialOffsetX = { -it / PARALLAX_DIVISOR })
+    slideInHorizontally(animationSpec = SlideSpec, initialOffsetX = { -it / PARALLAX_DIVISOR })
 
-/** The dismissed page slides the whole way off to the right, opaque until it is gone. */
+/** The dismissed page slides the full width off to the right, opaque until it is gone. */
 private fun AnimatedContentTransitionScope<*>.popExit(): ExitTransition =
-    slideOutHorizontally(animationSpec = slideSpec(), targetOffsetX = { it })
+    slideOutHorizontally(animationSpec = SlideSpec, targetOffsetX = { it })
 
 /**
  * The app's navigation host.
  *
- * Every way out of a page - the back buttons drawn in the headers, the system's back button and
- * the system's back gesture - ends at one place, [NavHostController.popBackStack] through the
- * guarded `back` below, and therefore runs this same [popEnter]/[popExit] pair: there is no second
- * animation path that could look different.
+ * Every way out of a page - the back buttons drawn in the headers, the system's back button and the
+ * system's back gesture, and the editor's own way out - ends at one place, [NavHostController.popBackStack]
+ * through the guarded `back` below, so all of them play this same [popEnter]/[popExit] pair: there
+ * is no second animation path that could look different.
  *
- * The last two of those used to be left to the host. Back is not always answered by the activity
- * any more: a platform can hand the press to the app's back dispatcher, and Compose Navigation
- * answers that path by seeking the pop with the gesture's own progress and then animating only the
- * fraction of the transition that is left - a return driven by the finger, and visibly quicker than
- * the page arriving. The graph therefore answers back for the pages that have no guard of their
- * own, before the host can start a gesture-driven pop: the press is taken here and answered by the
- * same guarded `back` the headers use. The editor keeps its own guard and its own two presses -
- * closing the find bar, and asking before leaving unsaved work - and the first page keeps the
- * system's back, which is what closes the app from the list. The manifest's
- * `android:enableOnBackInvokedCallback` stays as it is, but the app no longer relies on it for how a
- * return looks: whatever the platform does with the press, it is answered here.
+ * The system's back is taken here rather than left to the host, because a predictive back gesture
+ * would otherwise seek the pop with the finger's own progress and then animate only the fraction of
+ * the transition that is left, which makes a return visibly quicker than the push it mirrors. The
+ * editor keeps its own handler and its own presses - closing the find bar, and asking before
+ * unsaved work goes - and the first page keeps the system's back, which is what closes the app from
+ * the list.
  */
 @Composable
 fun HiNotesApp(
@@ -132,24 +124,22 @@ fun HiNotesApp(
     /**
      * Leaves the current page.
      *
-     * Two presses are refused here, and both of them used to make a return look as if its
-     * animation had been skipped. The first is a press that arrives while the page is already on
-     * its way out: the back stack no longer holds it, so that pop would take the page *underneath*
-     * out of the stack instead, and the animation the user was watching would be replaced by one
-     * for a page they never asked to leave. The second is a pop with nothing under it, which has
-     * nothing to animate and would leave an empty host; the system's own back still closes the app
-     * from the first page, because that is the activity's answer rather than the graph's.
+     * A press that arrives while the page is already on its way out is refused: the entry is no
+     * longer in the back stack, so that pop would take the page *underneath* out instead, and the
+     * animation the user is watching would be replaced by one for a page they never asked to
+     * leave. A pop with nothing under it has nothing to animate and would leave an empty host; the
+     * system's own back still closes the app from the first page.
      */
-    var leaving by remember { mutableStateOf(false) }
-    LaunchedEffect(leaving) {
-        if (leaving) {
+    var popping by remember { mutableStateOf(false) }
+    LaunchedEffect(popping) {
+        if (popping) {
             delay(TRANSITION_MS.toLong())
-            leaving = false
+            popping = false
         }
     }
     val back: () -> Unit = {
-        if (!leaving && navController.previousBackStackEntry != null) {
-            leaving = true
+        if (!popping && navController.previousBackStackEntry != null) {
+            popping = true
             navController.popBackStack()
         }
     }
@@ -162,7 +152,7 @@ fun HiNotesApp(
      * is already at the top of the stack, but the request still reaches the navigator, which
      * replaces that page's entry and so rebuilds the screen in the middle of its own arrival - the
      * flash that a quick double tap on a note was reported as. One page is pushed per transition,
-     * which is what makes an arrival play once, the way a return already does.
+     * which is what makes an arrival play once.
      */
     var pushing by remember { mutableStateOf(false) }
     LaunchedEffect(pushing) {
@@ -279,15 +269,16 @@ fun HiNotesApp(
         }
     }
 
-    // The graph's own answer to the system's back. The two pages that answer it themselves are
-    // left out: the editor already has a guard that has to see the press first (the find bar and
-    // the question before unsaved work goes), and the first page keeps the system's back so that a
-    // press on the list closes the app. Every other page - the settings screens - is answered here,
-    // which keeps its return at the same rate as the push that opened it; see this function's own
-    // comment for what the platform would otherwise do with the gesture.
+    // The graph's own answer to the system's back. [popping] keeps this handler enabled for the
+    // whole of a return: as soon as the pop starts, the current entry is the page underneath, and
+    // on the way back to the list that page is the home screen, whose back belongs to the system -
+    // a second press in the last frames would otherwise close the app over an unfinished
+    // animation. While the flag is set, such a press is swallowed by the guard in `back` instead.
+    // The editor answers its own press while it is on screen, and the first page keeps the
+    // system's back, which is what closes the app from the list.
     val currentEntry by navController.currentBackStackEntryAsState()
     val route = currentEntry?.destination?.route
-    BackHandler(enabled = route != null && route != Routes.HOME && route != Routes.EDITOR) {
+    BackHandler(enabled = popping || (route != null && route != Routes.HOME && route != Routes.EDITOR)) {
         back()
     }
 }

@@ -127,26 +127,45 @@ object DocumentPickChecks {
     }
 
     /**
-     * The back transition.
+     * The screen transition.
      *
-     * The dismissed page has to travel far enough to leave the screen and has to stay opaque while
-     * it does: left at a quarter width it was cut off mid-screen, and faded out while it travelled
-     * it turned translucent over the page underneath, which is the afterimage that has now been
-     * reported twice. So the full-width offset is required, and any fade at all is refused.
+     * Both directions are one slide on one clock: the arriving page covers the full width while the
+     * page underneath drifts a quarter of the way, and a return is that same motion in reverse. A
+     * moving page stays opaque so it can never blend with the page it is covering - a fade is the
+     * afterimage this was reported as. The four transitions must also keep sharing one spec, because
+     * a page that moved on a spec of its own would visibly outrun the page it is paired with.
      */
     private fun transitions() {
         println("screen transitions")
 
         val app = code("app/src/main/java/com/hiapps/hinotes/ui/HiNotesApp.kt")
 
-        check("the dismissed page travels the full width", app.contains("targetOffsetX = { it })"))
+        check("there is one duration for every transition", app.contains("TRANSITION_MS = 300"))
         check(
-            "the page underneath drifts in by the parallax",
+            "a transition never invents a duration of its own",
+            app.contains("durationMillis = TRANSITION_MS"),
+        )
+        check(
+            "every transition shares the one spec",
+            Regex("animationSpec = SlideSpec").findAll(app).count() == 4,
+            "a second spec would let the two directions drift apart",
+        )
+        check(
+            "the shared spec is the standard curve",
+            app.contains("CubicBezierEasing(0.2f, 0f, 0f, 1f)"),
+        )
+        check("the push covers from the right edge", app.contains("initialOffsetX = { it }"))
+        check(
+            "the page underneath drifts a quarter width left",
+            app.contains("targetOffsetX = { -it / PARALLAX_DIVISOR }"),
+        )
+        check(
+            "the page underneath drifts back in on a return",
             app.contains("initialOffsetX = { -it / PARALLAX_DIVISOR }"),
         )
-        check("the push still covers from the right edge", app.contains("initialOffsetX = { it }"))
+        check("the dismissed page travels the full width", app.contains("targetOffsetX = { it })"))
+        check("the parallax stays a quarter", app.contains("PARALLAX_DIVISOR = 4"))
         check("nothing fades", !app.contains("fadeIn") && !app.contains("fadeOut"))
-        check("both directions run on the same clock", app.contains("TRANSITION_MS = 300"))
     }
 
     /**
