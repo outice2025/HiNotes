@@ -139,9 +139,39 @@ object EditorChecks {
         // swallows that press, and never starts a second animation.
         check(
             "a press during a return is swallowed instead of closing the app",
-            app.contains("enabled = popping ||") &&
-                app.contains("if (!popping && navController.previousBackStackEntry != null)"),
+            app.contains("popping -> Unit") && app.contains("enabled = popping ||"),
             "the platform would finish the app mid-animation",
+        )
+        // A return asked for while a page is still arriving is held until that page has landed:
+        // popping at once would start the opposite slide on top of the push still playing, and the
+        // two transitions drawn over each other read as no animation at all - the return that
+        // appeared to skip its animation. The held request is then played through the same guarded
+        // pop as every other way out.
+        check(
+            "a return during an arrival waits for the arrival",
+            app.contains("pushing -> pendingBack = true") &&
+                app.contains("if (pendingBack && !pushing)") &&
+                app.contains("pendingBack = false"),
+            "a pop started mid-push is the animation that goes missing",
+        )
+        check(
+            "the waiting return is played by the one guarded pop",
+            Regex("navController\\.popBackStack\\(").findAll(app).count() == 1,
+            "a second pop call site would bypass the queue",
+        )
+        // The guard is armed by the transition itself, not when the page change reaches the
+        // composition: a page slow to first compose can take longer than a transition to appear, so
+        // a clock started at the change ran out while the arrival was still on screen, and a return
+        // then started the opposite slide on top of it - the animation that appeared to vanish.
+        // Every one of the four transitions arms the guard, and a movement that never announces
+        // itself is released by its own fallback instead of holding the guard for good.
+        check(
+            "the guard clock starts with the transition itself",
+            app.contains("val armGuard = {") &&
+                app.contains("GUARD_FALLBACK_MS") &&
+                Regex("armGuard\\(\\)").findAll(app).count() >= 4 &&
+                !app.contains("LaunchedEffect(currentEntry)"),
+            "a clock started at the page change runs out mid-arrival",
         )
         // The editor is the one page the graph leaves alone, so its own handler has to be there for
         // the whole time it is on screen - not only while there are unsaved changes to ask about.
@@ -257,8 +287,10 @@ object EditorChecks {
             "a pick that never comes back and one that comes back empty look the same on screen",
         )
         check(
-            "a pick that cannot be started says so",
-            editor.contains("R.string.editor_image_failed"),
+            "a pick that cannot be started is only recorded",
+            editor.contains("no installed app answered for a picture") &&
+                !editor.contains("R.string.editor_image_failed"),
+            "a failed import is not worth a prompt",
         )
         check(
             "a picker's answer is read from its data or its clip item",
@@ -266,11 +298,12 @@ object EditorChecks {
             "one photo picker was seen answering with a clip item and no data",
         )
         check(
-            "a picker that answers without a picture is reported as a failure",
+            "a picker that answers without a picture is recorded",
             code("app/src/main/java/com/hiapps/hinotes/MainActivity.kt")
                 .contains("PickedImageRelay.refuse()") &&
-                editor.contains("PickedImage.Refused"),
-            "a tap that silently does nothing is the fault this guards",
+                editor.contains("PickedImage.Refused") &&
+                !editor.contains("R.string.editor_image_failed"),
+            "the two answers must stay distinguishable in the log",
         )
         // The writing area is the note's Markdown source: a picture imported there is only a line of
         // text until the page is drawn as the reader sees it, which is where pictures are drawn. The
@@ -872,6 +905,29 @@ object EditorChecks {
                 home.contains("visible = selecting"),
             "laid out side by side, the new buttons were pushed in from the left",
         )
+        val bar = code("app/src/main/java/com/hiapps/hinotes/ui/components/SearchBar.kt")
+        check(
+            "the pin button fades between its two meanings",
+            bar.contains("Crossfade(") &&
+                bar.contains("targetState = actionIcon to actionContentDescription") &&
+                bar.contains("animationSpec = tween(actionFadeMillis)"),
+            "a glyph that snaps between pin and unpin is a jump under the finger",
+        )
+        check(
+            "every fade on the home page runs at one rate",
+            home.contains("private const val HomeFadeMillis = 200") &&
+                Regex("tween\\(HomeFadeMillis\\)").findAll(home).count() >= 6 &&
+                home.contains("actionFadeMillis = HomeFadeMillis"),
+            "an illustration and a control fading at different speeds read as two unrelated motions",
+        )
+        val card = code("app/src/main/java/com/hiapps/hinotes/ui/components/CommonComponents.kt")
+        check(
+            "a selected card is marked by its colour, not by a tick",
+            card.contains("containerColor = if (selected)") &&
+                !card.contains("Symbols.CheckBoxOutlineBlank") &&
+                !card.contains("Alignment.TopStart"),
+            "a second tick beside the title and at the corner repeated what the colour says",
+        )
     }
 
     /**
@@ -956,6 +1012,14 @@ object EditorChecks {
         check(
             "the card stops scrolling while it is being selected",
             card.contains("scrollable = scrollable && !selecting"),
+        )
+        // The home screen can ask a card for the note alone: no title line, no gap under it, and the
+        // body starts where the title used to start the card's inset.
+        check(
+            "a card can be asked to fill its whole face with the note",
+            card.contains("showTitle: Boolean = true") &&
+                card.contains("top = if (showTitle) side + CardTitleTopGap else side"),
+            "an empty title line would still take the body's first line of room",
         )
 
         // One button selects everything and, once everything is selected, clears it.

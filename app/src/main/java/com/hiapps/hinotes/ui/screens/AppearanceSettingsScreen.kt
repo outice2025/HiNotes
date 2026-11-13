@@ -132,12 +132,25 @@ fun AppearanceSettingsScreen(
         SettingsSectionGap()
 
         SettingsSection {
+            SwitchRow(
+                icon = Symbols.Title,
+                headline = stringResource(R.string.appearance_card_title),
+                supporting = stringResource(R.string.appearance_card_title_support),
+                checked = settings.homeCardShowTitle,
+                onCheckedChange = { checked ->
+                    viewModel.updateSettings { setHomeCardShowTitle(checked) }
+                },
+                isFirst = true,
+                isLast = false,
+            )
             SettingsRow(
                 icon = Symbols.FormatSize,
                 headline = stringResource(R.string.appearance_font_size),
                 supporting = stringResource(R.string.appearance_font_size_support),
                 onClick = { showFont = true },
                 trailing = { Chevron() },
+                isFirst = false,
+                isLast = true,
             )
         }
     }

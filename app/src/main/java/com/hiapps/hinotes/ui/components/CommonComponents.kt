@@ -103,6 +103,9 @@ private val CardPadding = 16.dp
 private val CardTitleTopGap = 4.dp
 private val CardTitleBottomGap = 8.dp
 
+/** Diameter of the disc a card's lock or selection mark is drawn in when it has no title line. */
+private val CardCornerBadgeSize = 24.dp
+
 /**
  * How far a card's content sits from the card's own left edge, in either layout.
  *
@@ -238,6 +241,9 @@ fun AppLogoPlaceholder(
  * @param scrollable whether the body scrolls on its own inside the card. On by default, which is
  *   what a card drawn outside the list (the widget picker's preview) has always had; the list
  *   passes its own switch, and a selection turns scrolling off whatever that switch says.
+ * @param showTitle whether the title line is drawn at all. The home screen can hide it so the body
+ *   starts at the card's top edge; the lock and the selection mark then move onto the card's top
+ *   corners rather than taking a line of their own height.
  */
 @Composable
 fun NoteCard(
@@ -255,9 +261,15 @@ fun NoteCard(
     bodyMaxLines: Int = if (compact) 6 else 3,
     onToggleTask: ((Int, Boolean) -> Unit)? = null,
     scrollable: Boolean = true,
+    showTitle: Boolean = true,
 ) {
     val shape = RoundedCornerShape(HiNotesCorners.Card)
     val side = cardSideInset(compact)
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -267,75 +279,116 @@ fun NoteCard(
                 onLongClick = onLongClick,
             ),
         shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            },
-        ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
-        Column(
-            Modifier.padding(
-                start = side,
-                end = side,
-                top = side + CardTitleTopGap,
-                bottom = side,
-            ),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (selecting) {
-                    SymbolIcon(
-                        codepoint = if (selected) Symbols.Check else Symbols.CheckBoxOutlineBlank,
-                        contentDescription = null,
-                        size = 20.dp,
-                        tint = if (selected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                    Spacer(Modifier.width(8.dp))
+        Box(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = side,
+                        end = side,
+                        top = if (showTitle) side + CardTitleTopGap else side,
+                        bottom = side,
+                    ),
+            ) {
+                if (showTitle) {
+                    // A selected card says so with its own colour (see `containerColor`); a tick
+                    // beside the title would be a second signal the home screen no longer needs.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = title,
+                            style = cardTitleStyle(compact),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (locked) {
+                            Spacer(Modifier.width(6.dp))
+                            SymbolIcon(
+                                codepoint = Symbols.Lock,
+                                contentDescription = lockedLabel,
+                                size = 16.dp,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
-                Text(
-                    text = title,
-                    style = cardTitleStyle(compact),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
+                if (content.isNotBlank()) {
+                    if (showTitle) {
+                        Spacer(Modifier.height(CardTitleBottomGap))
+                    }
+                    CardBody(
+                        content = content,
+                        markdownEnabled = markdownEnabled,
+                        // Lines are set to the pitch a task's box needs rather than to the body's own:
+                        // a box drawn inside the text is as tall as the line it stands in, so a body
+                        // set at its usual line height showed a list of tasks as boxes that touched.
+                        // The pitch is a length in dp for the same reason - the box it makes room for
+                        // is 18dp whatever size the reader has set the text to.
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = with(LocalDensity.current) { TaskBoxPitch.toSp() },
+                        ),
+                        maxLines = bodyMaxLines,
+                        onToggleTask = onToggleTask,
+                        // A selection always wins over the list's switch: the card becomes one
+                        // selection target, and a body that still slid under the finger would swallow
+                        // the drag meant for the page.
+                        scrollable = scrollable && !selecting,
+                    )
+                }
+            }
+            // With no title line to sit on, the lock is drawn over the card's top corner. A line of
+            // its own would take the height the body was asked to fill. A selection is read from the
+            // card's colour, so it needs no mark here.
+            if (!showTitle) {
                 if (locked) {
-                    Spacer(Modifier.width(6.dp))
-                    SymbolIcon(
+                    CardCornerBadge(
                         codepoint = Symbols.Lock,
                         contentDescription = lockedLabel,
-                        size = 16.dp,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        background = containerColor,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(end = side, top = side),
                     )
                 }
             }
-            if (content.isNotBlank()) {
-                Spacer(Modifier.height(CardTitleBottomGap))
-                CardBody(
-                    content = content,
-                    markdownEnabled = markdownEnabled,
-                    // Lines are set to the pitch a task's box needs rather than to the body's own:
-                    // a box drawn inside the text is as tall as the line it stands in, so a body
-                    // set at its usual line height showed a list of tasks as boxes that touched.
-                    // The pitch is a length in dp for the same reason - the box it makes room for
-                    // is 18dp whatever size the reader has set the text to.
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        lineHeight = with(LocalDensity.current) { TaskBoxPitch.toSp() },
-                    ),
-                    maxLines = bodyMaxLines,
-                    onToggleTask = onToggleTask,
-                    // A selection always wins over the list's switch: the card becomes one
-                    // selection target, and a body that still slid under the finger would swallow
-                    // the drag meant for the page.
-                    scrollable = scrollable && !selecting,
-                )
-            }
+        }
+    }
+}
+
+/**
+ * A card's lock, drawn over a top corner when the card draws no title line.
+ *
+ * A card without a title has no line for the lock to sit on, and a line of its own would take
+ * height its body was asked to fill. The disc is painted in the card's own colour so the body text
+ * running beneath it stays legible around the glyph.
+ */
+@Composable
+private fun CardCornerBadge(
+    codepoint: Int,
+    contentDescription: String?,
+    tint: Color,
+    background: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.size(CardCornerBadgeSize),
+        shape = CircleShape,
+        color = background,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            SymbolIcon(
+                codepoint = codepoint,
+                contentDescription = contentDescription,
+                size = 16.dp,
+                tint = tint,
+            )
         }
     }
 }

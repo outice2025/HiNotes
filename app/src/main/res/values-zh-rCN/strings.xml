@@ -67,7 +67,6 @@
     <string name="editor_save_failed">笔记保存失败</string>
     <string name="editor_more_actions">更多操作</string>
     <string name="editor_insert_image">导入图片</string>
-    <string name="editor_image_failed">图片导入失败</string>
 
     <!-- 设置页 -->
     <string name="settings_title">设置</string>
@@ -96,6 +95,8 @@
     <string name="appearance_oled_support">深色模式下背景纯黑</string>
     <string name="appearance_color">颜色</string>
     <string name="appearance_scheme_support">配色方案</string>
+    <string name="appearance_card_title">笔记卡片显示标题</string>
+    <string name="appearance_card_title_support">关闭后笔记内容铺满卡片</string>
     <string name="appearance_font_size">应用字体设置</string>
     <string name="appearance_font_size_support">设置应用字体</string>
     <string name="appearance_dynamic_unavailable">动态取色需要 Android 12 或更高版本</string>

@@ -53,7 +53,7 @@ ICONS = {
     "List": "list", "Palette": "palette", "Language": "language",
     "Archive": "archive", "Password": "password", "ChevronRight": "chevron_right",
     "Colors": "colors", "DarkMode": "dark_mode", "Contrast": "contrast",
-    "FormatSize": "format_size", "TextFields": "text_fields", "Sell": "sell",
+    "FormatSize": "format_size", "Sell": "sell",
     "Save": "save", "Download": "download", "Upload": "upload",
     "Face": "face", "Lock": "lock", "Update": "update",
     "Box": "box", "OpenInNew": "open_in_new",

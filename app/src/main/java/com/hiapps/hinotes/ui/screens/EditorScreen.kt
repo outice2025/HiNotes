@@ -754,14 +754,12 @@ fun EditorScreen(
      *
      * The copy into the app's own storage is a file, sometimes a large one, so it happens off the
      * main thread; the note is edited once the address that copy lives at is in hand. A picture
-     * that could not be read or written says so, because a button that appears to do nothing is
-     * worse than one that says it failed.
+     * that could not be read or written is recorded in the log rather than reported on screen.
      */
     suspend fun importPicture(uri: Uri) {
         val url = withContext(Dispatchers.IO) { NoteImages.import(context, uri) }
         if (url == null) {
             Log.e(TAG, "the picked picture could not be copied into the note")
-            snackbarHostState.showSnackbar(context.getString(R.string.editor_image_failed))
         } else {
             Log.i(TAG, "picture copied to $url")
             editorState.applyEdit(Markdown.insertImage(editorState.value, url))
@@ -787,8 +785,7 @@ fun EditorScreen(
      *
      * Each picker is tried in turn and every attempt is logged with what it was asked for, because a
      * device that answers for none of them is a report this app cannot guess at from the outside. A
-     * tap that none of them can answer says it failed rather than doing nothing; see
-     * [pickImageIntents].
+     * tap that none of them can answer is only recorded in the log; see [pickImageIntents].
      */
     fun pickImage() {
         val activity = context.findActivity()
@@ -806,17 +803,14 @@ fun EditorScreen(
         } else {
             Log.e(TAG, "there is no activity to ask for a picture")
         }
-        scope.launch {
-            snackbarHostState.showSnackbar(context.getString(R.string.editor_image_failed))
-        }
     }
 
     /**
      * Takes the picture the picker returned, if one came back.
      *
      * The picker is started with the activity, so its answer arrives there and is handed over
-     * through this relay. A picker that answered without a picture is reported as a failed try,
-     * because it is the one case that would otherwise leave the tap unanswered.
+     * through this relay. A picker that answered without a picture is recorded in the log, like
+     * the other ways a picked picture can fail.
      */
     val pickedImage by PickedImageRelay.answer
     LaunchedEffect(pickedImage) {
@@ -831,9 +825,7 @@ fun EditorScreen(
         // imported picture disappear without a word.
         scope.launch {
             when (answer) {
-                PickedImage.Refused -> snackbarHostState.showSnackbar(
-                    context.getString(R.string.editor_image_failed),
-                )
+                PickedImage.Refused -> Log.i(TAG, "the picker answered without a picture")
                 is PickedImage.Imported -> importPicture(answer.uri)
             }
         }

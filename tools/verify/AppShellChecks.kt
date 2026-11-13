@@ -90,6 +90,8 @@ object AppShellChecks {
         pickerDialog()
         settingsHeadingSpacing()
         systemNightHandoff()
+        appearanceCardTitle()
+        fontIcons()
         wallpaperSignals()
         lifecycleTriggers()
         report()
@@ -132,6 +134,20 @@ object AppShellChecks {
             "only the title was replaced; the hint is still the way to the first note",
         )
         check(
+            "the empty page fades in rather than snapping on",
+            home.contains("MutableTransitionState(emptyPageShown)") &&
+                home.contains("visibleState = emptyState") &&
+                home.contains("fadeIn(tween(HomeFadeMillis))"),
+            "the picture arrives when the last note leaves, not while a page is being left",
+        )
+        check(
+            "returning to the same empty list does not replay the fade",
+            home.contains("rememberSaveable { mutableStateOf(false) }") &&
+                home.contains("emptyPageShown") &&
+                home.contains("if (notes.isNotEmpty()) emptyPageShown = false"),
+            "the editor can be opened from the empty page and closed again without the list changing",
+        )
+        check(
             "a search with no matches still names the query result",
             home.contains("R.string.home_empty_search"),
             "the picture is for an empty list, not for a search that found nothing",
@@ -165,19 +181,19 @@ object AppShellChecks {
 
         val gradle = code("app/build.gradle.kts")
         check(
-            "the test package is version 1.1.5",
-            gradle.contains("val appVersionName = \"1.1.5\""),
+            "the test package is version 1.1.6",
+            gradle.contains("val appVersionName = \"1.1.6\""),
             "the checks below were revised for this release",
         )
         check(
-            "the test package is versionCode 26",
-            gradle.contains("val appVersionCode = 26"),
+            "the test package is versionCode 27",
+            gradle.contains("val appVersionCode = 27"),
             "a package with the same code cannot replace the one testers installed",
         )
         check(
             "the package is the release build",
             gradle.contains("val appBuildChannel = \"Release\""),
-            "the About screen must say Release on the published build",
+            "the About screen must say Debug on the build handed to testers",
         )
         check(
             "the values are the ones the build stamps",
@@ -537,6 +553,100 @@ object AppShellChecks {
             onConfigurationChanged.contains("super.onConfigurationChanged(newConfig)") &&
                 onConfigurationChanged.contains("HiNotesWidgetProvider.refreshAll(this)"),
             "the screen declares uiMode, so no other callback here notices the switch",
+        )
+    }
+
+    /**
+     * The appearance option that hides a note card's title.
+     *
+     * A switch has to read and write the same stored setting the cards obey, so the check follows
+     * the value from the preference to the card: the row reads `homeCardShowTitle`, the home screen
+     * hands that value to every card, and the card hides its title row (and the lock beside it)
+     * rather than drawing an empty line where the title used to be.
+     */
+    private fun appearanceCardTitle() {
+        println("The note-card title setting")
+
+        val preferences = code("$SOURCE/data/Preferences.kt")
+        check(
+            "the cards keep their titles out of the box",
+            preferences.contains("val homeCardShowTitle: Boolean = true"),
+            "the option is meant to be on until the reader turns it off",
+        )
+        check(
+            "the setting is stored and backed up",
+            preferences.contains("HomeCardShowTitle(\"home_card_show_title\")") &&
+                preferences.contains("setHomeCardShowTitle(value: Boolean)"),
+            "a switch that is not in the backup list comes back in the wrong state",
+        )
+
+        val appearance = code("$SOURCE/ui/screens/AppearanceSettingsScreen.kt")
+        val row = appearance.indexOf("R.string.appearance_card_title")
+        val font = appearance.indexOf("R.string.appearance_font_size")
+        check(
+            "the switch sits above the font setting",
+            row >= 0 && font > row,
+            "the row the reader asked to place it above is the font setting",
+        )
+        check(
+            "the switch flips the setting the cards read",
+            appearance.contains("checked = settings.homeCardShowTitle") &&
+                appearance.contains("setHomeCardShowTitle(checked)"),
+            "a second copy of the setting would drift from the stored one",
+        )
+
+        val home = code("$SOURCE/ui/screens/HomeScreen.kt")
+        check(
+            "the home screen hands the setting to every card",
+            home.contains("showTitle = settings.homeCardShowTitle"),
+            "the single- and double-column cards share one call site",
+        )
+
+        val card = code("$SOURCE/ui/components/CommonComponents.kt")
+        check(
+            "a hidden title leaves the body at the card's edge",
+            card.contains("showTitle: Boolean = true") &&
+                card.contains("top = if (showTitle) side + CardTitleTopGap else side") &&
+                card.contains("if (!showTitle)"),
+            "the title row also holds the lock, so hiding it has to move that mark",
+        )
+        check(
+            "a hidden title hangs the lock over the card's corner",
+            card.contains("CardCornerBadgeSize = 24.dp") &&
+                card.contains("Alignment.TopEnd") &&
+                !card.contains("Alignment.TopStart"),
+            "the lock has nowhere else to sit; the selection tick was removed with its title row",
+        )
+    }
+
+    /**
+     * The glyph every font-size row carries.
+     *
+     * The size of type is set in three places - the app's own, the editor's, and the widget's - and
+     * each row that opens one of those choices has to read as the same idea, so all three carry the
+     * size glyph rather than each picking a picture of its own.
+     */
+    private fun fontIcons() {
+        println("The font-size rows' glyph")
+
+        val editor = code("$SOURCE/ui/screens/EditorSettingsScreen.kt")
+        check(
+            "the editor's font size row carries the size glyph",
+            editor.contains("icon = Symbols.FormatSize,") &&
+                !editor.contains("Symbols.TextFields"),
+            "a text-field glyph named the editor, not the size of its type",
+        )
+        val appearance = code("$SOURCE/ui/screens/AppearanceSettingsScreen.kt")
+        check(
+            "the app font row carries the size glyph",
+            appearance.contains("icon = Symbols.FormatSize,"),
+            "the same choice is offered here, so it has to look the same",
+        )
+        val widget = code("$SOURCE/ui/screens/WidgetSettingsScreen.kt")
+        check(
+            "the widget font row carries the size glyph",
+            widget.contains("icon = Symbols.FormatSize,"),
+            "the widget's font is chosen with the same kind of row as the app's",
         )
     }
 

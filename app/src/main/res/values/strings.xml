@@ -67,7 +67,6 @@
     <string name="editor_save_failed">The note could not be saved</string>
     <string name="editor_more_actions">More actions</string>
     <string name="editor_insert_image">Insert image</string>
-    <string name="editor_image_failed">Could not import the image</string>
 
     <!-- Settings root -->
     <string name="settings_title">Settings</string>
@@ -96,6 +95,8 @@
     <string name="appearance_oled_support">True black background in dark mode</string>
     <string name="appearance_color">Color</string>
     <string name="appearance_scheme_support">Color scheme</string>
+    <string name="appearance_card_title">Show titles on note cards</string>
+    <string name="appearance_card_title_support">Note content fills the card when off</string>
     <string name="appearance_font_size">App font settings</string>
     <string name="appearance_font_size_support">Set the app font</string>
     <string name="appearance_dynamic_unavailable">Dynamic color needs Android 12 or newer</string>

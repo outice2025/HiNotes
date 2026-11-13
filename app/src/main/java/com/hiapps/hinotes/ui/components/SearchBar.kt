@@ -1,5 +1,7 @@
 package com.hiapps.hinotes.ui.components
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -47,6 +49,8 @@ import com.hiapps.hinotes.ui.icons.Symbols
  * @param actionIcon the glyph the button draws.
  * @param actionContentDescription what the button says it does, for a reader that cannot see it.
  * @param onActionClick what the button does.
+ * @param actionFadeMillis how long the glyph takes to fade between two meanings; the caller shares
+ *   this rate with the page's other fades.
  */
 @Composable
 fun HomeSearchBar(
@@ -57,6 +61,7 @@ fun HomeSearchBar(
     actionIcon: Int,
     actionContentDescription: String,
     onActionClick: () -> Unit,
+    actionFadeMillis: Int = ActionFadeMs,
     modifier: Modifier = Modifier,
     onClear: (() -> Unit)? = null,
     clearContentDescription: String? = null,
@@ -145,11 +150,18 @@ fun HomeSearchBar(
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                SymbolIcon(
-                    codepoint = actionIcon,
-                    contentDescription = actionContentDescription,
-                    size = 24.dp,
-                )
+                // The button changes meaning with the selection (settings -> pin, pinned ->
+                // unpin), so its glyph fades from one to the next rather than snapping.
+                Crossfade(
+                    targetState = actionIcon to actionContentDescription,
+                    animationSpec = tween(actionFadeMillis),
+                ) { state ->
+                    SymbolIcon(
+                        codepoint = state.first,
+                        contentDescription = state.second,
+                        size = 24.dp,
+                    )
+                }
             }
         }
     }
@@ -157,3 +169,6 @@ fun HomeSearchBar(
 
 /** Height shared by the search field and the button beside it, per the design. */
 private val SearchFieldHeight = 56.dp
+
+/** How long the action button takes to fade between its two meanings. */
+private const val ActionFadeMs = 180

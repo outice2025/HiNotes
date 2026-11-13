@@ -1,5 +1,7 @@
 package com.hiapps.hinotes.ui.screens
 
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
@@ -43,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,6 +98,9 @@ private val HeaderInset = HomeGutter + 12.dp + 3.82.dp
  */
 private const val PinnedLabelKey = "home-pinned-label"
 private const val OtherLabelKey = "home-other-label"
+
+/** One rate for every fade on the home page: the empty state and the mode controls must not differ. */
+private const val HomeFadeMillis = 200
 
 /** What one item of the note grid is spaced from the next by, in either direction. */
 private val HomeItemGap = 8.dp
@@ -160,6 +166,14 @@ fun HomeScreen(
     val hasQuery = query.isNotBlank()
     val selecting = selectedIds.isNotEmpty()
     val gridLayout = settings.homeLayout == HomeLayout.Grid
+
+    // Whether the empty page has already shown itself. The flag survives a trip to the editor, so
+    // coming straight back to the same empty list does not replay the fade; it is cleared as soon
+    // as the list holds a note again, so the next emptying does fade.
+    var emptyPageShown by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(notes.isEmpty()) {
+        if (notes.isNotEmpty()) emptyPageShown = false
+    }
 
     // The two runs the list is divided into: the repository already orders pinned notes first, so
     // these are that same order cut in half rather than a second sort. They are named only when
@@ -367,6 +381,9 @@ fun HomeScreen(
                     },
                     onClear = { viewModel.setQuery("") },
                     clearContentDescription = stringResource(R.string.home_clear_search),
+                    // Every fade on this page shares one rate, so the button's glyph changes at
+                    // the speed the mode controls and the empty state arrive.
+                    actionFadeMillis = HomeFadeMillis,
                 )
             }
 
@@ -380,16 +397,23 @@ fun HomeScreen(
                         .padding(bottom = 152.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        if (hasQuery) {
-                            Text(
-                                text = stringResource(R.string.home_empty_search),
-                                fontSize = 23.sp,
-                                lineHeight = 32.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                            )
-                        } else {
+                    // The picture and its hint arrive with the empty list rather than with a page
+                    // that was just left; they fade in instead of snapping on. The transition starts
+                    // from the state the page was in before it was left, so a return from the
+                    // editor does not replay the fade for a list that never changed.
+                    val emptyState = remember { MutableTransitionState(emptyPageShown) }
+                    emptyState.targetState = !hasQuery
+                    LaunchedEffect(emptyState.currentState, emptyState.targetState) {
+                        if (emptyState.currentState == emptyState.targetState) {
+                            emptyPageShown = emptyState.currentState
+                        }
+                    }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visibleState = emptyState,
+                        enter = fadeIn(tween(HomeFadeMillis)),
+                        exit = fadeOut(tween(HomeFadeMillis)),
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             EmptyNotesIllustration(
                                 contentDescription = stringResource(R.string.home_empty),
                                 modifier = Modifier.size(150.dp),
@@ -403,6 +427,15 @@ fun HomeScreen(
                                 modifier = Modifier.padding(horizontal = 32.dp),
                             )
                         }
+                    }
+                    if (hasQuery) {
+                        Text(
+                            text = stringResource(R.string.home_empty_search),
+                            fontSize = 23.sp,
+                            lineHeight = 32.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
                     }
                 }
             } else {
@@ -441,8 +474,8 @@ fun HomeScreen(
                     Box(contentAlignment = Alignment.CenterEnd) {
                         androidx.compose.animation.AnimatedVisibility(
                             visible = !selecting,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
+                            enter = fadeIn(tween(HomeFadeMillis)),
+                            exit = fadeOut(tween(HomeFadeMillis)),
                         ) {
                             Row {
                                 // The card body's scrolling switch sits left of the layout toggle,
@@ -544,8 +577,8 @@ fun HomeScreen(
 
                         androidx.compose.animation.AnimatedVisibility(
                             visible = selecting,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
+                            enter = fadeIn(tween(HomeFadeMillis)),
+                            exit = fadeOut(tween(HomeFadeMillis)),
                         ) {
                             Row {
                                 // Export sits immediately LEFT of select-all, and carries the same glyph
@@ -609,6 +642,7 @@ fun HomeScreen(
                             title = note.displayTitle(untitled),
                             content = note.content,
                             markdownEnabled = settings.markdownEnabled,
+                            showTitle = settings.homeCardShowTitle,
                             locked = note.isLocked,
                             lockedLabel = lockedLabel,
                             selecting = selecting,

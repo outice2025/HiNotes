@@ -91,7 +91,9 @@ fun EditorSettingsScreen(
                 isLast = false,
             )
             SettingsRow(
-                icon = Symbols.TextFields,
+                // Every option that sets a font size carries the same glyph, so the size of type
+                // reads as one idea wherever it is set.
+                icon = Symbols.FormatSize,
                 headline = stringResource(R.string.editor_settings_font_size),
                 supporting = stringResource(R.string.editor_settings_font_size_support),
                 onClick = { showFont = true },

@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
@@ -33,7 +34,9 @@ import com.hiapps.hinotes.ui.screens.HomeScreen
 import com.hiapps.hinotes.ui.screens.SettingsScreen
 import com.hiapps.hinotes.ui.screens.UnlockScreen
 import com.hiapps.hinotes.ui.screens.WidgetSettingsScreen
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Route names for the app's screens.
@@ -57,6 +60,24 @@ object Routes {
 
 /** The one page transition. A page always moves on this clock, in either direction. */
 private const val TRANSITION_MS = 300
+
+/**
+ * Room left after a transition before its guard lets go.
+ *
+ * The guard is armed by the transition itself (see `armGuard`), so the slide may still need this
+ * room for its first frame; without it the flag could drop on the movement's last frame, and a
+ * return that waited for the movement would catch its tail.
+ */
+private const val SETTLE_MS = 32
+
+/**
+ * How long a movement may stay unannounced before its guard lets go anyway.
+ *
+ * A transition that never reaches its lambdas would otherwise leave the page guard held for good;
+ * this is longer than any arrival that does compose, so it only ever answers a movement that never
+ * started.
+ */
+private const val GUARD_FALLBACK_MS = 2_000L
 
 /** How far the page underneath drifts while the page above it covers it. */
 private const val PARALLAX_DIVISOR = 4
@@ -121,26 +142,86 @@ fun HiNotesApp(
     startNoteId: String? = null,
     onStartNoteShown: () -> Unit = {},
 ) {
+    // The page change is announced here before the slide that follows it is drawn: this state
+    // holds the entry that has just become current. Both guards below are armed from this moment,
+    // because a page that is slow to compose can take longer than a frame to appear, and a clock
+    // started at the tap would run out while its arrival is still on screen.
+    val currentEntry by navController.currentBackStackEntryAsState()
+
+    /** Set while a page is leaving: the pop that is playing must not be asked to play again. */
+    var popping by remember { mutableStateOf(false) }
+
+    /** Set while a page is arriving: the push that is playing must not be asked to play again. */
+    var pushing by remember { mutableStateOf(false) }
+
+    /** A return that came in while a page was arriving, played once that page has landed. */
+    var pendingBack by remember { mutableStateOf(false) }
+
+    val guardScope = rememberCoroutineScope()
+    val guardJob = remember { arrayOfNulls<Job>(1) }
+
+    /**
+     * Arms the guard for the movement that is starting.
+     *
+     * The clock starts when the transition itself starts, not when the tap or the page change
+     * happens: a page that is slow to compose can take longer than a transition to appear, and a
+     * clock begun at the page change ran out while the arrival was still on screen. A return then
+     * started the opposite slide on top of a push that was still playing, and the two transitions
+     * drawn over each other read as no animation at all. Every transition lambda calls this, so
+     * whichever way a page moves, its guard covers exactly that movement.
+     */
+    val armGuard = {
+        guardJob[0]?.cancel()
+        guardJob[0] = guardScope.launch {
+            delay(TRANSITION_MS.toLong() + SETTLE_MS)
+            pushing = false
+            popping = false
+        }
+    }
+
+    // A movement that never announces itself must not hold the guard for good.
+    LaunchedEffect(pushing, popping) {
+        if (pushing || popping) {
+            delay(GUARD_FALLBACK_MS)
+            pushing = false
+            popping = false
+        }
+    }
+
     /**
      * Leaves the current page.
      *
      * A press that arrives while the page is already on its way out is refused: the entry is no
      * longer in the back stack, so that pop would take the page *underneath* out instead, and the
      * animation the user is watching would be replaced by one for a page they never asked to
-     * leave. A pop with nothing under it has nothing to animate and would leave an empty host; the
-     * system's own back still closes the app from the first page.
+     * leave. A press that arrives while the current page is still arriving is kept for after it:
+     * popping then would start the opposite slide on top of the push that is still playing, and
+     * the two transitions drawn over each other read as no animation at all. A pop with nothing
+     * under it has nothing to animate and would leave an empty host; the system's own back still
+     * closes the app from the first page.
      */
-    var popping by remember { mutableStateOf(false) }
-    LaunchedEffect(popping) {
-        if (popping) {
-            delay(TRANSITION_MS.toLong())
-            popping = false
+    val back: () -> Unit = {
+        when {
+            // Already leaving: the pop the user is watching is that request.
+            popping -> Unit
+            // Still arriving: play the return once the arrival has finished.
+            pushing -> pendingBack = true
+            // Nothing underneath: the system's back closes the app from the first page.
+            navController.previousBackStackEntry != null -> {
+                popping = true
+                navController.popBackStack()
+            }
+            else -> Unit
         }
     }
-    val back: () -> Unit = {
-        if (!popping && navController.previousBackStackEntry != null) {
-            popping = true
-            navController.popBackStack()
+
+    // A return that waited for the page to arrive is played now, through the same guarded pop as
+    // every other way out, so it is the normal return animation and not a second slide laid over
+    // the push that is already running.
+    LaunchedEffect(pendingBack, pushing) {
+        if (pendingBack && !pushing) {
+            pendingBack = false
+            back()
         }
     }
 
@@ -154,13 +235,6 @@ fun HiNotesApp(
      * flash that a quick double tap on a note was reported as. One page is pushed per transition,
      * which is what makes an arrival play once.
      */
-    var pushing by remember { mutableStateOf(false) }
-    LaunchedEffect(pushing) {
-        if (pushing) {
-            delay(TRANSITION_MS.toLong())
-            pushing = false
-        }
-    }
     val push: (String) -> Unit = { route ->
         if (!pushing) {
             pushing = true
@@ -197,10 +271,25 @@ fun HiNotesApp(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface),
-        enterTransition = { pushEnter() },
-        exitTransition = { pushExit() },
-        popEnterTransition = { popEnter() },
-        popExitTransition = { popExit() },
+        // Every movement announces itself here, which is where its guard starts and ends - not
+        // when the page change reaches the composition, because the arrival can be slower than
+        // the guard.
+        enterTransition = {
+            armGuard()
+            pushEnter()
+        },
+        exitTransition = {
+            armGuard()
+            pushExit()
+        },
+        popEnterTransition = {
+            armGuard()
+            popEnter()
+        },
+        popExitTransition = {
+            armGuard()
+            popExit()
+        },
     ) {
         composable(Routes.HOME) {
             HomeScreen(
@@ -276,7 +365,6 @@ fun HiNotesApp(
     // animation. While the flag is set, such a press is swallowed by the guard in `back` instead.
     // The editor answers its own press while it is on screen, and the first page keeps the
     // system's back, which is what closes the app from the list.
-    val currentEntry by navController.currentBackStackEntryAsState()
     val route = currentEntry?.destination?.route
     BackHandler(enabled = popping || (route != null && route != Routes.HOME && route != Routes.EDITOR)) {
         back()
