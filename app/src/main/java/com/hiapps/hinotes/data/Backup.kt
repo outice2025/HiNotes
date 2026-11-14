@@ -3,7 +3,6 @@ package com.hiapps.hinotes.data
 import android.content.Context
 import android.os.Build
 import com.hiapps.hinotes.BuildConfig
-import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,24 +54,6 @@ object Backup {
     }
 
     // --------------------------------------------------------------------- notes
-
-    fun encodeNotes(notes: List<Note>): String {
-        val array = JSONArray()
-        notes.forEach { note ->
-            array.put(
-                JSONObject().apply {
-                    put("id", note.id)
-                    put("title", note.title)
-                    put("content", note.content)
-                    put("locked", note.isLocked)
-                    put("pinned", note.pinned)
-                    put("createdAt", note.createdAt)
-                    put("updatedAt", note.updatedAt)
-                }
-            )
-        }
-        return envelope(KIND_NOTES).put("notes", array).toString(2)
-    }
 
     /** Reads a notes file, or null when the payload is not a notes backup. */
     fun decodeNotes(raw: String): List<Note>? {

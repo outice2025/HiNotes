@@ -581,10 +581,16 @@ fun EditorScreen(
         val unsaved = modified && !isBlankNote()
         when {
             // Save-as-you-type already holds the note, so the last write only picks up the
-            // keystrokes since it ran and the user is not asked about work that is on disk.
+            // keystrokes since it ran and the user is not asked about work that is on disk. A
+            // write that fails says so and keeps the text on screen, as the discard dialog does.
             settings.autoSave && unsaved -> scope.launch {
-                persist()
-                onBack()
+                if (persist()) {
+                    onBack()
+                } else {
+                    snackbarHostState.showSnackbar(
+                        context.getString(R.string.editor_save_failed),
+                    )
+                }
             }
             // With it off, that same work is worth one question.
             !settings.autoSave && unsaved -> confirmDiscard = true

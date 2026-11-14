@@ -39,6 +39,9 @@ import java.io.FileInputStream
 
 private const val TAG = "HiNotesBackup"
 
+/** A picked document's origin for the log: never its path, which may name the file. */
+private fun logAddress(uri: Uri): String = "${uri.scheme}://${uri.authority}"
+
 /** Which payload a pending import will replace, and how that import reports success. */
 private enum class ImportKind(val doneMessage: Int) {
     Settings(R.string.backup_import_settings_done),
@@ -86,7 +89,7 @@ fun BackupScreen(
      * name goes into the question: a confirmation that cannot say what it is about to replace the
      * data with is a confirmation nobody can answer.
      */
-    fun handlePickedDocument(uri: Uri) {
+    suspend fun handlePickedDocument(uri: Uri) {
         PickedDocumentRelay.consume()
         pickedFile = PickedDocument(
             uri = uri,
@@ -97,11 +100,12 @@ fun BackupScreen(
     }
 
     // The picker's result arrives at the activity, so it is watched for here and turned into the
-    // question the moment it lands. The key never changes: the handler clears the value it read.
+    // question the moment it lands. The handler is handed to the screen's own scope: it clears the
+    // relay, which changes this effect's key and would cancel a name lookup still in flight.
     val relayedPick by PickedDocumentRelay.uri
     LaunchedEffect(relayedPick) {
         val picked = relayedPick ?: return@LaunchedEffect
-        handlePickedDocument(picked)
+        scope.launch { handlePickedDocument(picked) }
     }
 
     /**
@@ -344,18 +348,23 @@ fun BackupScreen(
  * A `content://` URI carries no file name of its own, so the provider that issued it is asked;
  * when even that has nothing to say, the last path segment is the best remaining guess, and
  * failing that the whole URI - a confirmation that cannot name the file is worse than one that
- * names it clumsily.
+ * names it clumsily. The query runs off the main thread because a provider may be slow or remote.
  */
-private fun displayName(context: Context, uri: Uri): String {
+private suspend fun displayName(context: Context, uri: Uri): String {
     val fromProvider = try {
-        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-            ?.use { cursor ->
-                val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
-            }
+        withContext(Dispatchers.IO) {
+            context.contentResolver
+                .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor ->
+                    val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
+                }
+        }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
     } catch (t: Throwable) {
         // A provider that refuses the query is not a reason to refuse the import.
-        Log.w(TAG, "could not read the display name of $uri", t)
+        Log.w(TAG, "could not read the display name of ${logAddress(uri)}", t)
         null
     }
     return fromProvider?.takeIf { it.isNotBlank() }
@@ -376,7 +385,7 @@ private sealed interface ReadResult {
  * the content resolver, a file descriptor, and - for the `file://` URIs some file managers still
  * return - the path itself. Whichever one works, works; and when none does, the reason is handed
  * back instead of being swallowed, because a file that cannot be opened and an import button that
- * does nothing look identical from the outside. Every attempt is logged with its URI as well.
+ * does nothing look identical from the outside. Every attempt is logged with its address as well.
  */
 private suspend fun readDocument(context: Context, uri: Uri): ReadResult =
     withContext(Dispatchers.IO) {
@@ -398,7 +407,7 @@ private suspend fun readDocument(context: Context, uri: Uri): ReadResult =
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (t: Throwable) {
-                Log.e(TAG, "$label could not read $uri", t)
+                Log.e(TAG, "$label could not read ${logAddress(uri)}", t)
                 reasons += describe(t)
                 null
             }

@@ -126,7 +126,7 @@ fun HomeSearchBar(
                 if (query.isNotEmpty() && onClear != null) {
                     IconButton(
                         onClick = onClear,
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(48.dp),
                     ) {
                         SymbolIcon(
                             codepoint = Symbols.Close,

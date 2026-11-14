@@ -56,8 +56,6 @@ private fun rememberColorScheme(
  * @param oledDark flatten dark surfaces to true black.
  * @param fontScale app-wide type scale multiplier.
  * @param fontVariationWeight app-wide type weight.
- * @param contentScale scale applied to note content only (editor, preview, lists).
- * @param contentWeight weight applied to note content only.
  */
 @Composable
 fun HiNotesTheme(
@@ -67,8 +65,6 @@ fun HiNotesTheme(
     oledDark: Boolean,
     fontScale: AppFontScale,
     fontVariationWeight: AppFontWeight,
-    contentScale: AppFontScale,
-    contentWeight: AppFontWeight,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -76,12 +72,8 @@ fun HiNotesTheme(
     val typography = remember(fontScale, fontVariationWeight) {
         hinotesTypography(fontVariationWeight, fontScale.multiplier)
     }
-    val motion = remember { MotionScheme.standard() }
 
     CompositionLocalProvider(
-        LocalMotionScheme provides motion,
-        LocalContentTypeScale provides contentScale,
-        LocalContentTypeWeight provides contentWeight,
         // No colour role can answer "is this theme dark?": the error roles swap places between
         // the modes, so a component that wants the same *effect* in both has to know which mode
         // it is in rather than which role it is reading.
@@ -97,9 +89,3 @@ fun HiNotesTheme(
 
 /** True while the app is painting its dark scheme. */
 val LocalDarkTheme = staticCompositionLocalOf { false }
-
-/** Type scale applied to note content (editor body, previews, list snippets). */
-val LocalContentTypeScale = staticCompositionLocalOf { AppFontScale.Default }
-
-/** Type weight applied to note content. */
-val LocalContentTypeWeight = staticCompositionLocalOf { AppFontWeight.Default }

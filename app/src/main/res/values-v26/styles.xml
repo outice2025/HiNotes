@@ -15,19 +15,23 @@
       the platform does not know is a layout that fails to inflate. The names are the same as the base
       file's, so a widget on API 26 or later gets these and an older one keeps the plain styles.
 
-      Justification never applies to the last line of a chunk, so a chunk that is a single short line
-      is still drawn as it was written.
+      A style bag is selected whole rather than merged across resource versions, so the base file's
+      weight pair is repeated here: without it API 26-27 would draw Medium and SemiBold as normal.
     -->
     <style name="WidgetBody.Light" parent="">
         <item name="android:justificationMode">inter_word</item>
+        <item name="android:textStyle">normal</item>
     </style>
     <style name="WidgetBody.Regular" parent="">
         <item name="android:justificationMode">inter_word</item>
+        <item name="android:textStyle">normal</item>
     </style>
     <style name="WidgetBody.Medium" parent="">
         <item name="android:justificationMode">inter_word</item>
+        <item name="android:textStyle">bold</item>
     </style>
     <style name="WidgetBody.SemiBold" parent="">
         <item name="android:justificationMode">inter_word</item>
+        <item name="android:textStyle">bold</item>
     </style>
 </resources>

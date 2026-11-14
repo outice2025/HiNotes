@@ -6,17 +6,24 @@
       `textFontWeight` picks a weight out of a variable font's axis, so the picker's four stops are
       four genuinely different weights rather than two. The names are the same as the base file's, so
       a widget on API 28 or later gets these and an older one keeps the normal/bold pair.
+
+      Justification is repeated from the v26 file: a style bag is selected whole, not merged across
+      resource versions, and leaving it out here would make API 28+ drop the aligned right edge.
     -->
     <style name="WidgetBody.Light" parent="">
+        <item name="android:justificationMode">inter_word</item>
         <item name="android:textFontWeight">300</item>
     </style>
     <style name="WidgetBody.Regular" parent="">
+        <item name="android:justificationMode">inter_word</item>
         <item name="android:textFontWeight">400</item>
     </style>
     <style name="WidgetBody.Medium" parent="">
+        <item name="android:justificationMode">inter_word</item>
         <item name="android:textFontWeight">500</item>
     </style>
     <style name="WidgetBody.SemiBold" parent="">
+        <item name="android:justificationMode">inter_word</item>
         <item name="android:textFontWeight">600</item>
     </style>
 </resources>

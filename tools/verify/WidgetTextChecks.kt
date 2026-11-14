@@ -373,8 +373,10 @@ object WidgetTextChecks {
             "a task's box stands on the item's first line",
             item.contains("android:layout_gravity=\"top\"") &&
                 item.contains("android:layout_height=\"wrap_content\"") &&
-                item.contains("android:layout_width=\"20dp\"") &&
-                item.contains("android:layout_marginEnd=\"8dp\"") &&
+                item.contains("android:layout_width=\"48dp\"") &&
+                item.contains("android:layout_marginEnd=\"-20dp\"") &&
+                item.contains("android:scaleType=\"fitStart\"") &&
+                item.contains("android:includeFontPadding=\"false\"") &&
                 !item.contains("android:layout_marginTop="),
             "a box centred on a wrapped item sits in the middle of the paragraph",
         )
@@ -391,7 +393,8 @@ object WidgetTextChecks {
             bodyText.contains("fun lineHeightPx(context: Context, sizeSp: Float): Int") &&
                 bodyText.contains("LINE_SPACING_MULTIPLIER = 1.4f") &&
                 bodyText.contains("LINE_SPACING_EXTRA_DP = 4f") &&
-                itemDrawing.contains("WidgetText.lineHeightPx(context, bodySizeSp) + taskGapPx * 2"),
+                itemDrawing.contains("WidgetText.lineHeightPx(context, bodySizeSp) -") &&
+                itemDrawing.contains("WidgetText.lineSpacingExtraPx(context)"),
             "the picture's band and the text's line have to be the same height",
         )
         check(

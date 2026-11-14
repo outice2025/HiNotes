@@ -119,7 +119,7 @@ fun SettingsScaffold(
     }
 }
 
-/** The button the title starts under: 44dp, inset 4dp from the top of the page's frame. */
+/** The button the title starts under: 48dp, inset 4dp from the top of the page's frame. */
 private val BackButtonTop = 4.dp
 
 /**
@@ -130,7 +130,7 @@ private val BackButtonTop = 4.dp
  * include it, so the page keeps its proportions.
  */
 private val BarDrop = 4.dp
-private val BackButtonSize = 44.dp
+private val BackButtonSize = 48.dp
 
 /** Height of the bar the title ends up in: the back button and the little margin above it. */
 private val BarHeight = BackButtonTop + BackButtonSize

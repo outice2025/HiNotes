@@ -12,12 +12,12 @@
 
     <ImageView
         android:id="@+id/widget_box"
-        android:layout_width="20dp"
+        android:layout_width="48dp"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="-20dp"
         android:importantForAccessibility="no"
-        android:scaleType="fitXY"
+        android:scaleType="fitStart"
         android:visibility="gone" />
 
     <TextView
@@ -26,6 +26,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:includeFontPadding="false"
         android:lineSpacingExtra="4dp"
         android:lineSpacingMultiplier="1.4"
         android:textColor="#FF000000"

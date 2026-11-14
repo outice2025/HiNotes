@@ -142,6 +142,16 @@ internal object WidgetText {
     }
 
     /**
+     * The part of [lineHeightPx] that is leading rather than glyph.
+     *
+     * A box is centred on the line the letters are drawn on, not on the taller line box the extra
+     * leading creates: the leading sits below the first line, so a box centred on the full line
+     * height reads a little low beside the text.
+     */
+    fun lineSpacingExtraPx(context: Context): Int =
+        (LINE_SPACING_EXTRA_DP * context.resources.displayMetrics.density).roundToInt()
+
+    /**
      * A task's box in device pixels.
      *
      * The view is handed the body's size through a RemoteViews, which takes sp and scales it against

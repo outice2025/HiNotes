@@ -100,7 +100,6 @@ fun UnlockScreen(
                         !hasPassword ->
                             notice = context.getString(R.string.unlock_no_password_warning)
                         checked -> requestBiometric(
-                            viewModel = viewModel,
                             activity = context as? FragmentActivity,
                             onResult = { ok ->
                                 if (ok) {
@@ -183,7 +182,6 @@ fun UnlockScreen(
 
 /** Runs the system biometric prompt before the switch is allowed to turn on. */
 private fun requestBiometric(
-    viewModel: AppViewModel,
     activity: FragmentActivity?,
     onResult: (Boolean) -> Unit,
 ) {

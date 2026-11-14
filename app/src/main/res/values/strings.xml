@@ -13,7 +13,7 @@
     <string name="home_card_scroll_off">Note cards do not scroll inside</string>
     <string name="home_card_scroll_on">Note cards scroll inside</string>
     <string name="home_delete_notes">Delete Notes</string>
-    <string name="home_deleted_message">%1$d notes deleted</string>
+    <string name="home_deleted_message">Deleted notes: %1$d</string>
     <string name="editor_delete">Delete</string>
     <string name="editor_lock">Lock</string>
     <string name="editor_unlock">Unlock</string>
@@ -23,7 +23,7 @@
     <string name="home_empty_search">No matching notes</string>
     <string name="home_empty_hint">Tap “Create Notes” to write your first note</string>
     <string name="home_create_note">Create Notes</string>
-    <string name="home_note_count">%1$d notes</string>
+    <string name="home_note_count">Notes: %1$d</string>
     <string name="home_unpinned">Not pinned</string>
     <string name="home_clear_search">Clear search</string>
     <string name="home_sort">Sort</string>
@@ -127,9 +127,9 @@
     <string name="backup_import_notes">Import notes</string>
     <string name="backup_import_notes_support">Import and overwrite notes</string>
     <string name="backup_export_settings_done">Exported all settings</string>
-    <string name="backup_import_settings_done">Imported %1$d settings</string>
-    <string name="backup_export_notes_done">Exported %1$d notes</string>
-    <string name="backup_import_notes_done">Imported %1$d notes</string>
+    <string name="backup_import_settings_done">Settings imported: %1$d</string>
+    <string name="backup_export_notes_done">Notes exported: %1$d</string>
+    <string name="backup_import_notes_done">Notes imported: %1$d</string>
     <string name="backup_import_confirm_title">Overwrite everything?</string>
     <string name="backup_import_confirm_message">Your current data will be replaced by the contents of %1$s. This cannot be undone.</string>
     <string name="backup_import_confirm">Confirm</string>

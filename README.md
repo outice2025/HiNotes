@@ -42,6 +42,7 @@ Notes and app settings are stored locally; the app does not request the INTERNET
 - Search notes by title and body on the Home screen.
 - Sort notes by last modified, creation time, or title on the Home screen.
 - Display notes in single- or two-column lists on the Home screen.
+- Scroll note contents inside their cards on the Home screen.
 - Long-press notes on the Home screen for batch operations.
 - Write notes in Markdown.
 - Import and display images in notes.
@@ -60,6 +61,8 @@ Notes and app settings are stored locally; the app does not request the INTERNET
 
 - Edit and preview notes in Markdown.
 - Find within notes.
+- Wrap long lines while editing.
+- Show note statistics.
 - Quick toolbar.
 - Auto-save.
 - Display note information.

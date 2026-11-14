@@ -181,19 +181,19 @@ object AppShellChecks {
 
         val gradle = code("app/build.gradle.kts")
         check(
-            "the test package is version 1.1.6",
-            gradle.contains("val appVersionName = \"1.1.6\""),
+            "the release package is version 1.1.7",
+            gradle.contains("val appVersionName = \"1.1.7\""),
             "the checks below were revised for this release",
         )
         check(
-            "the test package is versionCode 27",
-            gradle.contains("val appVersionCode = 27"),
+            "the release package is versionCode 28",
+            gradle.contains("val appVersionCode = 28"),
             "a package with the same code cannot replace the one testers installed",
         )
         check(
             "the package is the release build",
             gradle.contains("val appBuildChannel = \"Release\""),
-            "the About screen must say Debug on the build handed to testers",
+            "the About screen must say Release on the published build",
         )
         check(
             "the values are the ones the build stamps",

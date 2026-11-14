@@ -95,7 +95,8 @@ internal class WidgetDrawing(
      */
     private val boxes = WidgetBoxes.boxes(
         WidgetText.boxSizePx(context),
-        WidgetText.lineHeightPx(context, bodySizeSp) + taskGapPx * 2,
+        WidgetText.lineHeightPx(context, bodySizeSp) -
+            WidgetText.lineSpacingExtraPx(context) + taskGapPx * 2,
         style.densityDpi,
         style,
     )
@@ -288,11 +289,16 @@ internal class WidgetDrawing(
         views.setViewPadding(R.id.widget_chunk, 0, gap, 0, gap)
         if (!readOnly) {
             views.setOnClickFillInIntent(R.id.widget_box, tickFillIn(chunk))
+            // The row itself is the target as well: a tap on the text of a task is a tap on the
+            // task, not a way to leave the widget for the note. The card's title and margins still
+            // open the note, and a prose item keeps the empty fill-in that opens it.
+            views.setOnClickFillInIntent(R.id.widget_item, tickFillIn(chunk))
         } else {
             // A locked note offers no tick: the box fills nothing in, so a tap on it can only open
             // the note, and a tick a recycled frame still carries from an earlier drawing of the
             // card cannot fire.
             views.setOnClickFillInIntent(R.id.widget_box, Intent())
+            views.setOnClickFillInIntent(R.id.widget_item, Intent())
         }
     }
 

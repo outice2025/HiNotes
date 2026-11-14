@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,8 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hiapps.hinotes.ui.icons.SymbolIcon
@@ -155,7 +159,8 @@ private fun LeadingGlyph(icon: Int) {
  * A settings row with a trailing [androidx.compose.material3.Switch].
  *
  * The whole row is the toggle target, which is what the accessibility guidance for switch rows
- * recommends, while the switch itself stays a standard M3 component.
+ * recommends. It carries the switch semantics and the checked state; the switch itself is only the
+ * drawing, so TalkBack does not report the same state twice.
  */
 @Composable
 fun SwitchRow(
@@ -169,16 +174,27 @@ fun SwitchRow(
     isFirst: Boolean = true,
     isLast: Boolean = true,
 ) {
+    // The toggle's indication is drawn by this modifier, outside the Surface, so it has to be
+    // clipped to the row's own outline here as well - otherwise the ripple's corners square off
+    // against the grouped list's rounded edge.
+    val shape = groupedRowShape(isFirst, isLast)
     SettingsRow(
         icon = icon,
         headline = headline,
         supporting = supporting,
-        modifier = modifier,
-        onClick = { onCheckedChange(!checked) },
+        modifier = modifier
+            .clip(shape)
+            .toggleable(
+                value = checked,
+                onValueChange = onCheckedChange,
+                enabled = enabled,
+                role = Role.Switch,
+            ),
         trailing = {
             androidx.compose.material3.Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
+                modifier = Modifier.clearAndSetSemantics {},
                 enabled = enabled,
             )
         },

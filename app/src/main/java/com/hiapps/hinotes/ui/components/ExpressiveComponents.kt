@@ -122,7 +122,7 @@ fun EditorActionButtons(
     }
 }
 
-/** One action of the editor's header: a 44dp circle with no container of its own. */
+/** One action of the editor's header: a 48dp circle with no container of its own. */
 @Composable
 private fun EditorActionButton(
     icon: Int,
@@ -142,7 +142,7 @@ private fun EditorActionButton(
 }
 
 /** The size of one action in the editor's header, which is the back button's own height. */
-private val EditorActionSize = 44.dp
+private val EditorActionSize = 48.dp
 
 /**
  * M3 Expressive connected button group: adjacent icon buttons share 8dp inner corners while the

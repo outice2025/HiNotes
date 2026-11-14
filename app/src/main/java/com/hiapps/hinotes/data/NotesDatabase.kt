@@ -92,10 +92,6 @@ internal class NotesDatabase(context: Context) :
         writableDatabase.update(TABLE, values, "$COL_ID IN ($placeholders)", ids.toTypedArray())
     }
 
-    fun deleteAll() {
-        writableDatabase.delete(TABLE, null, null)
-    }
-
     fun all(): List<Note> =
         readableDatabase.query(
             TABLE, null, null, null, null, null, "$COL_UPDATED DESC",
@@ -105,19 +101,6 @@ internal class NotesDatabase(context: Context) :
         readableDatabase.query(
             TABLE, null, "$COL_ID = ?", arrayOf(id), null, null, null, "1",
         ).use { c -> c.toNotes().firstOrNull() }
-
-    fun search(query: String): List<Note> {
-        val like = "%${query.replace("%", "\\%").replace("_", "\\_")}%"
-        return readableDatabase.query(
-            TABLE,
-            null,
-            "($COL_TITLE LIKE ? ESCAPE '\\' OR $COL_CONTENT LIKE ? ESCAPE '\\')",
-            arrayOf(like, like),
-            null,
-            null,
-            "$COL_UPDATED DESC",
-        ).use { c -> c.toNotes() }
-    }
 
     fun count(): Int =
         readableDatabase.rawQuery("SELECT COUNT(*) FROM $TABLE", null).use { c ->

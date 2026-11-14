@@ -88,8 +88,6 @@ class WidgetConfigActivity : FragmentActivity() {
                 oledDark = settings.oledDark,
                 fontScale = settings.appFontScale,
                 fontVariationWeight = settings.appFontWeight,
-                contentScale = settings.noteFontScale,
-                contentWeight = settings.noteFontWeight,
             ) {
                 if (locked && viewModel.lockStore.isConfigured) {
                     LockGate(viewModel = viewModel)

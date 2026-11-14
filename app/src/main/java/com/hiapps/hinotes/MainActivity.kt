@@ -180,8 +180,6 @@ class MainActivity : FragmentActivity() {
                 oledDark = settings.oledDark,
                 fontScale = settings.appFontScale,
                 fontVariationWeight = settings.appFontWeight,
-                contentScale = settings.noteFontScale,
-                contentWeight = settings.noteFontWeight,
             ) {
                 if (locked && viewModel.lockStore.isConfigured) {
                     // The lock gate comes first: a note opened from a widget waits behind the
